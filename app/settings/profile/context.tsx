@@ -3,7 +3,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { createClient } from "@/app/lib/supabase";
 import { buildAuthHeaders } from "@/app/lib/http";
-import { apiPlanCatalog, type ApiPlanId } from "@/app/lib/api-rate-limits";
 import { toast } from "sonner";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -12,13 +11,6 @@ export type SettingsState = {
   fullName: string;
   username: string;
   avatarUrl: string;
-  webhookEnabled: boolean;
-  webhookUrl: string;
-  webhookSecret: string;
-  webhookEvents: string[];
-  retentionDays: number;
-  apiRequestsPerMinute: number;
-  expensiveRequestsPerMinute: number;
 };
 
 export type AdminState = {
@@ -31,13 +23,6 @@ const defaultSettings: SettingsState = {
   fullName: "",
   username: "",
   avatarUrl: "",
-  webhookEnabled: false,
-  webhookUrl: "",
-  webhookSecret: "",
-  webhookEvents: ["scan.completed"],
-  retentionDays: 30,
-  apiRequestsPerMinute: apiPlanCatalog.free.limits.apiRequestsPerMinute,
-  expensiveRequestsPerMinute: apiPlanCatalog.free.limits.expensiveRequestsPerMinute,
 };
 
 // ─── Context shape ─────────────────────────────────────────────────────────────
@@ -57,7 +42,6 @@ type SettingsContextValue = {
   setStatus: (msg: string | null) => void;
   accessToken: string | null;
   admin: AdminState;
-  apiPlan: ApiPlanId;
 };
 
 const SettingsContext = createContext<SettingsContextValue | null>(null);
@@ -84,7 +68,6 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     profileUsername: null,
     githubLogin: null,
   });
-  const [apiPlan, setApiPlan] = useState<ApiPlanId>("free");
 
   const setStatus = useCallback((message: string | null) => {
     setStatusState(message);
@@ -138,7 +121,6 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
               ? data.admin.githubLogin
               : null,
         });
-        setApiPlan(data?.apiPlan === "pro" || data?.apiPlan === "team" ? data.apiPlan : "free");
       }
 
       setLoading(false);
@@ -205,7 +187,6 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         setStatus,
         accessToken,
         admin,
-        apiPlan,
       }}
     >
       {children}

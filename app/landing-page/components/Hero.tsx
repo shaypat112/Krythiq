@@ -1,15 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import dynamic from "next/dynamic";
 import { ArrowRight, Check, Play } from "lucide-react";
 import { FadeIn } from "../shared/FadeIn";
-import MacbookScrollDemo from "@/components/macbook-scroll-demo";
-
-const RepositoryScene = dynamic(() => import("./RepositoryScene").then((module) => module.RepositoryScene), {
-  ssr: false,
-  loading: () => <div className="h-full animate-pulse bg-[#080c13]" />,
-});
 
 export function Hero() {
   return (
@@ -52,12 +45,6 @@ export function Hero() {
         </div>
       </FadeIn>
 
-      <FadeIn delay={0.12} className="relative mt-14 sm:mt-20">
-        <div className="pointer-events-none absolute inset-x-[12%] bottom-[-8%] h-32 rounded-full bg-black/20 blur-3xl dark:bg-black/50" />
-        <MacbookScrollDemo>
-          <RepositoryScene />
-        </MacbookScrollDemo>
-      </FadeIn>
     </section>
   );
 }

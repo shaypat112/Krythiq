@@ -6,7 +6,6 @@ import TeamProvider from "./components/TeamProvider";
 import { Geist } from "next/font/google";
 import { cn } from "./lib/utils";
 import type { Metadata } from "next";
-import { Analytics } from "@vercel/analytics/next"
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
@@ -48,11 +47,9 @@ export default function RootLayout({
           <TooltipProvider delayDuration={350} skipDelayDuration={150}>
             <TeamProvider>
               <AppShell>{children}</AppShell>
-              <Analytics />
             </TeamProvider>
             <Toaster position="bottom-right" richColors closeButton />
           </TooltipProvider>
-
         </ThemeProvider>
       </body>
     </html>

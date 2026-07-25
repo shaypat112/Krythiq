@@ -3,9 +3,7 @@ import { Nav } from "./components/Nav";
 import { Hero } from "./components/Hero";
 import { Problem } from "./components/Problem";
 import { SolutionFlow } from "./components/SolutionFlow";
-import { ProductShowcase } from "./components/ProductShowcase";
 import { Founder } from "./components/Founder";
-import { FinalCTA } from "./components/FinalCTA";
 import { Footer } from "./components/Footer";
 import { ProductVideoStory } from "@/app/components/ProductVideoStory";
 
@@ -26,9 +24,7 @@ export default function LandingPage() {
         />
         <Problem />
         <SolutionFlow />
-        <ProductShowcase />
         <Founder />
-        <FinalCTA />
         <Footer />
       </div>
     </div>

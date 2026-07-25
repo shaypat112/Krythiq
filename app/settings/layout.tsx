@@ -6,28 +6,16 @@ import { Check, ChevronRight, Loader2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   User,
-  CreditCard,
-  Webhook,
   Database,
-  Palette,
   Users,
-  Plug,
-  BellRing,
-  Braces,
 } from "lucide-react";
 import { cn } from "../lib/utils";
 import { SettingsProvider, useSettings } from "./profile/context";
 
 const NAV_SECTIONS = [
   { id: "account", label: "Account", icon: User },
-  { id: "billing", label: "Billing", icon: CreditCard },
-  { id: "appearance", label: "Appearance", icon: Palette },
-  { id: "webhooks", label: "Webhooks", icon: Webhook },
   { id: "retention", label: "Data", icon: Database },
   { id: "teams", label: "Teams", icon: Users },
-  { id: "integrations", label: "Integrations", icon: Plug },
-  { id: "notifications", label: "Notifications", icon: BellRing },
-  { id: "api", label: "API", icon: Braces },
 ] as const;
 
 export type SectionId = (typeof NAV_SECTIONS)[number]["id"];

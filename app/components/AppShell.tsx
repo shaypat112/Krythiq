@@ -16,14 +16,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Bell, ChevronDown, CreditCard } from "lucide-react";
+import { Bell, ChevronDown, Moon, SunMedium } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { DesktopRequired } from "./mobile/DesktopRequired";
+import { useTheme } from "./theme-provider";
 
 const appLinks = [
   { href: "/scan", label: "Security workspace" },
-  { href: "/documentation", label: "Docs" },
-  { href: "/partners", label: "Partners" },
   { href: "/settings", label: "Settings" },
 ];
 
@@ -55,6 +54,7 @@ function formatNotificationTitle(type: string) {
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+  const { theme, toggleTheme } = useTheme();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [signingOut, setSigningOut] = useState(false);
@@ -357,7 +357,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                         </button>
                       </DropdownMenuTrigger>
                     </TooltipTrigger>
-                    <TooltipContent side="bottom">Account and billing</TooltipContent>
+                    <TooltipContent side="bottom">Account menu</TooltipContent>
                   </Tooltip>
                   <DropdownMenuContent
                     align="end"
@@ -365,11 +365,35 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                   >
                     <DropdownMenuLabel>{displayName}</DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem asChild>
-                      <Link href="/billing" className="flex items-center gap-2">
-                        <CreditCard className="h-4 w-4" />
-                        Billing
-                      </Link>
+                    <DropdownMenuItem
+                      onSelect={(event) => {
+                        event.preventDefault();
+                        toggleTheme();
+                      }}
+                      className="justify-between"
+                    >
+                      <span className="flex items-center gap-2">
+                        {theme === "dark" ? (
+                          <Moon className="h-4 w-4" />
+                        ) : (
+                          <SunMedium className="h-4 w-4" />
+                        )}
+                        Appearance
+                      </span>
+                      <span
+                        aria-label={`${theme === "dark" ? "Dark" : "Light"} mode`}
+                        className={`relative h-5 w-9 rounded-full transition-colors ${
+                          theme === "dark" ? "bg-foreground" : "bg-muted"
+                        }`}
+                      >
+                        <span
+                          className={`absolute top-0.5 h-4 w-4 rounded-full shadow-sm transition-transform ${
+                            theme === "dark"
+                              ? "translate-x-[18px] bg-background"
+                              : "translate-x-0.5 bg-foreground"
+                          }`}
+                        />
+                      </span>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={signOut}>
