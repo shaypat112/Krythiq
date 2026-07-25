@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { stripe } from "@/app/lib/stripe";
-import { getSupabaseEnv, supabaseFetch } from "@/app/lib/server/supabaseRest";
+import { getSupabaseEnv } from "@/app/lib/server/supabaseRest";
 
 export const runtime = "nodejs";
 
@@ -20,8 +20,8 @@ export async function POST(request: Request) {
 
   try {
     event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
-  } catch (err: any) {
-    return NextResponse.json({ error: `Webhook Error: ${err.message}` }, { status: 400 });
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? `Webhook Error: ${error.message}` : "Webhook signature verification failed." }, { status: 400 });
   }
 
   const env = getSupabaseEnv();
@@ -34,8 +34,9 @@ export async function POST(request: Request) {
     : null;
 
   const updateBilling = async (payload: Record<string, unknown>) => {
-    if (!adminHeaders) return;
-    await fetch(`${env.url}/rest/v1/billing_customers`, {
+    if (!adminHeaders) throw new Error("Supabase service role is not configured.");
+    if (!payload.user_id) throw new Error("Stripe customer is missing a Votrio user identifier.");
+    const response = await fetch(`${env.url}/rest/v1/billing_customers?on_conflict=user_id`, {
       method: "POST",
       headers: {
         ...adminHeaders,
@@ -43,6 +44,13 @@ export async function POST(request: Request) {
       },
       body: JSON.stringify(payload),
     });
+    if (!response.ok) throw new Error("Unable to synchronize billing state.");
+  };
+
+  const getUserId = async (customerId: string, fallback?: string | null) => {
+    if (fallback) return fallback;
+    const customer = await stripe.customers.retrieve(customerId);
+    return customer.deleted ? null : customer.metadata.user_id ?? null;
   };
 
   try {
@@ -51,9 +59,11 @@ export async function POST(request: Request) {
         const session = event.data.object as Stripe.Checkout.Session;
         const customerId = session.customer as string;
         const subscriptionId = session.subscription as string;
-        const priceId = session?.metadata?.price_id ?? null;
+        const priceId = session.metadata?.price_id ?? null;
+        const userId = await getUserId(customerId, session.metadata?.user_id);
 
         await updateBilling({
+          user_id: userId,
           stripe_customer_id: customerId,
           stripe_subscription_id: subscriptionId,
           status: "active",
@@ -68,6 +78,7 @@ export async function POST(request: Request) {
         const customerId = subscription.customer as string;
         const priceId = subscription.items.data[0]?.price?.id ?? null;
         const status = subscription.status;
+        const userId = await getUserId(customerId, subscription.metadata.user_id);
         const periodEnd =
           typeof (subscription as Stripe.Subscription & { current_period_end?: number })
             .current_period_end === "number"
@@ -78,6 +89,7 @@ export async function POST(request: Request) {
             : null;
 
         await updateBilling({
+          user_id: userId,
           stripe_customer_id: customerId,
           stripe_subscription_id: subscription.id,
           status,
@@ -92,7 +104,7 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({ received: true });
-  } catch (err: any) {
+  } catch {
     return NextResponse.json({ error: "Webhook handler failed." }, { status: 500 });
   }
 }

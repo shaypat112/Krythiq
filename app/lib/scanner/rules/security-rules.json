@@ -1,0 +1,117 @@
+{
+  "schemaVersion": 1,
+  "rulesetVersion": "2026.07.24",
+  "rules": [
+    {
+      "id": "EVAL",
+      "pattern": "eval\\s*\\(",
+      "flags": "g",
+      "severity": "high",
+      "score": 75,
+      "category": "code",
+      "message": "eval() detected — possible code injection",
+      "suggestion": "Avoid eval() and use safer parsing."
+    },
+    {
+      "id": "XSS_RISK",
+      "pattern": "dangerouslySetInnerHTML",
+      "flags": "g",
+      "severity": "medium",
+      "score": 55,
+      "category": "code",
+      "message": "dangerouslySetInnerHTML usage detected",
+      "suggestion": "Sanitize user input before rendering."
+    },
+    {
+      "id": "CMD_INJECTION",
+      "pattern": "child_process.*exec\\s*\\(",
+      "flags": "g",
+      "severity": "high",
+      "score": 75,
+      "category": "code",
+      "message": "exec() usage detected",
+      "suggestion": "Use spawn with arguments instead."
+    },
+    {
+      "id": "HARDCODED_SECRET",
+      "pattern": "(?:password|secret|token|api_?key)\\s*[:=]\\s*[\"']([^\"'${}\\s][^\"']{5,})[\"']",
+      "flags": "gi",
+      "severity": "high",
+      "score": 75,
+      "category": "secrets",
+      "message": "Possible hardcoded credential",
+      "suggestion": "Move secrets to environment variables.",
+      "validator": "non_placeholder_secret"
+    },
+    {
+      "id": "WEAK_CRYPTO",
+      "pattern": "\\b(?:md5|sha1)\\s*\\(",
+      "flags": "gi",
+      "severity": "medium",
+      "score": 55,
+      "category": "code",
+      "message": "Weak cryptographic hash usage detected",
+      "suggestion": "Use SHA-256 or a password-specific KDF such as Argon2id, scrypt, or bcrypt."
+    },
+    {
+      "id": "INSECURE_RANDOMNESS",
+      "pattern": "\\bMath\\.random\\s*\\(",
+      "flags": "g",
+      "severity": "medium",
+      "score": 55,
+      "category": "code",
+      "message": "Math.random() is not cryptographically secure",
+      "suggestion": "Use crypto.randomUUID() or crypto.getRandomValues() for security-sensitive values."
+    },
+    {
+      "id": "TLS_VALIDATION_DISABLED",
+      "pattern": "\\brejectUnauthorized\\s*:\\s*false\\b",
+      "flags": "g",
+      "severity": "high",
+      "score": 75,
+      "category": "code",
+      "message": "TLS certificate validation is disabled",
+      "suggestion": "Keep certificate validation enabled and configure a trusted CA when necessary."
+    },
+    {
+      "id": "TLS_VALIDATION_DISABLED_PYTHON",
+      "pattern": "\\b(?:verify|ssl_verify)\\s*[:=]\\s*(?:false|False)\\b",
+      "flags": "g",
+      "severity": "high",
+      "score": 75,
+      "category": "code",
+      "message": "TLS certificate validation may be disabled",
+      "suggestion": "Keep certificate validation enabled and configure a trusted CA when necessary."
+    },
+    {
+      "id": "UNSAFE_DESERIALIZATION",
+      "pattern": "\\b(?:pickle\\.loads?|yaml\\.load)\\s*\\(",
+      "flags": "g",
+      "severity": "high",
+      "score": 75,
+      "category": "code",
+      "message": "Potentially unsafe deserialization detected",
+      "suggestion": "Use a safe loader and never deserialize untrusted input."
+    },
+    {
+      "id": "SHELL_INJECTION",
+      "pattern": "\\bsubprocess\\.(?:run|Popen|call|check_output)\\s*\\([^)\\n]*\\bshell\\s*=\\s*True\\b",
+      "flags": "g",
+      "severity": "high",
+      "score": 75,
+      "category": "code",
+      "message": "Python subprocess executes through a shell",
+      "suggestion": "Pass an argument array with shell=False and validate any user-controlled values."
+    },
+    {
+      "id": "DOM_XSS_RISK",
+      "pattern": "\\b(?:innerHTML|outerHTML)\\s*=",
+      "flags": "g",
+      "severity": "medium",
+      "score": 55,
+      "category": "code",
+      "message": "Direct HTML assignment detected",
+      "suggestion": "Prefer textContent or sanitize trusted markup before assigning HTML."
+    }
+  ]
+}

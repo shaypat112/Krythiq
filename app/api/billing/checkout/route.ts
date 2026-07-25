@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import Stripe from "stripe";
 import { stripe, getStripeConfig } from "@/app/lib/stripe";
 import {
   RequestAuthError,
@@ -16,12 +17,27 @@ function getErrorMessage(error: unknown, fallback: string) {
 export async function POST(request: Request) {
   try {
     const body = await request.json().catch(() => ({}));
-    const priceId = (body?.priceId as string | undefined) ?? getStripeConfig().pricePro;
+    const planId = (body?.planId as string) || "pro";
+    const billingCycle = (body?.billingCycle as string) || "monthly";
     const { accessToken, userId } = requireRequestAuth(request);
 
-    const { secretKey, siteUrl } = getStripeConfig();
-    if (!secretKey) {
-      return NextResponse.json({ error: "Stripe is not configured." }, { status: 500 });
+    const { secretKey, publishableKey, pricePro, priceTeam } = getStripeConfig();
+    if (!secretKey || !publishableKey) {
+      return NextResponse.json(
+        { error: "Stripe is not configured." },
+        { status: 500 },
+      );
+    }
+
+    // Map plan IDs to Stripe price IDs
+    const priceMap: Record<string, string> = {
+      pro: pricePro,
+      team: priceTeam,
+    };
+
+    const priceId = priceMap[planId];
+    if (!priceId) {
+      return NextResponse.json({ error: "Invalid plan ID or Stripe not configured" }, { status: 400 });
     }
 
     const env = getSupabaseEnv();
@@ -31,9 +47,13 @@ export async function POST(request: Request) {
       `billing_customers?user_id=eq.${userId}&select=stripe_customer_id`,
       { accessToken },
     );
+    if (!customerRes.ok) {
+      return NextResponse.json({ error: "Unable to load billing customer." }, { status: 500 });
+    }
 
-    const customerRows = customerRes.ok ? await customerRes.json() : [];
-    let customerId = customerRows?.[0]?.stripe_customer_id as string | undefined;
+    const customerRows = await customerRes.json();
+    let customerId = customerRows?.[0]?.stripe_customer_id as
+      string | undefined;
 
     if (!customerId) {
       const customer = await stripe.customers.create({
@@ -41,7 +61,7 @@ export async function POST(request: Request) {
       });
       customerId = customer.id;
 
-      await supabaseFetch(env, "billing_customers", {
+      const customerInsert = await supabaseFetch(env, "billing_customers", {
         method: "POST",
         accessToken,
         headers: { Prefer: "resolution=merge-duplicates" },
@@ -51,17 +71,29 @@ export async function POST(request: Request) {
           updated_at: new Date().toISOString(),
         }),
       });
+      if (!customerInsert.ok) {
+        return NextResponse.json({ error: "Unable to save billing customer." }, { status: 500 });
+      }
     }
 
-    const session = await stripe.checkout.sessions.create({
+    const returnUrl = new URL("/billing?checkout=complete&session_id={CHECKOUT_SESSION_ID}", request.url).toString();
+    const subscriptionData: Stripe.Checkout.SessionCreateParams = {
       mode: "subscription",
+      ui_mode: "embedded",
       customer: customerId,
       line_items: [{ price: priceId, quantity: 1 }],
-      success_url: `${siteUrl}/settings?section=billing&success=true`,
-      cancel_url: `${siteUrl}/settings?section=billing`,
-    });
+      return_url: returnUrl,
+      redirect_on_completion: "if_required",
+      metadata: { user_id: userId, price_id: priceId, billing_cycle: billingCycle },
+      subscription_data: { metadata: { user_id: userId, price_id: priceId } },
+    };
 
-    return NextResponse.json({ url: session.url });
+    const session = await stripe.checkout.sessions.create(subscriptionData);
+
+    if (!session.client_secret) {
+      return NextResponse.json({ error: "Checkout session could not be initialized." }, { status: 500 });
+    }
+    return NextResponse.json({ clientSecret: session.client_secret, publishableKey });
   } catch (error) {
     if (error instanceof RequestAuthError) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

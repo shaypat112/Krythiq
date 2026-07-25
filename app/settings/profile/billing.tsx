@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { buildAuthHeaders } from "@/app/lib/http";
-import StripeBuyButton from "@/app/components/StripeBuyButton";
 import { useSettings } from "./context";
 import { GhostButton, SectionCard } from "./primitives";
+import { Skeleton } from "@/components/ui/skeleton";
 
 type BillingSummary = {
   configured: boolean;
@@ -22,14 +22,6 @@ type BillingSummary = {
     status: string;
   }>;
 };
-
-function formatCurrency(amount: number) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0,
-  }).format(amount);
-}
 
 export function BillingSection() {
   const { accessToken, setError } = useSettings();
@@ -90,23 +82,13 @@ export function BillingSection() {
     setError(data?.error ?? "Unable to open billing portal.");
   };
 
-  const invoiceStats = useMemo(() => {
-    const invoices = summary?.invoices ?? [];
-    const total = invoices.reduce((sum, invoice) => sum + invoice.amount, 0);
-    const max = Math.max(...invoices.map((invoice) => invoice.amount), 0);
-    const latest = invoices.at(-1)?.amount ?? 0;
-    return { total, max, latest };
-  }, [summary]);
-
   return (
     <SectionCard
       title="Billing"
       description="Manage your subscription, checkout flow, and recent billing activity."
     >
       {loading ? (
-        <p className="text-sm text-muted-foreground">
-          Loading billing overview...
-        </p>
+        <div className="space-y-3" aria-label="Loading billing overview"><Skeleton className="h-24" /><Skeleton className="h-24" /></div>
       ) : !summary?.configured ? (
         <p className="text-sm text-muted-foreground">
           Stripe is not configured for this environment yet.
@@ -128,19 +110,9 @@ export function BillingSection() {
             </div>
 
             <div className="rounded-2xl border border-border bg-background p-5">
-              <p className="text-sm font-semibold text-foreground">
-                Purchase a plan
-              </p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Use the hosted Stripe checkout button to start or upgrade your
-                plan.
-              </p>
-              <div className="mt-4 overflow-hidden rounded-xl border border-border bg-card p-4">
-                <StripeBuyButton
-                  buyButtonId="buy_btn_1THOTu2VC9y0vPGPsXBw9w8c"
-                  publishableKey="pk_test_51TFxCe2VC9y0vPGPTQuhNVNg3R470rNNC4uDkIt7Cq5fUhknqHYLejX6ZNI2yaMseGqgwQFN96Iz9RkqaVfgyytO00bOAHVE3b"
-                />
-              </div>
+              <p className="text-sm font-semibold text-foreground">Purchase a plan</p>
+              <p className="mt-1 text-sm text-muted-foreground">Open the secure in-app checkout to compare current Stripe prices and subscribe.</p>
+              <GhostButton className="mt-4" onClick={() => { window.location.href = "/billing"; }}>View plans</GhostButton>
             </div>
           </div>
         </div>

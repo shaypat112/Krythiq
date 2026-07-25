@@ -20,16 +20,11 @@ type AuthUser = {
 export function getAdminIdentityConfig() {
   return {
     profileUsername:
-      process.env.ADMIN_PROFILE_USERNAME?.trim() ||
-      process.env.DEMO_APPROVER_USERNAME?.trim() ||
-      "shivang",
+      process.env.ADMIN_PROFILE_USERNAME?.trim() || "",
     fullName:
-      process.env.ADMIN_FULL_NAME?.trim() ||
-      "Shivang Pat",
+      process.env.ADMIN_FULL_NAME?.trim() || "",
     githubLogin:
-      process.env.ADMIN_GITHUB_LOGIN?.trim() ||
-      process.env.DEMO_APPROVER_GITHUB_LOGIN?.trim() ||
-      "shaypat112",
+      process.env.ADMIN_GITHUB_LOGIN?.trim() || "",
   };
 }
 
@@ -141,11 +136,10 @@ export async function isAdminAccess(accessToken: string, userId: string) {
   const githubLogin = extractGitHubLogin(authUser);
   const fullName = profile?.full_name?.trim().toLowerCase() ?? "";
   const profileMatches =
-    profile?.username === config.profileUsername ||
-    profile?.username === config.githubLogin;
+    Boolean(config.profileUsername) && profile?.username === config.profileUsername ||
+    Boolean(config.githubLogin) && profile?.username === config.githubLogin;
   const fullNameMatches =
-    fullName === config.fullName.trim().toLowerCase() ||
-    fullName === "shivang patel";
+    Boolean(config.fullName) && fullName === config.fullName.trim().toLowerCase();
 
-  return githubLogin === config.githubLogin || Boolean(profileMatches) || fullNameMatches;
+  return Boolean(config.githubLogin) && githubLogin === config.githubLogin || Boolean(profileMatches) || fullNameMatches;
 }

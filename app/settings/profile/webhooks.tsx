@@ -14,10 +14,11 @@ import {
 
 const WEBHOOK_EVENTS = [
   { id: "scan.completed", label: "Scan completed" },
+  { id: "scan.failed", label: "Scan failed" },
 ] as const;
 
 export function WebhooksSection() {
-  const { settings, update, accessToken, setError, setStatus } = useSettings();
+  const { settings, update, accessToken, save, setError, setStatus } = useSettings();
   const [testing, setTesting] = useState(false);
 
   const testWebhook = async () => {
@@ -26,10 +27,11 @@ export function WebhooksSection() {
     setStatus(null);
     setError(null);
 
+    if (!(await save())) { setTesting(false); return; }
     const res = await fetch("/api/settings/test-webhook", {
       method: "POST",
       headers: buildAuthHeaders(accessToken, { "Content-Type": "application/json" }),
-      body: JSON.stringify({ webhookUrl: settings.webhookUrl }),
+      body: JSON.stringify({ webhookUrl: settings.webhookUrl, webhookSecret: settings.webhookSecret }),
     });
 
     if (res.ok) {
@@ -66,6 +68,16 @@ export function WebhooksSection() {
           onChange={(e) => update("webhookUrl", e.target.value)}
           placeholder="https://your-server.com/webhook"
         />
+      </FieldGroup>
+
+      <FieldGroup label="Signing secret (optional)">
+        <StyledInput
+          type="password"
+          value={settings.webhookSecret}
+          onChange={(e) => update("webhookSecret", e.target.value)}
+          placeholder="Shared secret used to verify deliveries"
+        />
+        <p className="mt-2 text-xs text-muted-foreground">Deliveries include an HMAC SHA-256 value in the <code>x-votrio-signature</code> header when this is set.</p>
       </FieldGroup>
 
       <FieldGroup label="Events">

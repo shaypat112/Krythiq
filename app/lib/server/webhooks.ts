@@ -1,6 +1,19 @@
 import { supabaseFetch, type SupabaseEnv } from "./supabaseRest";
+import { createHmac } from "node:crypto";
+import { fetchWithTimeout, validatePublicHttpsUrl } from "./outboundRequests";
 
 const RETRY_MINUTES = 5;
+
+type RetryDelivery = {
+  id: string;
+  payload: Record<string, unknown>;
+  attempt_count: number;
+  webhook_endpoints: { url: string; enabled: boolean; secret?: string | null } | null;
+};
+
+function messageFromError(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
 
 function getRetryAt() {
   const date = new Date();
@@ -63,13 +76,16 @@ export async function deliverWebhooks(
     const deliveryId = deliveryRows?.[0]?.id as string | undefined;
 
     try {
-      const res = await fetch(endpoint.url, {
+      const serializedPayload = JSON.stringify({ ...deliveryPayload, delivery_id: deliveryId });
+      const targetUrl = await validatePublicHttpsUrl(endpoint.url);
+      const res = await fetchWithTimeout(targetUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "User-Agent": "votrio-webhooks",
+          ...(endpoint.secret ? { "x-votrio-signature": createHmac("sha256", endpoint.secret).update(serializedPayload).digest("hex") } : {}),
         },
-        body: JSON.stringify({ ...deliveryPayload, delivery_id: deliveryId }),
+        body: serializedPayload,
       });
 
       if (!res.ok) {
@@ -100,7 +116,7 @@ export async function deliverWebhooks(
           }),
         });
       }
-    } catch (error: any) {
+    } catch (error) {
       if (deliveryId) {
         await supabaseFetch(env, `webhook_deliveries?id=eq.${deliveryId}`, {
           method: "PATCH",
@@ -109,7 +125,7 @@ export async function deliverWebhooks(
           body: JSON.stringify({
             status: "failed",
             attempt_count: 1,
-            last_error: error?.message ?? "Webhook delivery failed",
+            last_error: messageFromError(error, "Webhook delivery failed"),
             next_retry_at: getRetryAt(),
             updated_at: new Date().toISOString(),
           }),
@@ -122,19 +138,19 @@ export async function deliverWebhooks(
 export async function retryDeliveries(
   env: SupabaseEnv,
   accessToken: string | undefined,
-  _userId: string,
+  userId: string,
 ) {
   if (!accessToken) return { retried: 0 };
 
   const now = new Date().toISOString();
   const deliveriesRes = await supabaseFetch(
     env,
-    `webhook_deliveries?status=eq.failed&next_retry_at=lte.${now}&select=id,event,payload,attempt_count,webhook_id,webhook_endpoints(url,enabled,events)&order=next_retry_at.asc&limit=10`,
+    `webhook_deliveries?status=eq.failed&attempt_count=lt.10&next_retry_at=lte.${now}&webhook_endpoints!inner.user_id=eq.${userId}&select=id,payload,attempt_count,webhook_endpoints!inner(url,enabled,secret)&order=next_retry_at.asc&limit=10`,
     { accessToken },
   );
 
   if (!deliveriesRes.ok) return { retried: 0 };
-  const deliveries = (await deliveriesRes.json()) as Array<any>;
+  const deliveries = (await deliveriesRes.json()) as RetryDelivery[];
 
   let retried = 0;
   for (const delivery of deliveries) {
@@ -142,13 +158,16 @@ export async function retryDeliveries(
     if (!endpoint?.enabled) continue;
 
     try {
-      const res = await fetch(endpoint.url, {
+      const serializedPayload = JSON.stringify({ ...delivery.payload, retry: true });
+      const targetUrl = await validatePublicHttpsUrl(endpoint.url);
+      const res = await fetchWithTimeout(targetUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "User-Agent": "votrio-webhooks",
+          ...(endpoint.secret ? { "x-votrio-signature": createHmac("sha256", endpoint.secret).update(serializedPayload).digest("hex") } : {}),
         },
-        body: JSON.stringify({ ...delivery.payload, retry: true }),
+        body: serializedPayload,
       });
 
       if (res.ok) {
@@ -177,7 +196,7 @@ export async function retryDeliveries(
           }),
         });
       }
-    } catch (error: any) {
+    } catch (error) {
       await supabaseFetch(env, `webhook_deliveries?id=eq.${delivery.id}`, {
         method: "PATCH",
         accessToken,
@@ -185,7 +204,7 @@ export async function retryDeliveries(
         body: JSON.stringify({
           status: "failed",
           attempt_count: delivery.attempt_count + 1,
-          last_error: error?.message ?? "Webhook retry failed",
+          last_error: messageFromError(error, "Webhook retry failed"),
           next_retry_at: getRetryAt(),
           updated_at: new Date().toISOString(),
         }),

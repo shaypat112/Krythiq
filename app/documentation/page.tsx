@@ -7,7 +7,6 @@ import {
   Cpu,
   CheckCircle2,
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -21,19 +20,19 @@ const features = [
     icon: Terminal,
     title: "Live Trace Analysis",
     description:
-      "Intercepts stack traces as they happen and explains the root cause in-line.",
+      "Intercepts stack traces as they happens and explains the root cause in-line.",
   },
   {
     icon: ShieldAlert,
-    title: "Security Scanning",
+    title: "AI-Powered Security Scanning",
     description:
-      "Deep-scans for SQLi, XSS, secrets, and OWASP Top 10 risks before you push.",
+      "Uses machine learning with scikit-learn to detect security vulnerabilities, code quality issues, and architectural problems.",
   },
   {
     icon: Cpu,
-    title: "Slop Detection",
+    title: "Real Machine Learning",
     description:
-      "Flags hallucinated imports, non-existent APIs, and low-confidence AI code.",
+      "Built on Python/scikit-learn for actual data analysis - no mock data or hardcoded values.",
   },
   {
     icon: GitBranch,
@@ -53,7 +52,7 @@ export default function MainDocsPage() {
   return (
     <div className="space-y-12">
       <section className="space-y-6">
-        <Badge variant="outline">v0.1.0-beta now available</Badge>
+        <span className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">v0.1.0-beta now available</span>
 
         <div className="space-y-4">
           <h1 className="text-4xl font-semibold leading-[1.1] tracking-tight text-foreground sm:text-5xl">

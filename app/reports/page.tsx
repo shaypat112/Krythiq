@@ -1,11 +1,5 @@
-import type { Metadata } from "next";
-import { ReportsIndexClient } from "./components/ReportsIndexClient";
-
-export const metadata: Metadata = {
-  title: "Reports - Votrio",
-  description: "Repository scan reports and scan history.",
-};
+import { redirect } from "next/navigation";
 
 export default function ReportsPage() {
-  return <ReportsIndexClient />;
+  redirect("/scan?view=history");
 }

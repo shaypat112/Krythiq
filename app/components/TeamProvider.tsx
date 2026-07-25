@@ -5,6 +5,7 @@ import React, {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { createClient } from "@/app/lib/supabase";
@@ -21,9 +22,12 @@ type TeamContextValue = {
 };
 
 const TeamContext = createContext<TeamContextValue | undefined>(undefined);
+const SELECTED_TEAM_STORAGE_KEY = "votrio-selected-team";
+const PERSONAL_WORKSPACE_VALUE = "__personal__";
 
 export function TeamProvider({ children }: { children: React.ReactNode }) {
   const supabase = useMemo(() => createClient(), []);
+  const storedSelection = useRef<string | null | undefined>(undefined);
   const [teams, setTeams] = useState<Team[]>([]);
   const [selectedTeamId, setSelectedTeamIdState] = useState<string | null>(
     null,
@@ -32,6 +36,18 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let mounted = true;
+
+    try {
+      const stored = window.localStorage.getItem(SELECTED_TEAM_STORAGE_KEY);
+      storedSelection.current =
+        stored === PERSONAL_WORKSPACE_VALUE ? null : stored ?? undefined;
+      if (stored && stored !== PERSONAL_WORKSPACE_VALUE) {
+        setSelectedTeamIdState(stored);
+      }
+    } catch {
+      storedSelection.current = undefined;
+    }
+
     const load = async () => {
       setLoading(true);
       try {
@@ -59,8 +75,14 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
         if (mounted) {
           setTeams(items as Team[]);
           setSelectedTeamIdState((current) => {
-            if (current && items.some((item: Team) => item.id === current)) {
-              return current;
+            const preferred = storedSelection.current;
+            if (preferred === null) return null;
+            const candidate = preferred ?? current;
+            if (
+              candidate &&
+              items.some((item: Team) => item.id === candidate)
+            ) {
+              return candidate;
             }
             return items[0]?.id ?? null;
           });
@@ -72,25 +94,23 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
       }
     };
 
-    // hydrate selected team from localStorage
-    try {
-      const v = window.localStorage.getItem("votrio-selected-team");
-      if (v) setSelectedTeamIdState(v);
-    } catch {}
-
     load();
+    window.addEventListener("votrio:teams-changed", load);
     return () => {
       mounted = false;
+      window.removeEventListener("votrio:teams-changed", load);
     };
   }, [supabase]);
 
   const setSelectedTeamId = (id: string | null) => {
+    storedSelection.current = id;
     setSelectedTeamIdState(id);
     try {
-      if (id) window.localStorage.setItem("votrio-selected-team", id);
-      else window.localStorage.removeItem("votrio-selected-team");
+      window.localStorage.setItem(
+        SELECTED_TEAM_STORAGE_KEY,
+        id ?? PERSONAL_WORKSPACE_VALUE,
+      );
     } catch {}
-    window.location.reload();
   };
 
   const selectedTeam = teams.find((t) => t.id === selectedTeamId) ?? null;

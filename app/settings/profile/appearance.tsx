@@ -55,12 +55,6 @@ export function AppearanceSection() {
         </div>
       </div>
 
-      <Toggle
-        label="Light mode"
-        description="Turn this on to use the brighter interface across the site."
-        checked={isLight}
-        onChange={(checked) => setTheme(checked ? "light" : "dark")}
-      />
     </SectionCard>
   );
 }

@@ -17,7 +17,7 @@ export async function POST(request: Request) {
   try {
     const { accessToken, userId } = requireRequestAuth(request);
 
-    const { secretKey, siteUrl } = getStripeConfig();
+    const { secretKey } = getStripeConfig();
     if (!secretKey) {
       return NextResponse.json({ error: "Stripe is not configured." }, { status: 500 });
     }
@@ -37,7 +37,7 @@ export async function POST(request: Request) {
 
     const session = await stripe.billingPortal.sessions.create({
       customer: customerId,
-      return_url: `${siteUrl}/settings?section=billing`,
+      return_url: new URL("/billing", request.url).toString(),
     });
 
     return NextResponse.json({ url: session.url });

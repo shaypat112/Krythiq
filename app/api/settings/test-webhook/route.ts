@@ -1,17 +1,18 @@
 import { NextResponse } from "next/server";
+import { createHmac } from "node:crypto";
 import {
   RequestAuthError,
   getSupabaseEnv,
-  isValidHttpsUrl,
   requireRequestAuth,
   supabaseFetch,
 } from "@/app/lib/server/supabaseRest";
+import { fetchWithTimeout, validatePublicHttpsUrl } from "@/app/lib/server/outboundRequests";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   try {
-    const { webhookUrl } = await request.json();
+    const { webhookUrl, webhookSecret } = await request.json();
     const { accessToken, userId } = requireRequestAuth(request);
 
     if (!webhookUrl) {
@@ -21,9 +22,7 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!isValidHttpsUrl(webhookUrl)) {
-      return NextResponse.json({ error: "Invalid webhook URL." }, { status: 400 });
-    }
+    const validatedWebhookUrl = await validatePublicHttpsUrl(webhookUrl);
 
     const payload = {
       event: "webhook.test",
@@ -33,13 +32,15 @@ export async function POST(request: Request) {
       created_at: new Date().toISOString(),
     };
 
-    const res = await fetch(webhookUrl, {
+    const serializedPayload = JSON.stringify(payload);
+    const res = await fetchWithTimeout(validatedWebhookUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "User-Agent": "votrio-webhooks",
+        ...(typeof webhookSecret === "string" && webhookSecret.length > 0 ? { "x-votrio-signature": createHmac("sha256", webhookSecret).update(serializedPayload).digest("hex") } : {}),
       },
-      body: JSON.stringify(payload),
+      body: serializedPayload,
     });
 
     if (!res.ok) {
@@ -56,7 +57,7 @@ export async function POST(request: Request) {
         actor_id: userId,
         action: "webhook.test",
         target_type: "webhook",
-        meta: { url: webhookUrl },
+        meta: { url: validatedWebhookUrl },
         created_at: new Date().toISOString(),
       }),
     });
@@ -65,6 +66,13 @@ export async function POST(request: Request) {
   } catch (err) {
     if (err instanceof RequestAuthError) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (
+      err instanceof Error &&
+      (err.message.startsWith("Webhook URL") ||
+        err.message === "Invalid webhook URL.")
+    ) {
+      return NextResponse.json({ error: err.message }, { status: 400 });
     }
     return NextResponse.json({ error: "Unexpected server error." }, { status: 500 });
   }

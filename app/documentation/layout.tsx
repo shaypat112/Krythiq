@@ -6,7 +6,7 @@ export default function DocsLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-background text-foreground md:flex">
       <aside className="sticky top-0 hidden h-screen w-64 border-r border-border bg-background md:block">
         <div className="space-y-8 p-6">
           <div className="rounded-2xl border border-border bg-background p-4">
@@ -47,6 +47,14 @@ export default function DocsLayout({
                     className="text-muted-foreground transition-colors hover:text-foreground"
                   >
                     Quick Start
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/documentation/project-structure"
+                    className="text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    Project Structure
                   </Link>
                 </li>
                 <li>
@@ -99,13 +107,70 @@ export default function DocsLayout({
                 </li>
               </ul>
             </div>
+
+            <div>
+              <h4 className="mb-4 text-[10px] font-semibold uppercase tracking-[0.35em] text-muted-foreground">
+                Features & Analysis
+              </h4>
+              <ul className="space-y-3 text-sm">
+                <li>
+                  <Link
+                    href="/documentation/stack-traces"
+                    className="text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    Stack Traces
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/documentation/ai-detection"
+                    className="text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    AI Detection & Architecture
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/documentation/system-design"
+                    className="text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    System Design Scenarios
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/documentation/config"
+                    className="text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    Configuration
+                  </Link>
+                </li>
+              </ul>
+            </div>
           </div>
         </div>
       </aside>
 
-      <main className="flex-1 bg-background p-8 md:p-16">
+      <div className="border-b border-border p-3 md:hidden">
+        <nav aria-label="Documentation sections" className="flex gap-2 overflow-x-auto">
+          {[
+            ["/documentation", "Start"],
+            ["/documentation/quickstart", "Quick start"],
+            ["/documentation/project-structure", "Structure"],
+            ["/documentation/commands", "CLI"],
+            ["/documentation/ai-detection", "AI analysis"],
+            ["/documentation/system-design", "System design"],
+            ["/documentation/config", "Config"],
+          ].map(([href, label]) => (
+            <Link key={href} href={href} className="shrink-0 rounded-lg border border-border bg-card px-3 py-2 text-sm text-muted-foreground">
+              {label}
+            </Link>
+          ))}
+        </nav>
+      </div>
+      <div className="min-w-0 flex-1 bg-background p-5 sm:p-8 md:p-16">
         <div className="mx-auto max-w-4xl">{children}</div>
-      </main>
+      </div>
     </div>
   );
 }

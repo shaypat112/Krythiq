@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 import { createClient } from "@/app/lib/supabase";
 import { buildAuthHeaders } from "@/app/lib/http";
-import { useTeam } from "./TeamProvider";
+import { TeamSwitcher } from "./TeamSwitcher";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -16,7 +16,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Bell, ChevronDown } from "lucide-react";
+import { Bell, ChevronDown, CreditCard } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { DesktopRequired } from "./mobile/DesktopRequired";
+
+const appLinks = [
+  { href: "/scan", label: "Security workspace" },
+  { href: "/documentation", label: "Docs" },
+  { href: "/partners", label: "Partners" },
+  { href: "/settings", label: "Settings" },
+];
 
 function getDisplayName(user: User) {
   const meta = user.user_metadata ?? {};
@@ -38,12 +47,6 @@ function formatNotificationTitle(type: string) {
       return "Review created";
     case "repository.published":
       return "Repository published";
-    case "demo.access_request":
-      return "Demo access request";
-    case "demo.access_approved":
-      return "Demo access approved";
-    case "demo.access_rejected":
-      return "Demo access declined";
     default:
       return type.replace(".", " ");
   }
@@ -54,6 +57,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [signingOut, setSigningOut] = useState(false);
   const [notifications, setNotifications] = useState<
     Array<{
       id: string;
@@ -64,11 +68,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     }>
   >([]);
   const [notifLoading, setNotifLoading] = useState(false);
-  const [demoAccessVerified, setDemoAccessVerified] = useState(false);
-  const [demoAccessChecked, setDemoAccessChecked] = useState(false);
 
   const supabase = useMemo(() => createClient(), []);
-  const { teams, selectedTeamId, setSelectedTeamId } = useTeam();
 
   useEffect(() => {
     let mounted = true;
@@ -129,45 +130,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     };
   }, [user, supabase]);
 
-  useEffect(() => {
-    let mounted = true;
-
-    const loadDemoAccess = async () => {
-      if (!user) {
-        if (mounted) {
-          setDemoAccessVerified(false);
-          setDemoAccessChecked(true);
-        }
-        return;
-      }
-
-      const { data: sessionData } = await supabase.auth.getSession();
-      const accessToken = sessionData.session?.access_token;
-      if (!accessToken) {
-        if (mounted) {
-          setDemoAccessVerified(false);
-          setDemoAccessChecked(true);
-        }
-        return;
-      }
-
-      const res = await fetch("/api/demo-access", {
-        headers: buildAuthHeaders(accessToken),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!mounted) return;
-
-      setDemoAccessVerified(Boolean(data?.status?.verified));
-      setDemoAccessChecked(true);
-    };
-
-    void loadDemoAccess();
-
-    return () => {
-      mounted = false;
-    };
-  }, [user, supabase]);
-
   const displayName = user ? getDisplayName(user) : "";
   const avatarUrl = user ? getAvatarUrl(user) : null;
   const initials = displayName
@@ -179,21 +141,18 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     .toUpperCase();
 
   const signOut = async () => {
-    if (!supabase) return;
+    setSigningOut(true);
     await supabase.auth.signOut();
-  };
-
-  const onSelectTeam = (teamId: string) => {
-    setSelectedTeamId(teamId);
+    setUser(null);
+    router.replace("/");
+    router.refresh();
   };
 
   const unreadCount = notifications.filter((item) => !item.read_at).length;
   const isMarketingRoute =
     pathname === "/" ||
     pathname?.startsWith("/landing-page") ||
-    pathname?.startsWith("/auth") ||
-    pathname?.startsWith("/access-code");
-  const isDemoRoute = pathname?.startsWith("/demo");
+    pathname?.startsWith("/auth");
   const isPublicRoute =
     isMarketingRoute || pathname?.startsWith("/documentation");
 
@@ -233,13 +192,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     const { data: sessionData } = await supabase.auth.getSession();
     const accessToken = sessionData.session?.access_token;
     if (!accessToken) return;
-    await fetch("/api/notifications", {
+    const response = await fetch("/api/notifications", {
       method: "POST",
       headers: buildAuthHeaders(accessToken, {
         "Content-Type": "application/json",
       }),
       body: JSON.stringify({ markAll: true }),
     });
+    if (!response.ok) return;
     setNotifications((prev) =>
       prev.map((item) => ({
         ...item,
@@ -249,29 +209,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    if (loading || user || isPublicRoute) return;
+    if (loading || user || isPublicRoute || signingOut) return;
     router.replace("/auth");
-  }, [isPublicRoute, loading, router, user]);
-
-  useEffect(() => {
-    if (loading || !user || !demoAccessChecked) return;
-    if (!isDemoRoute && pathname !== "/access-code") return;
-    if (!demoAccessVerified && pathname === "/demo") {
-      router.replace("/access-code");
-      return;
-    }
-    if (demoAccessVerified && pathname === "/access-code") {
-      router.replace("/dashboard");
-    }
-  }, [
-    demoAccessChecked,
-    demoAccessVerified,
-    isDemoRoute,
-    loading,
-    pathname,
-    router,
-    user,
-  ]);
+  }, [isPublicRoute, loading, router, signingOut, user]);
 
   if (isMarketingRoute) {
     return (
@@ -282,122 +222,71 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   if (loading && !isPublicRoute) {
-    return <div className="min-h-screen bg-background" />;
+    return (
+      <div className="grid min-h-screen place-items-center bg-background" role="status" aria-label="Loading account">
+        <div className="flex items-center gap-3 text-sm text-muted-foreground">
+          <span className="h-4 w-4 animate-spin rounded-full border-2 border-muted border-t-foreground" />
+          Loading your workspace…
+        </div>
+      </div>
+    );
   }
 
   if (!user && !isPublicRoute) {
     return <div className="min-h-screen bg-background" />;
   }
 
-  if (user && !demoAccessChecked && !isPublicRoute) {
-    return <div className="min-h-screen bg-background" />;
-  }
-
-  if (
-    user &&
-    isDemoRoute &&
-    !demoAccessVerified &&
-    pathname !== "/access-code"
-  ) {
-    return <div className="min-h-screen bg-background" />;
-  }
-
   return (
-    <div className="min-h-screen bg-background text-foreground transition-colors mt-4 ">
-      <header className="border-b border-border/70 bg-background/85 backdrop-blur">
-        <div className="px-6 py-4">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-            <div className="space-y-3">
-              <nav className="flex flex-wrap items-center gap-4 text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                <Link
-                  href="/profile"
-                  className="transition-colors hover:text-foreground"
-                >
-                  Scans
-                </Link>
-                <Link
-                  href="/just-in-time-access"
-                  className="transition-colors hover:text-foreground"
-                >
-                  JIT Access
-                </Link>
-                <Link
-                  href="/documentation"
-                  className="transition-colors hover:text-foreground"
-                >
-                  Docs
-                </Link>
-                <Link
-                  href="/settings"
-                  className="transition-colors hover:text-foreground"
-                >
-                  Settings
-                </Link>
+    <DesktopRequired enabled={!isPublicRoute}>
+    <div className="min-h-screen bg-background text-foreground transition-colors">
+      <a href="#main-content" className="sr-only z-[100] rounded-md bg-foreground px-4 py-2 text-background focus:not-sr-only focus:fixed focus:left-4 focus:top-4">
+        Skip to content
+      </a>
+      <header className="sticky top-0 z-40 border-b border-border/70 bg-background/90 backdrop-blur">
+        <div className="mx-auto max-w-[1600px] px-4 py-3 sm:px-6">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex min-w-0 flex-1 items-center gap-2">
+              {user ? <TeamSwitcher /> : null}
+              <nav aria-label="Primary" className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto px-0.5 py-1 text-sm text-muted-foreground">
 
-                <Link
-                  href="/eval"
-                  className="transition-colors hover:text-foreground"
-                >
-                  Eval
-                </Link>
-                {/* Teams dropdown (moved from header right) */}
-                {user ? (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <button className="inline-flex items-center gap-2 rounded-md border border-border bg-card px-2 py-1 text-sm text-foreground hover:bg-muted">
-                        <span className="text-xs text-muted-foreground">
-                          Teams
-                        </span>
-                        <span className="font-medium text-sm">
-                          {teams.find((t) => t.id === selectedTeamId)?.name ??
-                            "Configure"}
-                        </span>
-                        <ChevronDown className="h-3 w-3 text-muted-foreground ml-1" />
-                      </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent
-                      align="start"
-                      className="bg-card text-foreground"
+                {appLinks.map((link) => {
+                  const active = pathname === link.href || pathname?.startsWith(`${link.href}/`);
+                  return (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      aria-current={active ? "page" :
+                        undefined}
+                      className={`shrink-0 rounded-md px-2.5 py-1.5 transition-colors hover:bg-muted hover:text-foreground ${active ? "bg-muted font-medium text-foreground" : ""}`}
                     >
-                      <DropdownMenuLabel>Teams</DropdownMenuLabel>
-                      <DropdownMenuSeparator />
-                      {teams.length === 0 ? (
-                        <div className="px-3 py-2 text-xs text-muted-foreground">
-                          No teams yet
-                        </div>
-                      ) : (
-                        teams.map((t) => (
-                          <DropdownMenuItem
-                            key={t.id}
-                            onClick={() => onSelectTeam(t.id)}
-                          >
-                            {t.name}
-                          </DropdownMenuItem>
-                        ))
-                      )}
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem asChild>
-                        <a href="/settings?section=teams">Manage teams</a>
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                ) : null}
+                      {link.label}
+                    </Link>
+                  );
+                })}
+
               </nav>
             </div>
 
             {!loading && user ? (
               <div className="flex items-center gap-3">
                 <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button className="relative flex h-9 w-9 items-center justify-center rounded-full border border-border bg-card text-foreground transition hover:bg-muted">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <DropdownMenuTrigger asChild>
+                        <button aria-label={`Notifications${unreadCount ? `, ${unreadCount} unread` : ""}`} className="relative flex h-9 w-9 items-center justify-center rounded-full border border-border bg-card text-foreground transition hover:bg-muted">
                       <Bell size={16} />
                       {unreadCount > 0 ? (
                         <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] text-white">
                           {unreadCount}
                         </span>
                       ) : null}
-                    </button>
-                  </DropdownMenuTrigger>
+                        </button>
+                      </DropdownMenuTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">
+                      {unreadCount ? `${unreadCount} unread notifications` : "Notifications"}
+                    </TooltipContent>
+                  </Tooltip>
                   <DropdownMenuContent
                     align="end"
                     className="w-72 bg-card text-foreground"
@@ -439,17 +328,17 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                       </div>
                     )}
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={markAllRead}>
+                    <DropdownMenuItem onClick={markAllRead} disabled={unreadCount === 0}>
                       Mark all read
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
 
-                {/* Teams selector removed from header right - it's available in the left nav */}
-
                 <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button className="flex items-center gap-3 rounded-full border border-border bg-card px-2 py-1.5 text-sm text-foreground transition hover:bg-muted">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <DropdownMenuTrigger asChild>
+                        <button aria-label="Open account menu" className="flex items-center gap-3 rounded-full border border-border bg-card px-2 py-1.5 text-sm text-foreground transition hover:bg-muted">
                       {avatarUrl ? (
                         <img
                           src={avatarUrl}
@@ -465,14 +354,24 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                         {displayName}
                       </span>
                       <ChevronDown className="hidden sm:inline h-3 w-3 text-muted-foreground ml-1" />
-                    </button>
-                  </DropdownMenuTrigger>
+                        </button>
+                      </DropdownMenuTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">Account and billing</TooltipContent>
+                  </Tooltip>
                   <DropdownMenuContent
                     align="end"
                     className="bg-card text-foreground"
                   >
                     <DropdownMenuLabel>{displayName}</DropdownMenuLabel>
-
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link href="/billing" className="flex items-center gap-2">
+                        <CreditCard className="h-4 w-4" />
+                        Billing
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={signOut}>
                       Sign out
                     </DropdownMenuItem>
@@ -490,7 +389,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      <main className="px-6 py-10">{children}</main>
+      <main id="main-content" className="mx-auto max-w-[1600px] px-4 py-8 sm:px-6 sm:py-10">{children}</main>
     </div>
+    </DesktopRequired>
   );
 }

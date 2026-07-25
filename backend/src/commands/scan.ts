@@ -1,11 +1,15 @@
 import fs from "fs/promises";
 import path from "path";
+import { execFile } from "child_process";
+import { promisify } from "util";
 import chalk from "chalk";
 import ora from "ora";
 import { glob } from "glob";
 
-import { summarizeFindings } from "../lib/mistral";
+import { summarizeFindings as mistralSummarizeFindings } from "../lib/mistral";
 import { loadConfig } from "../config.js";
+
+const execFileAsync = promisify(execFile);
 
 type Severity = "low" | "medium" | "high" | "critical";
 
@@ -31,7 +35,7 @@ interface Finding {
   message: string;
   snippet?: string;
   suggestion?: string;
-  source: "regex" | "ai";
+  source: "rules" | "semgrep" | "npm-audit" | "ai";
 }
 
 interface PatternCheck {
@@ -67,37 +71,6 @@ const SEVERITY_COLOR: Record<Severity, (t: string) => string> = {
   high: chalk.red,
   critical: chalk.bgRed.white
 };
-
-const QUICK_PATTERNS: PatternCheck[] = [
-  {
-    pattern: /eval\s*\(/g,
-    severity: "high",
-    type: "EVAL",
-    message: "eval() detected — possible code injection",
-    suggestion: "Avoid eval() and use safer parsing."
-  },
-  {
-    pattern: /dangerouslySetInnerHTML/g,
-    severity: "medium",
-    type: "XSS_RISK",
-    message: "dangerouslySetInnerHTML usage detected",
-    suggestion: "Sanitize user input before rendering."
-  },
-  {
-    pattern: /child_process.*exec\s*\(/g,
-    severity: "high",
-    type: "CMD_INJECTION",
-    message: "exec() usage detected",
-    suggestion: "Use spawn with arguments instead."
-  },
-  {
-    pattern: /(?:password|secret|token|api_?key)\s*[:=]\s*["'][^"']{6,}/gi,
-    severity: "high",
-    type: "HARDCODED_SECRET",
-    message: "Possible hardcoded credential",
-    suggestion: "Move secrets to environment variables."
-  }
-];
 
 export async function scanCommand(
   scanPath: string = ".",
@@ -153,20 +126,23 @@ export async function scanCommand(
 
   const files = await discoverFiles(resolved, ignore);
 
-  const findings = await scanFiles(files, {
+  const rulesFindings = await scanFiles(files, {
     ...options,
     aiModel,
     fix: options.fix || scanConfig.autoFix || false,
     extraPatterns: rules.patterns,
   });
+  const engineResult = await runSecurityEngines(resolved);
+  for (const warning of engineResult.warnings) console.log(chalk.yellow(`\n${warning}\n`));
+  const findings = [...rulesFindings, ...engineResult.findings];
 
   const deduped = dedupe(findings);
   const aiSummary =
     aiEnabled && deduped.length > 0
-      ? await summarizeFindings(deduped, aiModel)
+      ? await mistralSummarizeFindings(deduped, aiModel)
       : null;
 
-  outputResults(deduped, options, aiSummary);
+  outputResults(deduped, options, aiSummary ? JSON.stringify(aiSummary) : null);
 
   if (options.ci) handleCI(deduped, options);
 
@@ -196,7 +172,7 @@ async function scanFiles(
   const spinner = ora("Scanning").start();
 
   const findings: Finding[] = [];
-  const checks = [...QUICK_PATTERNS, ...(options.extraPatterns ?? [])];
+  const checks = options.extraPatterns ?? [];
 
   let index = 0;
 
@@ -230,7 +206,7 @@ async function scanFiles(
           message: check.message,
           snippet: lines[line - 1]?.trim(),
           suggestion: check.suggestion,
-          source: "regex"
+          source: "rules"
         });
       }
     }
@@ -240,6 +216,61 @@ async function scanFiles(
   spinner.succeed(`Scanned ${files.length} files`);
 
   return findings;
+}
+
+async function runSecurityEngines(root: string): Promise<{ findings: Finding[]; warnings: string[] }> {
+  const [semgrep, npmAudit] = await Promise.all([runSemgrep(root), runNpmAudit(root)]);
+  return { findings: [...semgrep.findings, ...npmAudit.findings], warnings: [...semgrep.warnings, ...npmAudit.warnings] };
+}
+
+async function runSemgrep(root: string): Promise<{ findings: Finding[]; warnings: string[] }> {
+  try {
+    const { stdout } = await execFileAsync("semgrep", ["scan", "--config", "auto", "--json", "--quiet", root], { maxBuffer: 20 * 1024 * 1024 });
+    return parseSemgrep(stdout, root);
+  } catch (error) {
+    const output = typeof error === "object" && error && "stdout" in error ? String((error as { stdout?: unknown }).stdout ?? "") : "";
+    if (output) return parseSemgrep(output, root);
+    return { findings: [], warnings: ["Semgrep is unavailable; install Semgrep or provide .votrio/rules.json for code-rule scanning."] };
+  }
+}
+
+function parseSemgrep(output: string, root: string): { findings: Finding[]; warnings: string[] } {
+  try {
+    const payload = JSON.parse(output) as { results?: Array<{ check_id?: string; path?: string; start?: { line?: number }; extra?: { severity?: string; message?: string; lines?: string; metadata?: { confidence?: string; remediation?: string } } }> };
+    const findings = (payload.results ?? []).map((result): Finding => {
+      const severity = normalizeSeverity(result.extra?.severity);
+      return { file: path.relative(process.cwd(), result.path ?? root), line: result.start?.line ?? 1, severity, score: SEVERITY_SCORE[severity], type: result.check_id ?? "SEMGREP", message: result.extra?.message ?? "Semgrep finding", snippet: result.extra?.lines?.trim(), suggestion: result.extra?.metadata?.remediation, source: "semgrep" };
+    });
+    return { findings, warnings: [] };
+  } catch { return { findings: [], warnings: ["Semgrep returned unreadable output; no Semgrep findings were accepted."] }; }
+}
+
+async function runNpmAudit(root: string): Promise<{ findings: Finding[]; warnings: string[] }> {
+  if (!(await exists(path.join(root, "package-lock.json")))) return { findings: [], warnings: [] };
+  try {
+    const { stdout } = await execFileAsync("npm", ["audit", "--json", "--omit=dev"], { cwd: root, maxBuffer: 20 * 1024 * 1024 });
+    return parseNpmAudit(stdout);
+  } catch (error) {
+    const output = typeof error === "object" && error && "stdout" in error ? String((error as { stdout?: unknown }).stdout ?? "") : "";
+    if (output) return parseNpmAudit(output);
+    return { findings: [], warnings: ["npm audit could not run; dependency vulnerability checks were skipped."] };
+  }
+}
+
+function parseNpmAudit(output: string): { findings: Finding[]; warnings: string[] } {
+  try {
+    const payload = JSON.parse(output) as { vulnerabilities?: Record<string, { severity?: string; via?: Array<{ title?: string; url?: string }> }> };
+    const findings = Object.entries(payload.vulnerabilities ?? {}).map(([name, vulnerability]): Finding => {
+      const severity = normalizeSeverity(vulnerability.severity);
+      const advisory = vulnerability.via?.find((item) => typeof item === "object");
+      return { file: "package-lock.json", line: 1, severity, score: SEVERITY_SCORE[severity], type: `NPM_AUDIT_${name.toUpperCase().replace(/[^A-Z0-9]/g, "_")}`, message: advisory?.title ?? `npm audit reported a vulnerability in ${name}`, suggestion: advisory?.url, source: "npm-audit" };
+    });
+    return { findings, warnings: [] };
+  } catch { return { findings: [], warnings: ["npm audit returned unreadable output; no dependency findings were accepted."] }; }
+}
+
+function normalizeSeverity(value?: string): Severity {
+  return value === "critical" || value === "high" || value === "medium" || value === "low" ? value : "medium";
 }
 
 async function defaultRulesPath(cwd: string): Promise<string | undefined> {

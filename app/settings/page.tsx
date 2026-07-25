@@ -3,37 +3,37 @@
 import { useSearchParams } from "next/navigation";
 
 import { AccountSection } from "./profile/account";
-import { SecuritySection } from "./profile/security";
-import { NotificationsSection } from "./profile/notifications";
-import { ScanningSection } from "./profile/scanning";
+
 import { AppearanceSection } from "./profile/appearance";
 import { WebhooksSection } from "./profile/webhooks";
 import { BillingSection } from "./profile/billing";
 
 import { RetentionSection } from "./profile/retention";
 import { TeamsSection } from "./profile/teams";
-import { AdminSection } from "./profile/admin";
+import { IntegrationsSection } from "./profile/integrations";
+import { NotificationsSection } from "./profile/notifications";
+import { ApiSection } from "./profile/api";
 import { Suspense } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const SECTION_MAP = {
   account: AccountSection,
-  security: SecuritySection,
-  notifications: NotificationsSection,
-  scanning: ScanningSection,
   billing: BillingSection,
   appearance: AppearanceSection,
   webhooks: WebhooksSection,
 
   retention: RetentionSection,
   teams: TeamsSection,
-  admin: AdminSection,
+  integrations: IntegrationsSection,
+  notifications: NotificationsSection,
+  api: ApiSection,
 } satisfies Record<string, React.ComponentType>;
 
 type SectionKey = keyof typeof SECTION_MAP;
 
 export default function SettingsPage() {
   return (
-    <Suspense fallback={<div className="p-10 text-center">Loading...</div>}>
+    <Suspense fallback={<div className="space-y-4 p-10"><Skeleton className="h-10 w-40" /><Skeleton className="h-72" /></div>}>
       <SettingsContent />
     </Suspense>
   );
@@ -41,7 +41,10 @@ export default function SettingsPage() {
 
 function SettingsContent() {
   const searchParams = useSearchParams();
-  const active = (searchParams?.get("section") as SectionKey) ?? "account";
+  const requestedSection = searchParams?.get("section");
+  const active: SectionKey = requestedSection && requestedSection in SECTION_MAP
+    ? requestedSection as SectionKey
+    : "account";
 
   const Component = SECTION_MAP[active] ?? AccountSection;
 

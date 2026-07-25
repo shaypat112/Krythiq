@@ -5,6 +5,8 @@ import {
   requireRequestAuth,
   supabaseFetch,
 } from "@/app/lib/server/supabaseRest";
+import { validatePublicHttpsUrl } from "@/app/lib/server/outboundRequests";
+import { apiPlanCatalog, normalizeApiLimits, planFromPriceId } from "@/app/lib/api-rate-limits";
 
 export const runtime = "nodejs";
 
@@ -14,10 +16,13 @@ type SettingsPayload = Record<string, unknown> & {
   avatarUrl?: string | null;
   webhookEnabled?: boolean;
   webhookUrl?: string | null;
+  webhookSecret?: string | null;
   webhookEvents?: string[];
   emailNotifications?: boolean;
   scanDepth?: number;
   ignoredPaths?: string;
+  apiRequestsPerMinute?: number;
+  expensiveRequestsPerMinute?: number;
 };
 
 type SettingsRow = {
@@ -35,6 +40,24 @@ export async function POST(request: Request) {
     }
 
     const env = getSupabaseEnv();
+    const billingRes = await supabaseFetch(
+      env,
+      `billing_customers?user_id=eq.${userId}&select=price_id,status&limit=1`,
+      { accessToken },
+    );
+    const billingRows = billingRes.ok ? await billingRes.json() : [];
+    const billing = billingRows?.[0] as { price_id?: string | null; status?: string | null } | undefined;
+    const apiPlan = billing?.status === "active" || billing?.status === "trialing"
+      ? planFromPriceId(billing?.price_id)
+      : "free";
+    const planMaximum = apiPlanCatalog[apiPlan].limits;
+    if (
+      Number(settings.apiRequestsPerMinute) > planMaximum.apiRequestsPerMinute ||
+      Number(settings.expensiveRequestsPerMinute) > planMaximum.expensiveRequestsPerMinute
+    ) {
+      return NextResponse.json({ error: `Requested limits exceed the ${apiPlanCatalog[apiPlan].name} plan.` }, { status: 400 });
+    }
+    const apiLimits = normalizeApiLimits(settings, apiPlan);
 
     const profilePayload = {
       id: userId,
@@ -65,6 +88,7 @@ export async function POST(request: Request) {
       webhookEnabled,
       webhookUrl,
       webhookEvents,
+      webhookSecret,
       ...rest
     } = settings ?? {};
 
@@ -72,9 +96,19 @@ export async function POST(request: Request) {
     void username;
     void avatarUrl;
 
+    const validatedWebhookUrl = webhookEnabled
+      ? await validatePublicHttpsUrl(webhookUrl)
+      : null;
+
+    const allowedEvents = new Set(["scan.completed", "scan.failed"]);
+    const events = Array.isArray(webhookEvents)
+      ? webhookEvents.filter((event): event is string => allowedEvents.has(event))
+      : [];
+
     const normalized = {
       ...rest,
       retentionDays: 30,
+      ...apiLimits,
     };
 
     const settingsPayload = {
@@ -123,11 +157,10 @@ export async function POST(request: Request) {
 
     const webhookPayload = {
       user_id: userId,
-      url: webhookUrl ?? "",
-      enabled: Boolean(webhookEnabled) && Boolean(webhookUrl),
-      events: Array.isArray(webhookEvents) && webhookEvents.length > 0
-        ? webhookEvents
-        : ["scan.completed"],
+      url: validatedWebhookUrl ?? "https://invalid.local/disabled",
+      enabled: Boolean(webhookEnabled) && Boolean(validatedWebhookUrl),
+      events: events.length > 0 ? events : ["scan.completed"],
+      secret: webhookSecret?.trim() || null,
       updated_at: new Date().toISOString(),
     };
 
@@ -149,6 +182,9 @@ export async function POST(request: Request) {
   } catch (error) {
     if (error instanceof RequestAuthError) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (error instanceof Error && error.message.includes("Webhook URL")) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
     }
     return NextResponse.json({ error: "Unexpected server error." }, { status: 500 });
   }

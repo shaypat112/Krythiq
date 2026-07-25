@@ -32,7 +32,6 @@ export async function POST(request: Request) {
       `/rest/v1/webhook_endpoints?user_id=eq.${userId}`,
       `/rest/v1/user_settings?user_id=eq.${userId}`,
       `/rest/v1/billing_customers?user_id=eq.${userId}`,
-      `/rest/v1/site_feedback?user_id=eq.${userId}`,
       `/rest/v1/profiles?id=eq.${userId}`,
     ];
 

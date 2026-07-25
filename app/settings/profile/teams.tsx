@@ -1,9 +1,29 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, Mail, Trash2, Users, X } from "lucide-react";
 import { buildAuthHeaders } from "@/app/lib/http";
 import { cn } from "@/app/lib/utils";
+import { useTeam } from "@/app/components/TeamProvider";
+import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogMedia,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 import {
   Select,
   SelectContent,
@@ -47,9 +67,20 @@ type PlatformUser = {
   full_name?: string | null;
   avatar_url?: string | null;
 };
+type TeamInvitation = {
+  id: string;
+  email: string;
+  role: string;
+  expires_at: string;
+  created_at: string;
+};
 
 export function TeamsSection() {
   const { accessToken, admin } = useSettings();
+  const {
+    selectedTeamId: workspaceTeamId,
+    setSelectedTeamId: setWorkspaceTeamId,
+  } = useTeam();
 
   const [teams, setTeams] = useState<Team[]>([]);
   const [members, setMembers] = useState<TeamMember[]>([]);
@@ -57,10 +88,15 @@ export function TeamsSection() {
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
   const [teamName, setTeamName] = useState("");
   const [inviteUserId, setInviteUserId] = useState("");
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [invitations, setInvitations] = useState<TeamInvitation[]>([]);
+  const [sendingInvite, setSendingInvite] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadingPlatformUsers, setLoadingPlatformUsers] = useState(false);
   const [workingMemberId, setWorkingMemberId] = useState<string | null>(null);
   const [teamError, setTeamError] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Team | null>(null);
+  const [deletingTeam, setDeletingTeam] = useState(false);
 
   const loadMembers = useCallback(async (teamId: string, token: string) => {
     const res = await fetch(`/api/teams/members?teamId=${teamId}`, {
@@ -85,9 +121,14 @@ export function TeamsSection() {
       const data = await res.json();
       const next = (data?.teams ?? []) as Team[];
       setTeams(next);
-      if (!selectedTeamId && next.length > 0) {
-        setSelectedTeamId(next[0].id);
-        await loadMembers(next[0].id, token);
+      const nextSelection = next.some((team) => team.id === selectedTeamId)
+        ? selectedTeamId
+        : next[0]?.id ?? null;
+      setSelectedTeamId(nextSelection);
+      if (nextSelection) {
+        await loadMembers(nextSelection, token);
+      } else {
+        setMembers([]);
       }
     } else {
       const data = await res.json().catch(() => ({}));
@@ -195,10 +236,64 @@ export function TeamsSection() {
     setLoadingPlatformUsers(false);
   }, []);
 
+  const loadInvitations = useCallback(async (teamId: string, token: string) => {
+    const res = await fetch(`/api/teams/invitations?teamId=${encodeURIComponent(teamId)}`, {
+      headers: buildAuthHeaders(token),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      setInvitations((data?.invitations ?? []) as TeamInvitation[]);
+    } else {
+      setInvitations([]);
+    }
+  }, []);
+
   useEffect(() => {
     if (!accessToken || !selectedTeamId || !canManageSelectedTeam) return;
-    void loadPlatformUsers(selectedTeamId, accessToken);
-  }, [accessToken, canManageSelectedTeam, loadPlatformUsers, selectedTeamId]);
+    const timer = window.setTimeout(() => {
+      void loadPlatformUsers(selectedTeamId, accessToken);
+      void loadInvitations(selectedTeamId, accessToken);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [accessToken, canManageSelectedTeam, loadInvitations, loadPlatformUsers, selectedTeamId]);
+
+  const sendInvitation = async () => {
+    if (!accessToken || !selectedTeamId || !inviteEmail.trim()) return;
+    setSendingInvite(true);
+    setTeamError(null);
+    const res = await fetch("/api/teams/invitations", {
+      method: "POST",
+      headers: buildAuthHeaders(accessToken, { "Content-Type": "application/json" }),
+      body: JSON.stringify({ teamId: selectedTeamId, email: inviteEmail.trim() }),
+    });
+    const payload = await res.json().catch(() => ({}));
+    setSendingInvite(false);
+    if (!res.ok) {
+      const message = payload?.error ?? "Unable to send invitation.";
+      setTeamError(message);
+      toast.error(message);
+      return;
+    }
+    setInviteEmail("");
+    await loadInvitations(selectedTeamId, accessToken);
+    toast.success("Team invitation sent.");
+  };
+
+  const revokeInvitation = async (invitationId: string) => {
+    if (!accessToken || !selectedTeamId) return;
+    const res = await fetch("/api/teams/invitations", {
+      method: "DELETE",
+      headers: buildAuthHeaders(accessToken, { "Content-Type": "application/json" }),
+      body: JSON.stringify({ invitationId }),
+    });
+    if (res.ok) {
+      await loadInvitations(selectedTeamId, accessToken);
+      toast.success("Invitation revoked.");
+    } else {
+      const payload = await res.json().catch(() => ({}));
+      toast.error(payload?.error ?? "Unable to revoke invitation.");
+    }
+  };
 
   const updateMemberRole = async (
     memberId: string,
@@ -219,6 +314,33 @@ export function TeamsSection() {
       const d = await res.json().catch(() => ({}));
       setTeamError(d?.error ?? "Unable to update member role.");
     }
+  };
+
+  const deleteTeam = async () => {
+    if (!accessToken || !deleteTarget) return;
+    setDeletingTeam(true);
+    setTeamError(null);
+    const deletingId = deleteTarget.id;
+    const deletingName = deleteTarget.name;
+    const res = await fetch("/api/teams/delete", {
+      method: "POST",
+      headers: buildAuthHeaders(accessToken, { "Content-Type": "application/json" }),
+      body: JSON.stringify({ teamId: deletingId }),
+    });
+    const payload = await res.json().catch(() => ({}));
+    setDeletingTeam(false);
+    if (!res.ok) {
+      const message = payload?.error ?? "Unable to delete the team.";
+      setTeamError(message);
+      toast.error(message);
+      return;
+    }
+
+    setDeleteTarget(null);
+    if (workspaceTeamId === deletingId) setWorkspaceTeamId(null);
+    window.dispatchEvent(new Event("votrio:teams-changed"));
+    await loadTeams(accessToken);
+    toast.success(`${deletingName} was deleted.`);
   };
 
   return (
@@ -259,7 +381,17 @@ export function TeamsSection() {
           <Loader2 className="h-4 w-4 animate-spin" /> Loading…
         </div>
       ) : teams.length === 0 ? (
-        <p className="text-sm text-zinc-500">No teams yet. Create one above.</p>
+        <Empty className="border border-border">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <Users />
+            </EmptyMedia>
+            <EmptyTitle>No teams yet</EmptyTitle>
+            <EmptyDescription>
+              Enter a team name above to create your first shared workspace.
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
       ) : (
         <>
           {/* Team picker */}
@@ -300,7 +432,41 @@ export function TeamsSection() {
               </div>
 
               {canManageSelectedTeam ? (
-                <FieldGroup label="Add member">
+                <>
+                <FieldGroup label="Invite by email">
+                  <div className="flex gap-2">
+                    <StyledInput
+                      type="email"
+                      placeholder="developer@company.com"
+                      value={inviteEmail}
+                      onChange={(event) => setInviteEmail(event.target.value)}
+                      className="flex-1"
+                    />
+                    <button
+                      onClick={() => void sendInvitation()}
+                      disabled={!inviteEmail.trim() || sendingInvite}
+                      className="inline-flex items-center gap-2 rounded-lg border border-border bg-muted px-4 py-2 text-sm font-medium disabled:opacity-40"
+                    >
+                      {sendingInvite ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
+                      {sendingInvite ? "Sending…" : "Invite"}
+                    </button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Invitation links expire after seven days and can only be accepted by this email address.</p>
+                  {invitations.length ? (
+                    <div className="space-y-2 pt-2">
+                      {invitations.map((invitation) => (
+                        <div key={invitation.id} className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2">
+                          <div className="min-w-0">
+                            <p className="truncate text-sm">{invitation.email}</p>
+                            <p className="text-xs text-muted-foreground">Expires {new Date(invitation.expires_at).toLocaleDateString()}</p>
+                          </div>
+                          <button type="button" onClick={() => void revokeInvitation(invitation.id)} className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-destructive" aria-label={`Revoke invitation for ${invitation.email}`}><X className="h-4 w-4" /></button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                </FieldGroup>
+                <FieldGroup label="Add existing Votrio user">
                   <div className="flex gap-2">
                     <div className="flex-1">
                       <Select
@@ -344,6 +510,7 @@ export function TeamsSection() {
                     Pick from users already on the platform instead of typing a username.
                   </p>
                 </FieldGroup>
+                </>
               ) : (
                 <p className="text-xs text-muted-foreground">
                   You can view this team, but only team admins can manage members.
@@ -401,10 +568,59 @@ export function TeamsSection() {
                   ))
                 )}
               </div>
+
+              {selectedTeam?.role === "owner" ? (
+                <div className="border-t border-border pt-4">
+                  <p className="text-xs font-medium uppercase tracking-wider text-destructive">Owner actions</p>
+                  <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                    Deleting a team permanently removes its memberships, environments, integration connections, and notification preferences.
+                  </p>
+                  <DangerButton
+                    className="mt-3"
+                    onClick={() => setDeleteTarget(selectedTeam)}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    Delete team
+                  </DangerButton>
+                </div>
+              ) : null}
             </div>
           )}
         </>
       )}
+
+      <AlertDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => {
+          if (!open && !deletingTeam) setDeleteTarget(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogMedia className="bg-destructive/10 text-destructive">
+              <Trash2 />
+            </AlertDialogMedia>
+            <AlertDialogTitle>Delete {deleteTarget?.name}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently removes the team and its team-scoped configuration. Members will lose access immediately. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deletingTeam}>Keep team</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={deletingTeam}
+              onClick={(event) => {
+                event.preventDefault();
+                void deleteTeam();
+              }}
+            >
+              {deletingTeam ? <Loader2 className="animate-spin" /> : <Trash2 />}
+              {deletingTeam ? "Deleting…" : "Delete team"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </SectionCard>
   );
 }

@@ -1,8 +1,10 @@
 "use client";
 
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { createClient } from "@/app/lib/supabase";
 import { buildAuthHeaders } from "@/app/lib/http";
+import { apiPlanCatalog, type ApiPlanId } from "@/app/lib/api-rate-limits";
+import { toast } from "sonner";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -10,27 +12,13 @@ export type SettingsState = {
   fullName: string;
   username: string;
   avatarUrl: string;
-  emailNotifications: boolean;
-  notifyHigh: boolean;
-  notifyMedium: boolean;
-  notifyLow: boolean;
-  dailyDigest: boolean;
-  weeklyDigest: boolean;
-  scanOnPush: boolean;
-  scanOnPr: boolean;
-  failOnHigh: boolean;
-  failOnMedium: boolean;
-  ignoredPaths: string;
-  riskThreshold: "low" | "medium" | "high";
-  reportFormat: "json" | "markdown" | "terminal";
-  aiModel: "mistral-large-latest" | "mistral-medium-latest";
-  require2fa: boolean;
-  sessionTimeoutHours: number;
-  securityAlerts: boolean;
   webhookEnabled: boolean;
   webhookUrl: string;
+  webhookSecret: string;
   webhookEvents: string[];
   retentionDays: number;
+  apiRequestsPerMinute: number;
+  expensiveRequestsPerMinute: number;
 };
 
 export type AdminState = {
@@ -43,27 +31,13 @@ const defaultSettings: SettingsState = {
   fullName: "",
   username: "",
   avatarUrl: "",
-  emailNotifications: true,
-  notifyHigh: true,
-  notifyMedium: true,
-  notifyLow: false,
-  dailyDigest: false,
-  weeklyDigest: true,
-  scanOnPush: true,
-  scanOnPr: true,
-  failOnHigh: true,
-  failOnMedium: false,
-  ignoredPaths: "node_modules/**, dist/**, .next/**",
-  riskThreshold: "medium",
-  reportFormat: "markdown",
-  aiModel: "mistral-large-latest",
-  require2fa: false,
-  sessionTimeoutHours: 12,
-  securityAlerts: true,
   webhookEnabled: false,
   webhookUrl: "",
+  webhookSecret: "",
   webhookEvents: ["scan.completed"],
   retentionDays: 30,
+  apiRequestsPerMinute: apiPlanCatalog.free.limits.apiRequestsPerMinute,
+  expensiveRequestsPerMinute: apiPlanCatalog.free.limits.expensiveRequestsPerMinute,
 };
 
 // ─── Context shape ─────────────────────────────────────────────────────────────
@@ -74,7 +48,7 @@ type SettingsContextValue = {
     key: K,
     value: SettingsState[K],
   ) => void;
-  save: () => Promise<void>;
+  save: () => Promise<boolean>;
   saving: boolean;
   loading: boolean;
   error: string | null;
@@ -83,6 +57,7 @@ type SettingsContextValue = {
   setStatus: (msg: string | null) => void;
   accessToken: string | null;
   admin: AdminState;
+  apiPlan: ApiPlanId;
 };
 
 const SettingsContext = createContext<SettingsContextValue | null>(null);
@@ -101,14 +76,25 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const [settings, setSettings] = useState<SettingsState>(defaultSettings);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [status, setStatus] = useState<string | null>(null);
+  const [error, setErrorState] = useState<string | null>(null);
+  const [status, setStatusState] = useState<string | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [admin, setAdmin] = useState<AdminState>({
     isAdmin: false,
     profileUsername: null,
     githubLogin: null,
   });
+  const [apiPlan, setApiPlan] = useState<ApiPlanId>("free");
+
+  const setStatus = useCallback((message: string | null) => {
+    setStatusState(message);
+    if (message) toast.success(message);
+  }, []);
+
+  const setError = useCallback((message: string | null) => {
+    setErrorState(message);
+    if (message) toast.error(message);
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -152,6 +138,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
               ? data.admin.githubLogin
               : null,
         });
+        setApiPlan(data?.apiPlan === "pro" || data?.apiPlan === "team" ? data.apiPlan : "free");
       }
 
       setLoading(false);
@@ -161,7 +148,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     return () => {
       mounted = false;
     };
-  }, [supabase]);
+  }, [setError, supabase]);
 
   const update = <K extends keyof SettingsState>(
     key: K,
@@ -171,7 +158,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   };
 
   const save = async () => {
-    if (!supabase) return;
+    if (!supabase) return false;
     setSaving(true);
     setStatus(null);
     setError(null);
@@ -182,7 +169,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     if (!token) {
       setError("Please sign in to save settings.");
       setSaving(false);
-      return;
+      return false;
     }
 
     const res = await fetch("/api/settings/save", {
@@ -193,12 +180,15 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
 
     if (res.ok) {
       setStatus("Changes saved.");
+      setSaving(false);
+      return true;
     } else {
       const data = await res.json().catch(() => ({}));
       setError(data?.error ?? "Unable to save settings.");
     }
 
     setSaving(false);
+    return false;
   };
 
   return (
@@ -215,6 +205,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         setStatus,
         accessToken,
         admin,
+        apiPlan,
       }}
     >
       {children}

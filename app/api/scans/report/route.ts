@@ -18,6 +18,12 @@ type ScanFinding = {
   fix?: string;
   recommendation?: string;
   score?: number;
+  line?: number;
+  message?: string;
+  snippet?: string;
+  suggestion?: string;
+  type?: string;
+  technicalDetails?: string;
 };
 
 type ScanRow = {

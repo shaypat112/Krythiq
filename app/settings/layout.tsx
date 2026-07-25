@@ -3,47 +3,42 @@ import React, { Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Check, ChevronRight, Loader2 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   User,
-  Bell,
-  Shield,
-  Zap,
   CreditCard,
   Webhook,
   Database,
   Palette,
   Users,
-  LockKeyhole,
+  Plug,
+  BellRing,
+  Braces,
 } from "lucide-react";
 import { cn } from "../lib/utils";
 import { SettingsProvider, useSettings } from "./profile/context";
 
 const NAV_SECTIONS = [
   { id: "account", label: "Account", icon: User },
-  { id: "security", label: "Security", icon: Shield },
-  { id: "notifications", label: "Notifications", icon: Bell },
-  { id: "scanning", label: "Scanning", icon: Zap },
   { id: "billing", label: "Billing", icon: CreditCard },
   { id: "appearance", label: "Appearance", icon: Palette },
   { id: "webhooks", label: "Webhooks", icon: Webhook },
   { id: "retention", label: "Data", icon: Database },
   { id: "teams", label: "Teams", icon: Users },
+  { id: "integrations", label: "Integrations", icon: Plug },
+  { id: "notifications", label: "Notifications", icon: BellRing },
+  { id: "api", label: "API", icon: Braces },
 ] as const;
 
-const ADMIN_SECTION = { id: "admin", label: "Admin", icon: LockKeyhole } as const;
-
-export type SectionId =
-  | (typeof NAV_SECTIONS)[number]["id"]
-  | typeof ADMIN_SECTION.id;
+export type SectionId = (typeof NAV_SECTIONS)[number]["id"];
 
 function Sidebar({ active }: { active: SectionId }) {
-  const { save, saving, admin } = useSettings();
-  const sections = admin.isAdmin ? [...NAV_SECTIONS, ADMIN_SECTION] : NAV_SECTIONS;
+  const { save, saving } = useSettings();
 
   return (
     <aside className="hidden w-56 shrink-0 flex-col border-r border-border bg-background sm:flex">
       <nav className="flex-1 overflow-y-auto py-3 px-2">
-        {sections.map(({ id, label, icon: Icon }) => (
+        {NAV_SECTIONS.map(({ id, label, icon: Icon }) => (
           <Link
             key={id}
             href={`/settings?section=${id}`}
@@ -95,20 +90,37 @@ function Sidebar({ active }: { active: SectionId }) {
   );
 }
 
-function Banners() {
-  const { status, error } = useSettings();
+function MobileSettingsNav({ active }: { active: SectionId }) {
+  const { save, saving } = useSettings();
+
   return (
-    <div className="space-y-2">
-      {status && (
-        <div className="flex items-center gap-3 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-600 dark:text-emerald-400">
-          <Check className="h-4 w-4 shrink-0" /> {status}
-        </div>
-      )}
-      {error && (
-        <div className="flex items-center gap-3 rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-600 dark:text-red-400">
-          <span className="h-4 w-4 shrink-0 text-red-500">!</span> {error}
-        </div>
-      )}
+    <div className="border-b border-border bg-background p-3 sm:hidden">
+      <div className="flex gap-2 overflow-x-auto pb-2" aria-label="Settings sections">
+        {NAV_SECTIONS.map(({ id, label, icon: Icon }) => (
+          <Link
+            key={id}
+            href={`/settings?section=${id}`}
+            aria-current={active === id ? "page" : undefined}
+            className={cn(
+              "inline-flex shrink-0 items-center gap-2 rounded-lg border px-3 py-2 text-sm",
+              active === id
+                ? "border-foreground/20 bg-foreground text-background"
+                : "border-border bg-card text-muted-foreground",
+            )}
+          >
+            <Icon className="h-4 w-4" />
+            {label}
+          </Link>
+        ))}
+      </div>
+      <button
+        onClick={save}
+        disabled={saving}
+        className="mt-1 flex w-full items-center justify-center gap-2 rounded-lg bg-foreground py-2 text-sm font-medium text-background disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+        {saving ? "Saving…" : "Save changes"}
+      </button>
     </div>
   );
 }
@@ -117,12 +129,15 @@ function SettingsInner({ children }: { children: React.ReactNode }) {
   const searchParams = useSearchParams();
   const { loading } = useSettings();
 
-  const active = (searchParams?.get("section") as SectionId) ?? "account";
+  const requestedSection = searchParams?.get("section");
+  const active = NAV_SECTIONS.some((section) => section.id === requestedSection)
+    ? requestedSection as SectionId
+    : "account";
 
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
-        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        <div className="w-full max-w-2xl space-y-4"><Skeleton className="h-10 w-40" /><Skeleton className="h-72" /></div>
       </div>
     );
   }
@@ -133,13 +148,15 @@ function SettingsInner({ children }: { children: React.ReactNode }) {
       style={{ fontFamily: "'DM Sans', 'Inter', system-ui, sans-serif" }}
     >
       <Sidebar active={active} />
+      <div className="min-w-0 flex-1">
+        <MobileSettingsNav active={active} />
 
-      <main className="flex-1 bg-background px-6 py-10 sm:px-10">
+      <div className="bg-background px-4 py-8 sm:px-10 sm:py-10">
         <div className="mx-auto max-w-2xl space-y-6">
-          <Banners />
           {children}
         </div>
-      </main>
+      </div>
+      </div>
     </div>
   );
 }
@@ -154,7 +171,7 @@ export default function SettingsLayout({
       <Suspense
         fallback={
           <div className="flex min-h-screen items-center justify-center bg-background">
-            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            <div className="w-full max-w-2xl space-y-4"><Skeleton className="h-10 w-40" /><Skeleton className="h-72" /></div>
           </div>
         }
       >

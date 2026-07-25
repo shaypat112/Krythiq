@@ -114,7 +114,7 @@ export async function GET(request: Request) {
     for (const row of owned) {
       teams.set(row.id, {
         ...row,
-        role: isAdmin ? "admin" : "owner",
+        role: "owner",
         repo_count: 0,
         environment_count: environmentCounts[row.id] ?? 0,
         can_manage: true,

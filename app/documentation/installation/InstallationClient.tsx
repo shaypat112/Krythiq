@@ -205,6 +205,16 @@ export default function InstallationPage() {
           </p>
         </Step>
 
+        <Step number={4} title="Setup Python AI Service (optional)">
+          <p className="text-sm text-zinc-500 mb-3">
+            For advanced AI code review with machine learning, install Python dependencies:
+          </p>
+          <CodeBlock code="cd backend && bash setup_python.sh" />
+          <p className="text-xs text-zinc-600 mt-2">
+            This installs scikit-learn and other ML libraries for real code analysis.
+          </p>
+        </Step>
+
         <div className="flex gap-5">
           <div className="flex flex-col items-center">
             <div className="w-8 h-8 rounded-full bg-zinc-800/60 border border-zinc-700/70 flex items-center justify-center">

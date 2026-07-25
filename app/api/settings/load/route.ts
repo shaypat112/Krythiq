@@ -7,6 +7,7 @@ import {
   supabaseFetch,
 } from "@/app/lib/server/supabaseRest";
 import { purgeUserData } from "@/app/lib/server/retention";
+import { normalizeApiLimits, planFromPriceId } from "@/app/lib/api-rate-limits";
 
 export const runtime = "nodejs";
 
@@ -18,26 +19,10 @@ type WebhookRow = {
   url?: string | null;
   enabled?: boolean | null;
   events?: string[] | null;
+  secret?: string | null;
 };
 
 const DEFAULT_SETTINGS = {
-  emailNotifications: true,
-  notifyHigh: true,
-  notifyMedium: true,
-  notifyLow: false,
-  dailyDigest: false,
-  weeklyDigest: true,
-  scanOnPush: true,
-  scanOnPr: true,
-  failOnHigh: true,
-  failOnMedium: false,
-  ignoredPaths: "node_modules/**, dist/**, .next/**",
-  riskThreshold: "medium",
-  reportFormat: "markdown",
-  aiModel: "mistral-large-latest",
-  require2fa: false,
-  sessionTimeoutHours: 12,
-  securityAlerts: true,
   webhookEnabled: false,
   webhookUrl: "",
   webhookEvents: ["scan.completed"],
@@ -50,14 +35,17 @@ export async function POST(request: Request) {
 
     const env = getSupabaseEnv();
 
-    const [profileRes, settingsRes, webhookRes] = await Promise.all([
+    const [profileRes, settingsRes, webhookRes, billingRes] = await Promise.all([
       supabaseFetch(env, `profiles?id=eq.${userId}&select=full_name,username,avatar_url`, {
         accessToken,
       }),
       supabaseFetch(env, `user_settings?user_id=eq.${userId}&select=data`, {
         accessToken,
       }),
-      supabaseFetch(env, `webhook_endpoints?user_id=eq.${userId}&select=url,enabled,events`, {
+      supabaseFetch(env, `webhook_endpoints?user_id=eq.${userId}&select=url,enabled,events,secret`, {
+        accessToken,
+      }),
+      supabaseFetch(env, `billing_customers?user_id=eq.${userId}&select=price_id,status&limit=1`, {
         accessToken,
       }),
     ]);
@@ -105,6 +93,12 @@ export async function POST(request: Request) {
     const profile = profileRows?.[0] ?? {};
     const storedSettings = settingsRows?.[0]?.data ?? {};
     const webhook = webhookRows?.[0] ?? {};
+    const billingRows = billingRes.ok ? await billingRes.json() : [];
+    const billing = billingRows?.[0] as { price_id?: string | null; status?: string | null } | undefined;
+    const apiPlan = billing?.status === "active" || billing?.status === "trialing"
+      ? planFromPriceId(billing?.price_id)
+      : "free";
+    const apiLimits = normalizeApiLimits(storedSettings, apiPlan);
 
     const settings = {
       ...DEFAULT_SETTINGS,
@@ -114,8 +108,10 @@ export async function POST(request: Request) {
       avatarUrl: profile.avatar_url ?? "",
       webhookEnabled: webhook.enabled ?? storedSettings.webhookEnabled ?? DEFAULT_SETTINGS.webhookEnabled,
       webhookUrl: webhook.url ?? storedSettings.webhookUrl ?? DEFAULT_SETTINGS.webhookUrl,
+      webhookSecret: webhook.secret ?? "",
       webhookEvents: webhook.events ?? storedSettings.webhookEvents ?? DEFAULT_SETTINGS.webhookEvents,
       retentionDays: 30,
+      ...apiLimits,
     };
 
     await purgeUserData({ env, accessToken, userId, days: 30 });
@@ -125,6 +121,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       settings,
+      apiPlan,
       admin: {
         isAdmin,
         profileUsername: adminConfig.profileUsername,

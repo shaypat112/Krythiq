@@ -1,9 +1,10 @@
-import { runGitHubScan, type ScanOptions, type Finding } from "@/app/services/githubScanner";
+import { runGitHubScanWithToken, type ScanOptions, type Finding, type ScanProgress } from "@/app/services/githubScanner";
 import { decodeUserId, getSupabaseEnv, supabaseFetch } from "@/app/lib/server/supabaseRest";
 import { deliverWebhooks } from "@/app/lib/server/webhooks";
 import { createNotification } from "@/app/lib/server/notifications";
 import { purgeUserData } from "@/app/lib/server/retention";
 import { logActivity } from "@/app/lib/server/activity";
+import { generateScanIntelligence } from "@/app/lib/server/mistral-scan";
 
 function summarizeFindings(findings: Finding[]) {
   const total = findings.length;
@@ -20,13 +21,23 @@ export async function handleGitHubScan(input: {
   options?: ScanOptions;
   accessToken?: string;
   teamId?: string | null;
+  providerToken?: string;
+  onProgress?: ScanProgress;
 }) {
   const env = getSupabaseEnv();
-  const accessToken: any = input.accessToken;
+  const accessToken = input.accessToken;
+  if (!accessToken) throw new Error("Unauthorized");
   const userId = accessToken ? decodeUserId(accessToken) : null;
 
-  const result = await runGitHubScan(input.repoUrl, input.options ?? {});
+  const result = await runGitHubScanWithToken(input.repoUrl, input.options ?? {}, input.providerToken, input.onProgress);
   const { total, severity, avgScore } = summarizeFindings(result.findings);
+  input.onProgress?.("recommendations", "Generating bounded repository intelligence with Mistral.");
+  const intelligence = await generateScanIntelligence({
+    repoName: result.repoName,
+    profile: result.profile,
+    findings: result.findings,
+    model: input.options?.aiModel,
+  });
 
   const scanPayload: Record<string, unknown> = {
     repo: result.repoName,
@@ -34,7 +45,7 @@ export async function handleGitHubScan(input: {
     severity,
     issues: total,
     score: avgScore,
-    findings: { list: result.findings, team_id: input.teamId ?? null },
+    findings: { list: result.findings, profile: result.profile, systemDesign: result.systemDesign, intelligence, team_id: input.teamId ?? null },
   };
 
   if (userId && accessToken) scanPayload.user_id = userId;
@@ -53,7 +64,7 @@ export async function handleGitHubScan(input: {
       severity,
       issues: total,
       score: avgScore,
-      findings: { list: result.findings, team_id: input.teamId ?? null },
+      findings: { list: result.findings, profile: result.profile, systemDesign: result.systemDesign, intelligence, team_id: input.teamId ?? null },
     };
     scanInsertRes = await supabaseFetch(env, "scan_history", {
       method: "POST",
@@ -78,8 +89,13 @@ export async function handleGitHubScan(input: {
       userId,
       event: "scan.completed",
       payload: {
+        scan_id: scanRows?.[0]?.id ?? null,
         repo_url: result.repoUrl,
+        repo_name: result.repoName,
         total_findings: total,
+        severity,
+        score: avgScore,
+        findings: result.findings,
       },
     });
 
@@ -88,6 +104,7 @@ export async function handleGitHubScan(input: {
       accessToken,
       userId,
       type: "scan.completed",
+      teamId: input.teamId ?? null,
       data: {
         repo_name: result.repoName,
         repo_url: result.repoUrl,
@@ -109,6 +126,9 @@ export async function handleGitHubScan(input: {
     repoUrl: result.repoUrl,
     totalFindings: total,
     findings: result.findings,
+    profile: result.profile,
+    systemDesign: result.systemDesign,
+    intelligence,
     scan: scanRows?.[0] ?? null,
   };
 }

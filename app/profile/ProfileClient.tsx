@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import { createClient } from "@/app/lib/supabase";
 import { buildTeamAuthHeaders } from "@/app/lib/http";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import ProfileHeader from "./components/ProfileHeader";
 import ScanTable, { type ScanRow } from "./components/ScanTable";
 import StatsRow from "./components/StatsRow";
@@ -13,9 +13,13 @@ import TabNav, { type TabKey } from "./components/TabNav";
 import IntegrationPanel from "./components/IntegrationPanel";
 import RepoTable, { type ConnectedRepo } from "./components/RepoTable";
 import { useTeam } from "@/app/components/TeamProvider";
+import MultiStepLoaderDemo from "@/components/multi-step-loader-demo";
 
-export default function ProfileClient() {
-  const router = useRouter();
+function severityValue(severity: string) {
+  return { critical: 4, high: 3, medium: 2, low: 1 }[severity.toLowerCase() as "critical" | "high" | "medium" | "low"] ?? 0;
+}
+
+export default function ProfileClient({ initialTab = "scans" }: { initialTab?: TabKey }) {
   const [email, setEmail] = useState<string | null>(null);
   const [name, setName] = useState("Developer");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -25,7 +29,7 @@ export default function ProfileClient() {
   const [scans, setScans] = useState<ScanRow[]>([]);
   const [repos, setRepos] = useState<ConnectedRepo[]>([]);
 
-  const [activeTab, setActiveTab] = useState<TabKey>("scans");
+  const [activeTab, setActiveTab] = useState<TabKey>(initialTab);
   const [scanningRepo, setScanningRepo] = useState<string | null>(null);
 
   const supabase = useMemo(() => createClient(), []);
@@ -35,66 +39,62 @@ export default function ProfileClient() {
     let mounted = true;
 
     const load = async () => {
-      if (!supabase) {
-        setError(
-          "Supabase is not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.",
-        );
-        setLoading(false);
-        return;
-      }
+      setLoading(true);
+      setError(null);
+      try {
+        const { data: userData, error: userErr } = await supabase.auth.getUser();
+        if (!mounted) return;
 
-      const { data: userData, error: userErr } = await supabase.auth.getUser();
-      if (!mounted) return;
+        if (userErr || !userData.user) {
+          setError("Please sign in to view your scans.");
+          return;
+        }
 
-      if (userErr || !userData.user) {
-        setError("Please sign in to view your scans.");
-        setLoading(false);
-        return;
-      }
+        setEmail(userData.user.email ?? null);
+        setName(userData.user.user_metadata?.full_name ?? "Developer");
+        setAvatarUrl(userData.user.user_metadata?.avatar_url ?? null);
 
-      setEmail(userData.user.email ?? null);
-      setName(userData.user.user_metadata?.full_name ?? "Developer");
-      setAvatarUrl(userData.user.user_metadata?.avatar_url ?? null);
+        const { data: profileData } = await supabase
+          .from("profiles")
+          .select("id, full_name, username, avatar_url, tier")
+          .eq("id", userData.user.id)
+          .single();
 
-      const { data: profileData } = await supabase
-        .from("profiles")
-        .select("id, full_name, username, avatar_url, tier")
-        .eq("id", userData.user.id)
-        .single();
+        if (profileData) {
+          setName(profileData.full_name ?? "Developer");
+          setAvatarUrl(profileData.avatar_url ?? null);
+          setTier(profileData.tier ?? "free");
+        }
 
-      if (profileData) {
-        setName(profileData.full_name ?? "Developer");
-        setAvatarUrl(profileData.avatar_url ?? null);
-        setTier(profileData.tier ?? "free");
-      }
+        const { data: sessionData } = await supabase.auth.getSession();
+        const accessToken = sessionData.session?.access_token ?? null;
+        const scanRes = accessToken
+          ? await fetch("/api/scans/recent", {
+              headers: buildTeamAuthHeaders(accessToken, selectedTeamId),
+            })
+          : null;
+        if (scanRes && !scanRes.ok) throw new Error("Recent scans could not be loaded.");
+        const scanJson = scanRes ? await scanRes.json() : null;
+        const scanData = (scanJson?.scans ?? []) as Array<
+          ScanRow & { findings?: { ai_summary?: string } }
+        >;
 
-      const { data: sessionData } = await supabase.auth.getSession();
-      const accessToken = sessionData.session?.access_token ?? null;
-      const scanRes = accessToken
-        ? await fetch("/api/scans/recent", {
-            headers: buildTeamAuthHeaders(accessToken, selectedTeamId),
-          })
-        : null;
-      const scanJson = scanRes?.ok ? await scanRes.json() : null;
-      const scanData = (scanJson?.scans ?? []) as Array<
-        ScanRow & { findings?: { ai_summary?: string } }
-      >;
+        const { data: repoData } = await supabase
+          .from("connected_repos")
+          .select("id, full_name, private, last_scanned_at")
+          .order("full_name", { ascending: true });
 
-      const { data: repoData } = await supabase
-        .from("connected_repos")
-        .select("id, full_name, private, last_scanned_at")
-        .order("full_name", { ascending: true });
-
-      if (!mounted) return;
-      const mappedScans =
-        scanData?.map((scan) => ({
+        if (!mounted) return;
+        setScans(scanData.map((scan) => ({
           ...scan,
           summary: scan.findings?.ai_summary ?? null,
-        })) ?? [];
-
-      setScans(mappedScans);
-      setRepos((repoData as ConnectedRepo[]) ?? []);
-      setLoading(false);
+        })));
+        setRepos((repoData as ConnectedRepo[]) ?? []);
+      } catch (cause) {
+        if (mounted) setError(cause instanceof Error ? cause.message : "Your workspace could not be loaded.");
+      } finally {
+        if (mounted) setLoading(false);
+      }
     };
 
     load();
@@ -116,7 +116,9 @@ export default function ProfileClient() {
     { label: "Total scans", value: String(scans.length) },
     {
       label: "Highest severity",
-      value: scans[0]?.severity?.toUpperCase?.() ?? "-",
+      value: scans.length
+        ? [...scans].sort((a, b) => severityValue(b.severity) - severityValue(a.severity))[0].severity.toUpperCase()
+        : "-",
     },
     {
       label: "Avg score",
@@ -142,32 +144,28 @@ export default function ProfileClient() {
       return;
     }
 
-    const res = await fetch("/api/github/repos", {
-      method: "POST",
-      headers: buildTeamAuthHeaders(
-        accessToken,
-        selectedTeamId,
-        { "Content-Type": "application/json" },
-      ),
-      body: JSON.stringify({ providerToken }),
-    });
-
-    if (!res.ok) {
-      const { error: message } = await res.json();
-      setError(message ?? "Failed to sync repositories.");
-      return;
-    }
-
-    const { repos: synced } = await res.json();
-    setRepos(synced ?? []);
-  };
-
-  const disconnectGitHub = async () => {
-    if (!supabase) return;
-
     setError(null);
-    await supabase.auth.signOut();
-    router.replace("/");
+    try {
+      const res = await fetch("/api/github/repos", {
+        method: "POST",
+        headers: buildTeamAuthHeaders(
+          accessToken,
+          selectedTeamId,
+          { "Content-Type": "application/json" },
+        ),
+        body: JSON.stringify({ providerToken }),
+      });
+
+      if (!res.ok) {
+        const { error: message } = await res.json().catch(() => ({ error: null }));
+        throw new Error(message ?? "Failed to sync repositories.");
+      }
+
+      const { repos: synced } = await res.json();
+      setRepos(synced ?? []);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Failed to sync repositories.");
+    }
   };
 
   const runRepoScan = async (repo: ConnectedRepo) => {
@@ -191,29 +189,28 @@ export default function ProfileClient() {
       return;
     }
 
-    const res = await fetch("/api/github/repo-scan", {
-      method: "POST",
-      headers: buildTeamAuthHeaders(
-        accessToken,
-        selectedTeamId,
-        { "Content-Type": "application/json" },
-      ),
-      body: JSON.stringify({
-        providerToken: providerToken ?? null,
-        repo: repo.full_name,
-      }),
-    });
+    try {
+      const res = await fetch("/api/github/repo-scan", {
+        method: "POST",
+        headers: buildTeamAuthHeaders(
+          accessToken,
+          selectedTeamId,
+          { "Content-Type": "application/json" },
+        ),
+        body: JSON.stringify({
+          providerToken: providerToken ?? null,
+          repo: repo.full_name,
+        }),
+      });
 
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      setError(data?.error ?? "Failed to scan repository.");
-      setScanningRepo(null);
-      return;
-    }
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data?.error ?? "Failed to scan repository.");
+      }
 
-    const data = await res.json();
-    const now = new Date().toISOString();
-    const newScan: ScanRow = data.scan
+      const data = await res.json();
+      const now = new Date().toISOString();
+      const newScan: ScanRow = data.scan
       ? {
           repo: data.scan.repo ?? repo.full_name,
           created_at: data.scan.created_at ?? now,
@@ -231,37 +228,35 @@ export default function ProfileClient() {
           summary: data.summary ?? null,
         };
 
-    setScans((prev) => [newScan, ...prev].slice(0, 8));
-    setRepos((prev) =>
-      prev.map((item) =>
-        item.full_name === repo.full_name
-          ? { ...item, last_scanned_at: newScan.created_at }
-          : item,
-      ),
-    );
-    setScanningRepo(null);
+      setScans((prev) => [newScan, ...prev].slice(0, 8));
+      setRepos((prev) =>
+        prev.map((item) =>
+          item.full_name === repo.full_name
+            ? { ...item, last_scanned_at: newScan.created_at }
+            : item,
+        ),
+      );
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Failed to scan repository.");
+    } finally {
+      setScanningRepo(null);
+    }
   };
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-4xl py-10 text-sm text-zinc-500">
-        Loading scans...
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="mx-auto max-w-4xl py-10">
-        <Alert>
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
+      <div className="mx-auto max-w-5xl space-y-6 py-10" aria-label="Loading scans">
+        <Skeleton className="h-28" />
+        <Skeleton className="h-20" />
+        <Skeleton className="h-72" />
       </div>
     );
   }
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
+      <MultiStepLoaderDemo loading={scanningRepo !== null} />
+      {error ? <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert> : null}
       <ProfileHeader
         name={name}
         email={email}
@@ -286,7 +281,7 @@ export default function ProfileClient() {
             title="GitHub"
             description="Link repos to trigger scans on pushes and PRs."
             connected={repos.length > 0}
-            onClick={repos.length > 0 ? disconnectGitHub : connectGitHub}
+            onClick={connectGitHub}
           />
 
           <RepoTable

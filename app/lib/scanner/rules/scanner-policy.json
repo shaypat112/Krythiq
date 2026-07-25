@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "limits": {
+    "maxFileBytes": 1048576,
+    "maxFiles": 500,
+    "maxScanBytes": 26214400
+  },
+  "extensions": [
+    ".ts",
+    ".tsx",
+    ".js",
+    ".jsx",
+    ".py",
+    ".go",
+    ".rs",
+    ".java",
+    ".cs",
+    ".php",
+    ".rb",
+    ".sh",
+    ".yaml",
+    ".yml"
+  ],
+  "securityConfigFiles": [
+    ".env",
+    ".npmrc",
+    ".pypirc",
+    "dockerfile"
+  ],
+  "defaultIgnoreDirectories": [
+    "node_modules",
+    ".git",
+    ".next",
+    "dist",
+    "build",
+    "coverage",
+    "vendor"
+  ],
+  "manifestFiles": [
+    "package.json",
+    "package-lock.json",
+    "yarn.lock",
+    "pnpm-lock.yaml",
+    "requirements.txt",
+    "poetry.lock",
+    "go.mod",
+    "Cargo.toml"
+  ]
+}

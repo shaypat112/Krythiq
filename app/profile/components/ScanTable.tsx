@@ -1,4 +1,6 @@
-import { Badge } from "@/components/ui/badge";
+import Link from "next/link";
+import { Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -27,8 +29,10 @@ export default function ScanTable({ scans }: { scans: ScanRow[] }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Recent scans</CardTitle>
-        <CardDescription>Your latest security scans.</CardDescription>
+        <div className="flex items-start justify-between gap-4">
+          <div><CardTitle>Recent scans</CardTitle><CardDescription>Your latest security scans.</CardDescription></div>
+          <Button asChild size="sm"><Link href="/scan"><Plus /> New scan</Link></Button>
+        </div>
       </CardHeader>
       <CardContent>
         {scans.length === 0 ? (
@@ -46,16 +50,10 @@ export default function ScanTable({ scans }: { scans: ScanRow[] }) {
             </TableHeader>
             <TableBody>
               {scans.map((scan) => (
-                <TableRow
-                  key={`${scan.repo}-${scan.created_at}`}
-                  className="cursor-pointer hover:bg-zinc-950/60"
-                  onClick={() => {
-                    window.location.href = `/reports/${encodeURIComponent(scan.repo)}`;
-                  }}
-                >
-                  <TableCell className="font-medium text-zinc-100">
+                <TableRow key={`${scan.repo}-${scan.created_at}`}>
+                  <TableCell className="font-medium text-foreground">
                     <div className="space-y-1">
-                      <div>{scan.repo}</div>
+                      <Link className="underline-offset-4 hover:underline" href={`/reports/${encodeURIComponent(scan.repo)}`}>{scan.repo}</Link>
                       {scan.summary ? (
                         <div className="text-xs text-zinc-500">
                           {scan.summary}
@@ -67,7 +65,7 @@ export default function ScanTable({ scans }: { scans: ScanRow[] }) {
                     {new Date(scan.created_at).toLocaleDateString()}
                   </TableCell>
                   <TableCell>
-                    <Badge variant="outline">{scan.severity}</Badge>
+                    <span className="text-xs uppercase tracking-[0.12em] text-muted-foreground">{scan.severity}</span>
                   </TableCell>
                   <TableCell>{scan.issues}</TableCell>
                   <TableCell>{scan.score}</TableCell>

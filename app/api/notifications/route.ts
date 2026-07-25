@@ -19,7 +19,7 @@ export async function GET(request: Request) {
 
     const res = await supabaseFetch(
       env,
-      `notifications?user_id=eq.${userId}&type=not.eq.internal.demo_access&select=id,type,data,read_at,created_at&order=created_at.desc&limit=${pageSize}&offset=${offset}`,
+      `notifications?user_id=eq.${userId}&select=id,type,data,read_at,created_at&order=created_at.desc&limit=${pageSize}&offset=${offset}`,
       { accessToken },
     );
 

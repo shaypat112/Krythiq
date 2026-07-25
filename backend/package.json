@@ -1,6 +1,6 @@
 {
   "name": "votrio",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "AI-powered terminal trace analyzer, security scanner, and code quality tool",
   "keywords": [
     "cli",
@@ -8,7 +8,9 @@
     "debugging",
     "security",
     "stack-trace",
-    "devtools"
+    "devtools",
+    "code-review",
+    "machine-learning"
   ],
   "homepage": "https://votrio.dev",
   "repository": {
@@ -22,36 +24,40 @@
     "votrio": "./dist/index.js"
   },
   "files": [
-    "dist"
+    "dist",
+    "ai_service.py",
+    "requirements.txt",
+    "setup_python.sh"
   ],
   "scripts": {
     "build": "tsup src/index.ts --format esm --dts --clean",
     "dev": "tsup src/index.ts --format esm --watch",
     "lint": "eslint src --ext .ts",
     "typecheck": "tsc --noEmit",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "setup:python": "bash setup_python.sh"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.24.0",
     "chalk": "^5.3.0",
     "commander": "^12.1.0",
     "conf": "^13.1.0",
-    "chokidar": "^4.0.3",
     "glob": "^11.0.0",
-    "inquirer": "^10.1.0",
+    "inquirer": "^14.0.2",
     "ora": "^8.0.1",
     "strip-ansi": "^7.1.0",
     "update-notifier": "^7.3.1"
   },
   "devDependencies": {
-    "@types/chalk": "^0.4.31",
     "@types/node": "^20.0.0",
     "@types/update-notifier": "^6.0.8",
-    "build": "tsup src/index.ts --format esm --dts --clean --banner.js '#!/usr/bin/env node'",
-    "tsup": "^8.0.0",
+    "tsup": "^8.5.1",
     "typescript": "^5.4.0"
   },
   "engines": {
     "node": ">=18.0.0"
+  },
+  "overrides": {
+    "esbuild": "^0.28.1"
   }
 }
