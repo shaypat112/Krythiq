@@ -5,7 +5,7 @@ import { ScanHub } from "./scan-hub";
 
 export const metadata: Metadata = {
   title: "Security workspace - Votrio",
-  description: "Run repository security scans and review scan history.",
+  description: "Scan GitHub repositories or individual source files and review security findings.",
 };
 
 export default function ScanPage() {

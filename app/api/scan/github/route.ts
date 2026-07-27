@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { handleGitHubScan } from "@/app/routes/scan";
+import { handleGitHubScan, handleGuestGitHubScan } from "@/app/routes/scan";
 import {
   extractSelectedTeamId,
   RequestAuthError,
@@ -37,10 +37,15 @@ export async function POST(request: Request) {
     const repoUrl = body?.repoUrl as string | undefined;
     repoUrlForFailure = repoUrl;
     const options = body?.options;
-    const providerToken = typeof body?.providerToken === "string" ? body.providerToken : undefined;
-    const { accessToken } = requireRequestAuth(request);
+    const hasAuthorization = request.headers.has("authorization");
+    const auth = hasAuthorization ? requireRequestAuth(request) : null;
+    const accessToken = auth?.accessToken;
+    if (!accessToken && request.headers.get("cookie")?.includes("votrio_guest_scan=1")) {
+      return NextResponse.json({ error: "Your free scan has been used. Sign in to run another." }, { status: 401 });
+    }
+    const providerToken = accessToken && typeof body?.providerToken === "string" ? body.providerToken : undefined;
     accessTokenForFailure = accessToken;
-    const selectedTeamId = extractSelectedTeamId(request);
+    const selectedTeamId = accessToken ? extractSelectedTeamId(request) : null;
 
     if (!repoUrl) {
       return NextResponse.json({ error: "Missing repoUrl." }, { status: 400 });
@@ -56,14 +61,10 @@ export async function POST(request: Request) {
             controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
           };
           try {
-            const result = await handleGitHubScan({
-              repoUrl,
-              options,
-              accessToken,
-              teamId: selectedTeamId,
-              providerToken,
-              onProgress: (stage, detail) => send("progress", { stage, detail }),
-            });
+            const onProgress = (stage: Parameters<NonNullable<Parameters<typeof handleGitHubScan>[0]["onProgress"]>>[0], detail: string) => send("progress", { stage, detail });
+            const result = accessToken
+              ? await handleGitHubScan({ repoUrl, options, accessToken, teamId: selectedTeamId, providerToken, onProgress })
+              : await handleGuestGitHubScan({ repoUrl, options, onProgress });
             send("complete", result);
             logServerInfo("scan.completed", { findings: result.totalFindings });
           } catch (error) {
@@ -80,14 +81,19 @@ export async function POST(request: Request) {
           "Content-Type": "text/event-stream",
           "Cache-Control": "no-cache, no-transform",
           Connection: "keep-alive",
+          ...(!accessToken ? { "Set-Cookie": "votrio_guest_scan=1; Path=/; Max-Age=31536000; SameSite=Lax" } : {}),
         },
       });
     }
 
-    const result = await handleGitHubScan({ repoUrl, options, accessToken, teamId: selectedTeamId, providerToken });
+    const result = accessToken
+      ? await handleGitHubScan({ repoUrl, options, accessToken, teamId: selectedTeamId, providerToken })
+      : await handleGuestGitHubScan({ repoUrl, options });
     logServerInfo("scan.completed", { findings: result.totalFindings });
 
-    return NextResponse.json(result);
+    const response = NextResponse.json(result);
+    if (!accessToken) response.cookies.set("votrio_guest_scan", "1", { path: "/", maxAge: 31536000, sameSite: "lax" });
+    return response;
   } catch (error) {
     if (error instanceof RequestAuthError) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

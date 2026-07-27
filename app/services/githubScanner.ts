@@ -308,6 +308,46 @@ async function scanFiles(files: RepositoryFile[], options: ScanOptions, onProgre
   );
 }
 
+export async function runSingleFileScan(file: { name: string; content: string }, options: ScanOptions = {}) {
+  const extension = path.extname(file.name).toLowerCase();
+  const baseName = path.basename(file.name).toLowerCase();
+  if (!scannerPolicy.extensions.has(extension) && !scannerPolicy.securityConfigFiles.has(baseName)) {
+    throw new Error("Unsupported file type.");
+  }
+  const bytes = Buffer.byteLength(file.content, "utf8");
+  if (bytes > scannerPolicy.limits.maxFileBytes) {
+    throw new Error(`File exceeds the ${Math.round(scannerPolicy.limits.maxFileBytes / 1024)} KB scan limit.`);
+  }
+
+  const files = [{ path: path.basename(file.name), content: file.content }];
+  const findings = await scanFiles(files, options);
+  const profile = buildRepositoryProfile({
+    repository: {
+      description: "A focused, single-file static security review.",
+      default_branch: "local upload",
+      visibility: "private upload",
+      private: true,
+      stargazers_count: 0,
+      forks_count: 0,
+      open_issues_count: 0,
+      size: Math.ceil(bytes / 1024),
+      pushed_at: null,
+    },
+    tree: [{ path: path.basename(file.name), type: "blob", size: bytes }],
+    files,
+    manifests: scannerPolicy.manifestFiles.includes(baseName) ? [baseName] : [],
+    languageBytes: { [LANGUAGE_BY_EXTENSION[extension] ?? (extension.replace(".", "").toUpperCase() || "Text")]: bytes },
+  });
+
+  return {
+    repoUrl: `file://${encodeURIComponent(path.basename(file.name))}`,
+    repoName: path.basename(file.name),
+    findings,
+    profile,
+    systemDesign: buildSystemDesignAssessment(files, [{ path: path.basename(file.name), type: "blob" }], profile.manifests),
+  };
+}
+
 export async function runGitHubScan(
   repoUrl: string,
   options: ScanOptions = {},

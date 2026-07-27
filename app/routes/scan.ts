@@ -16,6 +16,31 @@ function summarizeFindings(findings: Finding[]) {
   return { total, severity, avgScore };
 }
 
+export async function handleGuestGitHubScan(input: {
+  repoUrl: string;
+  options?: ScanOptions;
+  onProgress?: ScanProgress;
+}) {
+  const result = await runGitHubScanWithToken(input.repoUrl, input.options ?? {}, undefined, input.onProgress);
+  const { total } = summarizeFindings(result.findings);
+  input.onProgress?.("recommendations", "Preparing your private, unsaved scan report.");
+  const intelligence = await generateScanIntelligence({
+    repoName: result.repoName,
+    profile: result.profile,
+    findings: result.findings,
+    model: input.options?.aiModel,
+  });
+  return {
+    repoUrl: result.repoUrl,
+    totalFindings: total,
+    findings: result.findings,
+    profile: result.profile,
+    systemDesign: result.systemDesign,
+    intelligence,
+    scan: null,
+  };
+}
+
 export async function handleGitHubScan(input: {
   repoUrl: string;
   options?: ScanOptions;

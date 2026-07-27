@@ -11,10 +11,13 @@ export function Footer() {
         <p className="font-mono text-xs text-muted-foreground">
           © {new Date().getFullYear()} Votrio. All rights reserved.
         </p>
-        <div className="flex gap-6 font-mono text-xs text-muted-foreground">
+        <div className="flex flex-wrap justify-center gap-x-5 gap-y-2 font-mono text-xs text-muted-foreground">
           <Link href="/documentation" className="transition hover:text-foreground">Docs</Link>
           <Link href="/scan" className="transition hover:text-foreground">Scan</Link>
-          <Link href="/auth" className="transition hover:text-foreground">Sign in</Link>
+          <Link href="/privacy" className="transition hover:text-foreground">Privacy</Link>
+          <Link href="/terms" className="transition hover:text-foreground">Terms</Link>
+          <Link href="/cookies" className="transition hover:text-foreground">Cookies</Link>
+          <Link href="/acceptable-use" className="transition hover:text-foreground">Acceptable use</Link>
         </div>
       </div>
     </footer>

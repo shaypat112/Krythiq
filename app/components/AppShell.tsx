@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Bell, ChevronDown, Moon, SunMedium } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { DesktopRequired } from "./mobile/DesktopRequired";
+
 import { useTheme } from "./theme-provider";
 
 const appLinks = [
@@ -152,9 +152,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const isMarketingRoute =
     pathname === "/" ||
     pathname?.startsWith("/landing-page") ||
-    pathname?.startsWith("/auth");
+    pathname?.startsWith("/auth") ||
+    pathname === "/privacy" ||
+    pathname === "/terms" ||
+    pathname === "/cookies" ||
+    pathname === "/acceptable-use";
   const isPublicRoute =
-    isMarketingRoute || pathname?.startsWith("/documentation");
+    isMarketingRoute || pathname?.startsWith("/documentation") || pathname?.startsWith("/scan");
 
   const getNotificationLabel = (item: (typeof notifications)[number]) => {
     const repoName = item.data?.["repo_name"];
@@ -237,7 +241,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <DesktopRequired enabled={!isPublicRoute}>
     <div className="min-h-screen bg-background text-foreground transition-colors">
       <a href="#main-content" className="sr-only z-[100] rounded-md bg-foreground px-4 py-2 text-background focus:not-sr-only focus:fixed focus:left-4 focus:top-4">
         Skip to content
@@ -415,6 +418,5 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
       <main id="main-content" className="mx-auto max-w-[1600px] px-4 py-8 sm:px-6 sm:py-10">{children}</main>
     </div>
-    </DesktopRequired>
   );
 }

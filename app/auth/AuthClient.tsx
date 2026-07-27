@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -251,7 +252,9 @@ export default function AuthClient() {
           <Button asChild variant="ghost" size="sm" className="absolute left-3 top-3 px-2">
             <Link href="/"><ArrowLeft /> Home</Link>
           </Button>
-          <span className="mx-auto grid h-11 w-11 place-items-center rounded-xl border border-border bg-muted font-semibold">V</span>
+          <span className="mx-auto block overflow-hidden rounded-xl border border-border bg-black shadow-sm">
+            <Image src="/votrio_logo.jpeg" alt="Votrio logo" width={120} height={68} className="h-[68px] w-[120px] object-cover" priority />
+          </span>
           <CardTitle className="pt-2 text-2xl">Welcome to Votrio</CardTitle>
           <CardDescription>
             Sign in or create an account to secure your repositories.

@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import {
-  AlertCircle, CheckCircle2, ChevronDown, ChevronRight, Clipboard, Download,
-  FileCode2, Filter, FolderGit2, LoaderCircle, RotateCw, Search, ShieldAlert, X, CircleStop,
+  AlertCircle, ArrowRight, CheckCircle2, ChevronDown, ChevronRight, Clipboard, Download,
+  FileCode2, Filter, FolderGit2, History, LoaderCircle, RotateCw, Search, ShieldAlert, X, CircleStop, Upload,
 } from "lucide-react";
 import { createClient } from "@/app/lib/supabase";
 import { buildTeamAuthHeaders } from "@/app/lib/http";
@@ -19,6 +20,22 @@ import MultiStepLoaderDemo from "@/components/multi-step-loader-demo";
 import { SystemDesignOverview } from "@/app/components/SystemDesignOverview";
 import { HelpTooltip } from "@/app/components/HelpTooltip";
 import { toast } from "sonner";
+import FileUpload from "@/components/kokonutui/file-upload";
+import { ActionSearchBar, type ScanAction } from "@/components/kokonutui/action-search-bar";
+import { AnimatedGridPattern } from "@/components/ui/animated-grid-pattern";
+import { BorderBeam } from "@/components/ui/border-beam";
+import { ShimmerButton } from "@/components/ui/shimmer-button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogMedia,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 type Severity = "low" | "medium" | "high" | "critical";
 type Finding = {
@@ -76,6 +93,7 @@ function formatBytes(bytes: number) {
 }
 
 export function ScanWorkspace() {
+  const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
   const { selectedTeamId } = useTeam();
   const [repoUrl, setRepoUrl] = useState("");
@@ -95,6 +113,10 @@ export function ScanWorkspace() {
   const [ignoreTarget, setIgnoreTarget] = useState<string | null>(null);
   const [ignoreReason, setIgnoreReason] = useState("");
   const [scanController, setScanController] = useState<AbortController | null>(null);
+  const [scanMode, setScanMode] = useState<"repository" | "file">("repository");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [guestScan, setGuestScan] = useState(false);
+  const [showGuestLimit, setShowGuestLimit] = useState(false);
 
   const findingKey = (finding: Finding) => `${finding.file}:${finding.line}:${finding.type}`;
   const notify = (message: string) => toast(message);
@@ -131,7 +153,10 @@ export function ScanWorkspace() {
     }
     const { data } = await supabase.auth.getSession();
     const token = data.session?.access_token;
-    if (!token) { setError("Sign in to run a repository scan."); return; }
+    if (!token && window.localStorage.getItem("votrio_guest_scan_used") === "1") {
+      setShowGuestLimit(true);
+      return;
+    }
     setPhase("scanning"); setError(null); setResult(null); setActiveStage("validating"); setStageDetails({});
     setRepoUrl(normalizedUrl);
     setReviewed(new Set()); setFalsePositive(new Set()); setIgnored(new Map());
@@ -139,10 +164,16 @@ export function ScanWorkspace() {
     setScanController(controller);
     try {
       const response = await fetch("/api/scan/github", {
-        method: "POST", headers: buildTeamAuthHeaders(token, selectedTeamId, { "Content-Type": "application/json", Accept: "text/event-stream" }),
+        method: "POST", headers: token ? buildTeamAuthHeaders(token, selectedTeamId, { "Content-Type": "application/json", Accept: "text/event-stream" }) : { "Content-Type": "application/json", Accept: "text/event-stream" },
         body: JSON.stringify({ repoUrl: normalizedUrl, providerToken: data.session?.provider_token ?? null, options: { failOn } }),
         signal: controller.signal,
       });
+      if (response.status === 401 && !token) {
+        setShowGuestLimit(true);
+        window.localStorage.setItem("votrio_guest_scan_used", "1");
+        setPhase("idle");
+        return;
+      }
       if (!response.ok || !response.body) throw new Error((await response.json().catch(() => ({}))).error ?? "Unable to start scan.");
       const reader = response.body.getReader(); const decoder = new TextDecoder(); let buffer = "";
       while (true) {
@@ -154,12 +185,56 @@ export function ScanWorkspace() {
           if (!event || !raw) continue;
           const payload = JSON.parse(raw) as { stage?: Stage; detail?: string; error?: string } | ScanResult;
           if (event === "progress" && "stage" in payload && payload.stage) { setActiveStage(payload.stage); setStageDetails((previous) => ({ ...previous, [payload.stage!]: payload.detail ?? "" })); }
-          if (event === "complete") { setResult(payload as ScanResult); setPhase("done"); setActiveStage("recommendations"); }
+          if (event === "complete") { setResult(payload as ScanResult); setPhase("done"); setActiveStage("recommendations"); setGuestScan(!token); if (!token) window.localStorage.setItem("votrio_guest_scan_used", "1"); }
           if (event === "error") throw new Error("error" in payload ? payload.error : "Scan failed.");
         }
       }
     } catch (cause) {
       setError(cause instanceof DOMException && cause.name === "AbortError" ? "Scan cancelled. No result was saved." : cause instanceof Error ? cause.message : "Scan failed.");
+      setPhase("error");
+    } finally {
+      setScanController(null);
+    }
+  };
+
+  const startFileScan = async () => {
+    if (!selectedFile) { setError("Drop in one supported source file before scanning."); return; }
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+    if (!token && window.localStorage.getItem("votrio_guest_scan_used") === "1") {
+      setShowGuestLimit(true);
+      return;
+    }
+    const controller = new AbortController();
+    setScanController(controller);
+    setPhase("scanning"); setError(null); setResult(null); setActiveStage("analyzing");
+    setStageDetails({ analyzing: `Inspecting ${selectedFile.name} with the Votrio security ruleset.` });
+    setReviewed(new Set()); setFalsePositive(new Set()); setIgnored(new Map());
+    try {
+      const body = new FormData();
+      body.append("file", selectedFile);
+      body.append("failOn", failOn);
+      const response = await fetch("/api/scan/file", {
+        method: "POST",
+        headers: token ? buildTeamAuthHeaders(token, selectedTeamId) : undefined,
+        body,
+        signal: controller.signal,
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (response.status === 401 && !token) {
+        setShowGuestLimit(true);
+        window.localStorage.setItem("votrio_guest_scan_used", "1");
+        setPhase("idle");
+        return;
+      }
+      if (!response.ok) throw new Error(payload.error ?? "Unable to scan this file.");
+      setResult(payload as ScanResult);
+      setPhase("done");
+      setActiveStage("recommendations");
+      setGuestScan(!token);
+      if (!token) window.localStorage.setItem("votrio_guest_scan_used", "1");
+    } catch (cause) {
+      setError(cause instanceof DOMException && cause.name === "AbortError" ? "Scan cancelled." : cause instanceof Error ? cause.message : "File scan failed.");
       setPhase("error");
     } finally {
       setScanController(null);
@@ -177,12 +252,33 @@ export function ScanWorkspace() {
   const activeStageIndex = activeStage ? stages.findIndex((stage) => stage.id === activeStage) : 0;
   const progress = phase === "done" ? 100 : Math.max(8, Math.round(((activeStageIndex + 0.5) / stages.length) * 100));
   const reviewedCount = reviewed.size + falsePositive.size + ignored.size;
+  const isFileResult = result?.repoUrl.startsWith("file://") ?? false;
+  const actions = useMemo<ScanAction[]>(() => [
+    { id: "repo", label: "Scan a GitHub repository", description: "Review a complete public or connected repository", shortcut: "R", icon: <FolderGit2 className="h-4 w-4" />, onSelect: () => setScanMode("repository") },
+    { id: "file", label: "Inspect one source file", description: "Fast, private review for a single file", shortcut: "F", icon: <FileCode2 className="h-4 w-4" />, onSelect: () => setScanMode("file") },
+    { id: "history", label: "Open scan history", description: "Compare previous reports and remediation progress", shortcut: "H", icon: <History className="h-4 w-4" />, onSelect: () => router.push("/scan?view=history") },
+  ], [router]);
 
-  return <main className="mx-auto max-w-7xl space-y-6 pb-12">
+  return <main className="mx-auto max-w-7xl space-y-8 pb-16">
     <MultiStepLoaderDemo loading={phase === "scanning"} />
-    <section className="overflow-hidden rounded-3xl border border-border bg-[radial-gradient(circle_at_10%_0%,rgba(14,165,233,.16),transparent_32%),radial-gradient(circle_at_90%_10%,rgba(168,85,247,.12),transparent_28%),var(--card)] p-6 sm:p-8">
-      <div className="mt-4 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between"><div><h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Find the risks worth fixing first.</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">Votrio reads supported files through the GitHub API and performs a static source review. Repository credentials are never included in scan output.</p></div>{result && <Button variant="outline" onClick={() => { setResult(null); setPhase("idle"); }}><RotateCw /> New scan</Button>}</div>
-      <div className="mt-7 grid gap-3 lg:grid-cols-[1fr_150px_auto]"><div><label htmlFor="repo-url" className="mb-2 block text-sm font-medium">GitHub repository</label><div className="relative"><FolderGit2 className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" /><Input id="repo-url" value={repoUrl} onChange={(event) => setRepoUrl(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && phase !== "scanning") void startScan(); }} placeholder="owner/repository or GitHub URL" disabled={phase === "scanning"} className="h-9 pl-9" aria-describedby="repo-help" autoCapitalize="none" autoCorrect="off" spellCheck={false} /></div><p id="repo-help" className="mt-2 text-xs text-muted-foreground">Paste a public GitHub URL or owner/repository. Votrio uses read-only API access and does not execute repository code.</p></div><div><div className="mb-2 flex items-center gap-1.5"><label htmlFor="fail-on" className="text-sm font-medium">Attention threshold</label><HelpTooltip side="bottom">Controls which severity should demand attention first. It does not hide lower-severity findings.</HelpTooltip></div><select id="fail-on" value={failOn} onChange={(event) => setFailOn(event.target.value as Severity)} className="h-9 w-full rounded-lg border border-input bg-background px-2 text-sm" disabled={phase === "scanning"}><option value="critical">Critical</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option></select></div>{phase === "scanning" ? <Button size="lg" variant="outline" onClick={() => scanController?.abort()} className="self-end"><CircleStop /> Cancel</Button> : <Button size="lg" onClick={startScan} className="self-end"><ShieldAlert /> {result ? "Rescan" : "Start scan"}</Button>}</div>
+    <section className="relative isolate overflow-hidden rounded-[2rem] border border-white/10 bg-black p-6 text-white shadow-[0_24px_90px_-40px_rgba(0,0,0,.85)] sm:p-10">
+      <AnimatedGridPattern width={48} height={48} numSquares={16} maxOpacity={0.1} className="text-white/30 [mask-image:radial-gradient(ellipse_at_top,white,transparent_72%)]" />
+      <div className="pointer-events-none absolute -left-24 -top-24 h-72 w-72 rounded-full bg-white/5 blur-3xl" />
+      <BorderBeam size={180} duration={11} colorFrom="#ffffff" colorTo="#525252" borderWidth={1.5} />
+      <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between"><div><h1 className="max-w-3xl text-4xl font-semibold tracking-[-0.04em] text-white sm:text-5xl lg:text-6xl">See the risk.<br /><span className="text-zinc-400">Ship with confidence.</span></h1><p className="mt-5 max-w-2xl text-base leading-7 text-zinc-400">Turn a GitHub repository or source file into a clear, visual security story—without executing a single line of uploaded code.</p></div>{result && <Button className="rounded-full border-white/20 bg-white/5 text-white hover:bg-white/10 hover:text-white" variant="outline" onClick={() => { setResult(null); setPhase("idle"); }}><RotateCw /> New scan</Button>}</div>
+      <div className="relative z-20 mt-8 max-w-3xl"><ActionSearchBar actions={actions} /></div>
+      <div className="relative z-10 mt-8 grid gap-3 sm:grid-cols-2">
+        <button type="button" onClick={() => setScanMode("repository")} className={`group relative overflow-hidden rounded-2xl border p-5 text-left transition-all duration-300 hover:-translate-y-0.5 ${scanMode === "repository" ? "border-white/50 bg-white/10 shadow-lg" : "border-white/10 bg-white/[.03] hover:border-white/30 hover:bg-white/[.06]"}`}>
+          <span className="flex items-start gap-4"><span className={`grid h-11 w-11 place-items-center rounded-xl ${scanMode === "repository" ? "bg-white text-black" : "bg-white/10 text-white"}`}><FolderGit2 className="h-5 w-5" /></span><span><span className="block font-semibold">Whole repository</span><span className="mt-1 block text-sm leading-5 text-zinc-400">Map architecture, languages, and risks across a GitHub project.</span></span></span>
+        </button>
+        <button type="button" onClick={() => setScanMode("file")} className={`group relative overflow-hidden rounded-2xl border p-5 text-left transition-all duration-300 hover:-translate-y-0.5 ${scanMode === "file" ? "border-white/50 bg-white/10 shadow-lg" : "border-white/10 bg-white/[.03] hover:border-white/30 hover:bg-white/[.06]"}`}>
+          <span className="flex items-start gap-4"><span className={`grid h-11 w-11 place-items-center rounded-xl ${scanMode === "file" ? "bg-white text-black" : "bg-white/10 text-white"}`}><FileCode2 className="h-5 w-5" /></span><span><span className="block font-semibold">Single file</span><span className="mt-1 block text-sm leading-5 text-zinc-400">Get a fast, focused review before you commit or share code.</span></span></span>
+        </button>
+      </div>
+      {scanMode === "repository" ? <div className="relative z-10 mt-5 grid gap-3 rounded-2xl border border-white/10 bg-white/[.04] p-4 backdrop-blur-xl lg:grid-cols-[1fr_150px_auto]"><div><label htmlFor="repo-url" className="mb-2 block text-sm font-medium">GitHub repository</label><div className="relative"><FolderGit2 className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-zinc-400" /><Input id="repo-url" value={repoUrl} onChange={(event) => setRepoUrl(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && phase !== "scanning") void startScan(); }} placeholder="owner/repository or GitHub URL" disabled={phase === "scanning"} className="h-10 border-white/15 bg-white/5 pl-9 text-white placeholder:text-zinc-600" aria-describedby="repo-help" autoCapitalize="none" autoCorrect="off" spellCheck={false} /></div><p id="repo-help" className="mt-2 text-xs text-zinc-500">Read-only GitHub access. Repository credentials never appear in scan output.</p></div><Threshold value={failOn} onChange={setFailOn} disabled={phase === "scanning"} />{phase === "scanning" ? <Button size="lg" variant="outline" onClick={() => scanController?.abort()} className="self-end"><CircleStop /> Cancel</Button> : <ShimmerButton onClick={startScan} className="h-10 self-end px-5 font-semibold text-black" shimmerColor="#737373" background="#ffffff"><ShieldAlert className="mr-2 h-4 w-4" /> {result ? "Rescan repo" : "Scan repository"}</ShimmerButton>}</div> : <div className="relative z-10 mt-5 grid gap-4 rounded-2xl border border-white/10 bg-white/[.04] p-4 backdrop-blur-xl lg:grid-cols-[1fr_190px]">
+        <div className="rounded-2xl border border-dashed border-white/25 bg-white/[.03] p-3"><FileUpload acceptedFileTypes={[]} maxFileSize={512 * 1024} uploadDelay={0} currentFile={selectedFile} onUploadSuccess={setSelectedFile} onFileRemove={() => setSelectedFile(null)} validateFile={(file) => /\.(?:[cm]?[jt]sx?|py|go|rs|java|cs|php|json|ya?ml|toml|env)$/i.test(file.name) ? null : { code: "UNSUPPORTED_FILE", message: "Choose a supported source or configuration file." }} /></div>
+        <div className="flex flex-col gap-3"><Threshold value={failOn} onChange={setFailOn} disabled={phase === "scanning"} />{selectedFile && <div className="rounded-xl border border-white/20 bg-white/5 p-3"><p className="truncate text-sm font-medium">{selectedFile.name}</p><p className="mt-1 text-xs text-zinc-400">{formatBytes(selectedFile.size)} · processed in memory</p></div>}{phase === "scanning" ? <Button size="lg" variant="outline" onClick={() => scanController?.abort()}><CircleStop /> Cancel</Button> : <ShimmerButton onClick={startFileScan} disabled={!selectedFile} className="h-10 px-5 font-semibold text-black disabled:cursor-not-allowed disabled:opacity-40" shimmerColor="#737373" background="#ffffff"><Upload className="mr-2 h-4 w-4" /> Scan this file</ShimmerButton>}</div>
+      </div>}
       {error && <div role="alert" className="mt-5 flex gap-3 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive"><AlertCircle className="h-4 w-4 shrink-0" />{error}</div>}
     </section>
 
@@ -191,8 +287,9 @@ export function ScanWorkspace() {
     {phase === "scanning" && <div className="grid gap-4 md:grid-cols-4">{Array.from({ length: 4 }).map((_, index) => <Skeleton key={index} className="h-28" />)}</div>}
 
     {result && <section className="space-y-6">
+      {guestScan && <Card className="border-foreground/20 bg-foreground text-background"><CardContent className="flex flex-col items-start justify-between gap-4 p-5 sm:flex-row sm:items-center"><div><p className="font-semibold">Your free scan is ready.</p><p className="mt-1 text-sm opacity-70">This report is private and unsaved. Sign in to save it and run more scans.</p></div><Button className="shrink-0 bg-background text-foreground hover:bg-background/90" onClick={() => router.push("/auth?next=/scan")}>Sign in to continue <ArrowRight className="ml-1 h-4 w-4" /></Button></CardContent></Card>}
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4"><Metric title="Overall risk" value={`${score}/100`} detail={score >= 75 ? "Needs attention" : score >= 55 ? "Review recommended" : "Lower observed risk"} /><Metric title="Total findings" value={String(result.totalFindings)} detail="Static checks completed" /><Metric title="Code issues" value={String(categoryCount("code"))} detail="Risky-code rules" /><Metric title="Secret exposure" value={String(categoryCount("secrets"))} detail="Credential-pattern rules" /></div>
-      <Card><CardHeader><CardTitle>Repository overview</CardTitle></CardHeader><CardContent className="space-y-5"><p className="text-sm leading-6 text-muted-foreground">{result.profile.metadata.description ?? "No GitHub repository description is available."}</p><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5"><Coverage label="Source files scanned" value={result.profile.metrics.scannedFiles.toLocaleString()} detail={`${result.profile.metrics.repositoryFiles.toLocaleString()} files in repository tree`} /><Coverage label="Lines analyzed" value={result.profile.metrics.scannedLines.toLocaleString()} detail={formatBytes(result.profile.metrics.scannedBytes)} /><Coverage label="Directories" value={result.profile.metrics.directories.toLocaleString()} detail={`Default branch: ${result.profile.metadata.defaultBranch}`} /><Coverage label="GitHub activity" value={`${result.profile.metadata.stars} stars`} detail={`${result.profile.metadata.forks} forks · ${result.profile.metadata.openIssues} open issues`} /><Coverage label="Visibility" value={result.profile.metadata.visibility} detail={result.profile.metadata.pushedAt ? `Pushed ${new Date(result.profile.metadata.pushedAt).toLocaleDateString()}` : "Push date unavailable"} /></div>{result.profile.manifests.length > 0 && <div className="flex flex-wrap gap-2">{result.profile.manifests.map((manifest) => <Badge key={manifest} variant="outline">{manifest}</Badge>)}</div>}</CardContent></Card>
+      <Card><CardHeader><CardTitle>{isFileResult ? "File overview" : "Repository overview"}</CardTitle></CardHeader><CardContent className="space-y-5"><p className="text-sm leading-6 text-muted-foreground">{result.profile.metadata.description ?? "No GitHub repository description is available."}</p><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5"><Coverage label="Source files scanned" value={result.profile.metrics.scannedFiles.toLocaleString()} detail={isFileResult ? result.profile.largestFiles[0]?.path ?? "Uploaded file" : `${result.profile.metrics.repositoryFiles.toLocaleString()} files in repository tree`} /><Coverage label="Lines analyzed" value={result.profile.metrics.scannedLines.toLocaleString()} detail={formatBytes(result.profile.metrics.scannedBytes)} /><Coverage label="Directories" value={result.profile.metrics.directories.toLocaleString()} detail={isFileResult ? "Focused file scan" : `Default branch: ${result.profile.metadata.defaultBranch}`} /><Coverage label={isFileResult ? "Execution" : "GitHub activity"} value={isFileResult ? "Never run" : `${result.profile.metadata.stars} stars`} detail={isFileResult ? "Static inspection only" : `${result.profile.metadata.forks} forks · ${result.profile.metadata.openIssues} open issues`} /><Coverage label="Visibility" value={result.profile.metadata.visibility} detail={result.profile.metadata.pushedAt ? `Pushed ${new Date(result.profile.metadata.pushedAt).toLocaleDateString()}` : isFileResult ? "Not persisted to scan history" : "Push date unavailable"} /></div>{result.profile.manifests.length > 0 && <div className="flex flex-wrap gap-2">{result.profile.manifests.map((manifest) => <Badge key={manifest} variant="outline">{manifest}</Badge>)}</div>}</CardContent></Card>
 
       {result.intelligence ? <Card className="border-violet-500/30 bg-[radial-gradient(circle_at_top_right,rgba(139,92,246,.12),transparent_35%),var(--card)]"><CardHeader><div className="flex items-center justify-between gap-3"><CardTitle>Mistral repository intelligence</CardTitle><Badge className="border-violet-500/30 bg-violet-500/10 text-violet-300">AI analysis</Badge></div></CardHeader><CardContent className="space-y-5"><p className="text-sm leading-6">{result.intelligence.summary}</p><div className="grid gap-3 md:grid-cols-2"><Detail label="Architecture" value={result.intelligence.architecture} /><Detail label="Security posture" value={result.intelligence.securityPosture} /></div><div><p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Priorities</p><div className="mt-2 grid gap-2">{result.intelligence.priorities.map((priority) => <div key={priority.title} className="rounded-xl border border-border bg-background/60 p-3"><div className="flex items-center justify-between gap-3"><p className="text-sm font-medium">{priority.title}</p><Badge variant="outline" className="capitalize">{priority.effort} effort</Badge></div><p className="mt-1 text-xs leading-5 text-muted-foreground">{priority.reason}</p></div>)}</div></div>{result.intelligence.observations.length > 0 && <div><p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Observations</p><ul className="mt-2 grid gap-2 text-sm text-muted-foreground md:grid-cols-2">{result.intelligence.observations.map((item) => <li key={item} className="rounded-lg bg-muted/30 p-3">{item}</li>)}</ul></div>}</CardContent></Card> : <Card><CardContent className="p-5"><p className="text-sm font-medium">AI repository intelligence unavailable</p><p className="mt-1 text-xs text-muted-foreground">The static scan completed normally. Configure MISTRAL_API_KEY in production to add bounded architecture and remediation analysis.</p></CardContent></Card>}
 
@@ -204,7 +301,7 @@ export function ScanWorkspace() {
       <div className="grid gap-6 lg:grid-cols-2"><Card><CardHeader><CardTitle>Severity distribution</CardTitle></CardHeader><CardContent className="h-64"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={severityChart} dataKey="value" nameKey="name" innerRadius={48} outerRadius={76} paddingAngle={4}>{severityChart.map((entry) => <Cell key={entry.name} fill={entry.color} />)}</Pie><Tooltip formatter={(value, name) => [value, String(name).toUpperCase()]} contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 8 }} /></PieChart></ResponsiveContainer></CardContent></Card><Card><CardHeader><CardTitle>Largest analyzed files</CardTitle></CardHeader><CardContent className="space-y-2">{result.profile.largestFiles.slice(0, 6).map((file) => <div key={file.path} className="flex items-center justify-between gap-4 rounded-lg border border-border bg-muted/20 p-3"><div className="min-w-0"><p className="truncate text-sm font-medium">{file.path}</p><p className="mt-0.5 text-xs text-muted-foreground">{file.lines.toLocaleString()} lines</p></div><span className="shrink-0 font-mono text-xs text-muted-foreground">{formatBytes(file.bytes)}</span></div>)}</CardContent></Card></div>
 
       <Card><CardHeader><CardTitle>Scan coverage</CardTitle></CardHeader><CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"><Coverage label="Source analysis" value="Assessed" detail={`${result.profile.metrics.scannedFiles.toLocaleString()} supported files`} /><Coverage label="Repository structure" value="Assessed" detail="Tree, languages, manifests, and file sizes" /><Coverage label="Dependency advisories" value="Not assessed" detail="No vulnerability registry comparison" /><Coverage label="Supply chain & licenses" value="Not assessed" detail="No SBOM or license engine" /></CardContent></Card>
-      <SystemDesignOverview result={result.systemDesign} docsHref="/documentation/system-design" />
+      {!isFileResult && <SystemDesignOverview result={result.systemDesign} docsHref="/documentation/system-design" />}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between"><div><h2 className="text-xl font-semibold">Findings</h2><p className="mt-1 text-sm text-muted-foreground">{result.totalFindings === 0 ? "No high-confidence static findings were detected in the supported files." : `${reviewedCount} of ${result.totalFindings} findings triaged. Decisions are synced when you are signed in.`}</p></div><div className="flex flex-wrap gap-2"><Button variant="outline" size="sm" onClick={() => download("votrio-findings.json", JSON.stringify(result, null, 2), "application/json")}><Download /> JSON</Button><Button variant="outline" size="sm" onClick={() => download("votrio-findings.csv", ["severity,category,file,line,type,message", ...result.findings.map((f) => [f.severity, f.category ?? "code", f.file, f.line, f.type, f.message].map(csvCell).join(","))].join("\n"), "text/csv")}><Download /> CSV</Button></div></div>
       <Card><CardContent className="p-4"><div className="grid gap-3 md:grid-cols-[1fr_160px_160px]"><div className="relative"><Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" /><Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search file, rule, or message" className="pl-9" /></div><select value={severity} onChange={(event) => setSeverity(event.target.value as "all" | Severity)} className="h-8 rounded-lg border border-input bg-background px-2 text-sm"><option value="all">All severities</option>{(["critical", "high", "medium", "low"] as Severity[]).map((level) => <option key={level} value={level}>{level} ({counts[level]})</option>)}</select><select value={sort} onChange={(event) => setSort(event.target.value as "severity" | "path")} className="h-8 rounded-lg border border-input bg-background px-2 text-sm"><option value="severity">Sort by severity</option><option value="path">Sort by path</option></select></div></CardContent></Card>
       <div className="space-y-3">
@@ -224,9 +321,23 @@ export function ScanWorkspace() {
       </div>
     </section>}
     {ignoreTarget && <div role="dialog" aria-modal="true" aria-labelledby="ignore-title" className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4"><div className="w-full max-w-md rounded-2xl border border-border bg-card p-5 shadow-2xl"><div className="flex items-start justify-between"><div><h2 id="ignore-title" className="font-semibold">Ignore this finding</h2><p className="mt-1 text-sm text-muted-foreground">A reason is required and will be saved to your finding review history.</p></div><Button variant="ghost" size="icon-sm" aria-label="Close" onClick={() => setIgnoreTarget(null)}><X /></Button></div><Textarea value={ignoreReason} onChange={(event) => setIgnoreReason(event.target.value)} placeholder="Why is this finding acceptable?" className="mt-4" /><div className="mt-4 flex justify-end gap-2"><Button variant="outline" onClick={() => setIgnoreTarget(null)}>Cancel</Button><Button disabled={!ignoreReason.trim()} onClick={() => { setIgnored((current) => new Map(current).set(ignoreTarget, ignoreReason.trim())); void saveFindingStatus(ignoreTarget, "ignored", ignoreReason.trim()); setIgnoreTarget(null); notify("Finding ignored."); }}>Ignore finding</Button></div></div></div>}
+    <AlertDialog open={showGuestLimit} onOpenChange={setShowGuestLimit}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogMedia className="bg-foreground text-background"><ShieldAlert /></AlertDialogMedia>
+          <AlertDialogTitle>Your free scan has already been used</AlertDialogTitle>
+          <AlertDialogDescription>The scan workspace will stay open. Sign in when you are ready to run another scan and save reports to your history.</AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Stay on scan page</AlertDialogCancel>
+          <AlertDialogAction onClick={() => router.push("/auth?next=/scan")}>Sign in to scan again</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   </main>;
 }
 
-function Metric({ title, value, detail }: { title: string; value: string; detail: string }) { return <Card><CardContent className="p-5"><p className="text-sm text-muted-foreground">{title}</p><p className="mt-2 text-3xl font-semibold">{value}</p><p className="mt-1 text-xs text-muted-foreground">{detail}</p></CardContent></Card>; }
-function Coverage({ label, value, detail }: { label: string; value: string; detail: string }) { return <div className="rounded-xl border border-border bg-muted/20 p-4"><p className="text-sm font-medium">{label}</p><p className="mt-3 text-sm text-muted-foreground">{value}</p><p className="mt-1 text-xs text-muted-foreground">{detail}</p></div>; }
+function Metric({ title, value, detail }: { title: string; value: string; detail: string }) { return <Card className="relative border-foreground/10 bg-card shadow-lg"><CardContent className="p-5"><div className="mb-5 h-1 w-10 rounded-full bg-foreground/70" /><p className="text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">{title}</p><p className="mt-2 text-4xl font-semibold tracking-tight text-foreground">{value}</p><p className="mt-2 text-xs text-muted-foreground">{detail}</p></CardContent></Card>; }
+function Coverage({ label, value, detail }: { label: string; value: string; detail: string }) { return <div className="rounded-xl border border-border/70 bg-muted/25 p-4 transition-colors hover:border-foreground/25 hover:bg-muted/50"><p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{label}</p><p className="mt-3 text-base font-semibold">{value}</p><p className="mt-1 text-xs leading-5 text-muted-foreground">{detail}</p></div>; }
 function Detail({ label, value }: { label: string; value: string }) { return <div className="rounded-xl bg-muted/40 p-3"><p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{label}</p><p className="mt-1 whitespace-pre-wrap text-sm leading-6">{value}</p></div>; }
+function Threshold({ value, onChange, disabled }: { value: Severity; onChange: (value: Severity) => void; disabled: boolean }) { return <div><div className="mb-2 flex items-center gap-1.5"><label htmlFor="fail-on" className="text-sm font-medium">Attention threshold</label><HelpTooltip side="bottom">Controls which severity should demand attention first. It does not hide lower-severity findings.</HelpTooltip></div><select id="fail-on" value={value} onChange={(event) => onChange(event.target.value as Severity)} className="h-9 w-full rounded-lg border border-input bg-background px-2 text-sm" disabled={disabled}><option value="critical">Critical</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option></select></div>; }

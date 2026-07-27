@@ -12,13 +12,12 @@ const WINDOW_MS = 60_000;
 const MAX_BUCKETS = 10_000;
 const LIMIT_CACHE_MS = 60_000;
 const protectedPrefixes = [
-  "/billing",
+
   "/dashboard",
   "/onboarding",
   "/partners",
   "/profile",
   "/reports",
-  "/scan",
   "/settings",
   "/teams",
 ];
