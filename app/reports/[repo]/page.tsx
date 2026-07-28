@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { ReportDetailClient } from "../components/ReportDetailClient";
 
 export const metadata: Metadata = {
-  title: "Report - Votrio",
+  title: "Report - Krythiq",
   description: "Detailed repository scan report.",
 };
 

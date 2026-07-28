@@ -23,8 +23,8 @@ export default function ConfigPage() {
           Configuration
         </h2>
         <p className="text-sm text-muted-foreground mb-6">
-          Votrio is zero-config by default, but you can customize its behavior
-          with a <code>votrio.config.mjs</code> file in your project root.
+          Krythiq is zero-config by default, but you can customize its behavior
+          with a <code>krythiq.config.mjs</code> file in your project root.
         </p>
       </div>
 
@@ -34,11 +34,11 @@ export default function ConfigPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Create a <code>votrio.config.mjs</code> file to customize votrio:
+            Create a <code>krythiq.config.mjs</code> file to customize krythiq:
           </p>
           <CodeBlock
-            label="votrio.config.mjs"
-            code={`import { defineConfig } from "votrio";
+            label="krythiq.config.mjs"
+            code={`import { defineConfig } from "krythiq";
 
 export default defineConfig({
   // AI model for trace analysis
@@ -73,8 +73,8 @@ export default defineConfig({
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Control how votrio analyzes stack traces when using{" "}
-            <code>votrio run</code>:
+            Control how krythiq analyzes stack traces when using{" "}
+            <code>krythiq run</code>:
           </p>
 
           <div className="space-y-3">
@@ -131,7 +131,7 @@ export default defineConfig({
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
             Configure security scanning behavior when using{" "}
-            <code>votrio scan</code>:
+            <code>krythiq scan</code>:
           </p>
 
           <div className="space-y-3">
@@ -179,7 +179,7 @@ export default defineConfig({
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Votrio uses Anthropic models for trace analysis. You can override
+            Krythiq uses Anthropic models for trace analysis. You can override
             the default model:
           </p>
 
@@ -203,11 +203,11 @@ export default defineConfig({
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Define custom security rules in <code>.votrio/rules.json</code>:
+            Define custom security rules in <code>.krythiq/rules.json</code>:
           </p>
 
           <CodeBlock
-            label=".votrio/rules.json"
+            label=".krythiq/rules.json"
             code={`{
   "patterns": [
     {
@@ -247,28 +247,28 @@ export default defineConfig({
             <div>
               <code className="text-foreground">ANTHROPIC_API_KEY</code>
               <p className="text-muted-foreground mt-1">
-                Your Anthropic API key (instead of using votrio auth)
+                Your Anthropic API key (instead of using krythiq auth)
               </p>
             </div>
             <div>
-              <code className="text-foreground">VOTRIO_MODEL</code>
+              <code className="text-foreground">KRYTHIQ_MODEL</code>
               <p className="text-muted-foreground mt-1">
                 Override the AI model for trace analysis
               </p>
             </div>
             <div>
-              <code className="text-foreground">VOTRIO_TRACE_MODEL</code>
+              <code className="text-foreground">KRYTHIQ_TRACE_MODEL</code>
               <p className="text-muted-foreground mt-1">
                 Specifically override the trace analysis model (takes precedence
-                over VOTRIO_MODEL)
+                over KRYTHIQ_MODEL)
               </p>
             </div>
           </div>
 
           <CodeBlock
             code={`export ANTHROPIC_API_KEY="sk-ant-..."
-export VOTRIO_MODEL="claude-opus-4-1"
-votrio run "npm start"`}
+export KRYTHIQ_MODEL="claude-opus-4-1"
+krythiq run "npm start"`}
           />
         </CardContent>
       </Card>
@@ -279,8 +279,8 @@ votrio run "npm start"`}
         </CardHeader>
         <CardContent>
           <CodeBlock
-            label="votrio.config.mjs (complete example)"
-            code={`import { defineConfig } from "votrio";
+            label="krythiq.config.mjs (complete example)"
+            code={`import { defineConfig } from "krythiq";
 
 export default defineConfig({
   // Use a specific model
@@ -303,7 +303,7 @@ export default defineConfig({
       "coverage/**",
       "*.lock",
     ],
-    autoFix: false,  // Don't auto-fix unless explicitly running votrio scan --fix
+    autoFix: false,  // Don't auto-fix unless explicitly running krythiq scan --fix
   },
 
   // Code quality

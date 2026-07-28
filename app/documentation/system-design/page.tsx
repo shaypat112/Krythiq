@@ -6,8 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
 export const metadata: Metadata = {
-  title: "System design scenarios - Votrio",
-  description: "How Votrio reflects on scalability, resilience, data growth, multi-region readiness, and cost from repository evidence.",
+  title: "System design scenarios - Krythiq",
+  description: "How Krythiq reflects on scalability, resilience, data growth, multi-region readiness, and cost from repository evidence.",
 };
 
 const scenarios = [
@@ -55,7 +55,7 @@ export default function SystemDesignPage() {
         <Badge variant="outline">Repository reality checks</Badge>
         <h1 className="max-w-3xl text-3xl font-semibold tracking-tight sm:text-5xl">Ship fast without leaving future-you a mystery.</h1>
         <p className="max-w-3xl text-base leading-7 text-muted-foreground">
-          Votrio turns architecture signals already present in a repository into concrete growth scenarios. The goal is not to demand enterprise architecture before launch. It is to show the next safeguard worth shipping before today’s shortcut becomes tomorrow’s outage.
+          Krythiq turns architecture signals already present in a repository into concrete growth scenarios. The goal is not to demand enterprise architecture before launch. It is to show the next safeguard worth shipping before today’s shortcut becomes tomorrow’s outage.
         </p>
         <Button asChild><Link href="/scan">Scan a repository <ArrowRight /></Link></Button>
       </header>
@@ -82,7 +82,7 @@ export default function SystemDesignPage() {
         <CardHeader><CardTitle className="flex items-center gap-2"><TriangleAlert className="h-5 w-5 text-amber-400" /> What the score cannot know</CardTitle></CardHeader>
         <CardContent className="space-y-3 text-sm leading-6 text-muted-foreground">
           <p>The assessment is static repository evidence, not a benchmark or capacity test. It cannot see production traffic, managed-service settings, real data distribution, cloud quotas, team operations, or infrastructure stored elsewhere.</p>
-          <p>A “ready” signal means useful design primitives were found—not that the system is proven at scale. A “risk” means Votrio could not find a safeguard in supported files—not that none exists. Each result includes its evidence and confidence so you can challenge it.</p>
+          <p>A “ready” signal means useful design primitives were found—not that the system is proven at scale. A “risk” means Krythiq could not find a safeguard in supported files—not that none exists. Each result includes its evidence and confidence so you can challenge it.</p>
         </CardContent>
       </Card>
 

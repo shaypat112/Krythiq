@@ -34,6 +34,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { BrandLogo } from "@/app/components/BrandLogo";
 
 type Mode = "sign-in" | "sign-up";
 type PendingAction = "password" | "github" | "resend" | null;
@@ -173,7 +174,7 @@ export default function AuthClient() {
     if (!data.user.email_confirmed_at) {
       await supabase.auth.signOut({ scope: "local" });
       setVerificationEmail(normalizedEmail);
-      setError("Verify your email before accessing Votrio.");
+      setError("Verify your email before accessing Krythiq.");
       setPending(null);
       return;
     }
@@ -251,8 +252,8 @@ export default function AuthClient() {
           <Button asChild variant="ghost" size="sm" className="absolute left-3 top-3 px-2">
             <Link href="/"><ArrowLeft /> Home</Link>
           </Button>
-          <span className="mx-auto grid h-11 w-11 place-items-center rounded-xl border border-border bg-muted font-semibold">V</span>
-          <CardTitle className="pt-2 text-2xl">Welcome to Votrio</CardTitle>
+          <BrandLogo className="mx-auto h-12 w-12 rounded-xl" priority />
+          <CardTitle className="pt-2 text-2xl">Welcome to Krythiq</CardTitle>
           <CardDescription>
             Sign in or create an account to secure your repositories.
           </CardDescription>

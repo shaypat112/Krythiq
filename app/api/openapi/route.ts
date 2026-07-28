@@ -6,7 +6,7 @@ export async function GET() {
   return NextResponse.json({
     openapi: "3.0.3",
     info: {
-      title: "Votrio API",
+      title: "Krythiq API",
       version: "0.2.0",
       description: "Security scanning, settings, and session APIs.",
     },

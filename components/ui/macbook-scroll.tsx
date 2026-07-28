@@ -174,19 +174,20 @@ export const Lid = ({
 };
 
 const CompactMacbook = ({ screen }: { screen?: React.ReactNode }) => (
-  <div className="relative mx-auto w-full max-w-[780px] pb-[11%] [perspective:1100px]">
+  <div className="relative mx-auto w-full max-w-[780px] pb-[8%] [perspective:1100px]">
     <div className="relative z-10 aspect-[16/10] rounded-[1.4rem] border border-white/15 bg-[#08090b] p-[1.25%] shadow-[0_40px_90px_-30px_rgba(0,0,0,.65)] sm:rounded-[1.8rem]">
       <div className="absolute left-1/2 top-[0.65%] z-20 h-[1.7%] w-[9%] -translate-x-1/2 rounded-b-full bg-black" />
       <div className="relative h-full overflow-hidden rounded-[.85rem] bg-[#090d14] sm:rounded-[1.15rem]">{screen}</div>
     </div>
+    <div className="absolute left-1/2 top-[98.4%] z-20 h-[1.8%] w-[96%] -translate-x-1/2 rounded-full bg-gradient-to-b from-[#4c4d50] to-[#151618]" />
     <div
-      className="absolute left-1/2 top-[96.5%] h-[12%] w-[112%] origin-top rounded-b-[1.4rem] bg-gradient-to-b from-[#d8d9dc] via-[#a8aaae] to-[#6c6e72] shadow-[0_26px_35px_-22px_rgba(0,0,0,.7)]"
-      style={{ transform: "translateX(-50%) rotateX(68deg)" }}
+      className="absolute left-1/2 top-[98.8%] h-[13%] w-[108%] origin-top rounded-b-[1.4rem] bg-gradient-to-b from-[#d8d9dc] via-[#a8aaae] to-[#6c6e72] shadow-[0_20px_30px_-20px_rgba(0,0,0,.72)]"
+      style={{ transform: "translateX(-50%) rotateX(66deg)" }}
     >
-      <div className="absolute inset-x-[8%] top-[16%] h-[42%] rounded-md bg-[repeating-linear-gradient(90deg,#111_0_3%,#262626_3.5%_6.5%)] opacity-80" />
+      <div className="absolute inset-x-[8%] top-[12%] h-[43%] rounded-md bg-[repeating-linear-gradient(90deg,#111_0_3%,#262626_3.5%_6.5%)] opacity-80" />
       <div className="absolute bottom-[8%] left-1/2 h-[38%] w-[34%] -translate-x-1/2 rounded-md border border-black/15 bg-white/10" />
     </div>
-    <div className="absolute left-1/2 top-[107.5%] h-[1.2%] w-[116%] -translate-x-1/2 rounded-b-full bg-[#7b7d80]" />
+    <div className="absolute left-1/2 top-[104.5%] h-[1.2%] w-[110%] -translate-x-1/2 rounded-b-full bg-[#7b7d80]" />
   </div>
 );
 

@@ -61,7 +61,7 @@ export function requireRequestAuth(request: Request) {
 }
 
 export function extractSelectedTeamId(request: Request) {
-  const value = request.headers.get("x-votrio-team-id");
+  const value = request.headers.get("x-krythiq-team-id");
   if (!value) return null;
   const normalized = value.trim();
   return normalized.length > 0 ? normalized : null;

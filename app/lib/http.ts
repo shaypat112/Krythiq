@@ -15,6 +15,6 @@ export function buildTeamAuthHeaders(
 ): HeadersInit {
   return {
     ...buildAuthHeaders(accessToken, headers),
-    ...(teamId ? { "x-votrio-team-id": teamId } : {}),
+    ...(teamId ? { "x-krythiq-team-id": teamId } : {}),
   };
 }

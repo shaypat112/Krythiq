@@ -188,6 +188,42 @@
         text-wrap: balance;
     }
 
+    .github-border-glow {
+        animation: github-border-glow-translate 10s ease-in-out infinite alternate;
+    }
+
+    .github-border-scale {
+        animation: github-border-glow-scale 10s ease-in-out infinite alternate;
+    }
+
+    .github-star-rotate {
+        animation: github-star-rotate 14s cubic-bezier(0.68, -0.55, 0.27, 1.55) infinite alternate;
+    }
+
+    .github-star-shine {
+        animation: github-star-shine 14s ease-in-out infinite alternate;
+    }
+
+    @keyframes github-border-glow-translate {
+        from { transform: translateX(-25%); }
+        to { transform: translateX(85%); }
+    }
+
+    @keyframes github-border-glow-scale {
+        from { transform: scaleX(0.8); }
+        to { transform: scaleX(1.7); }
+    }
+
+    @keyframes github-star-rotate {
+        from { transform: rotate(-12deg) scale(0.92); }
+        to { transform: rotate(12deg) scale(1.08); }
+    }
+
+    @keyframes github-star-shine {
+        from { transform: translate(-50%, -50%) scale(0.75); opacity: 0.1; }
+        to { transform: translate(-50%, -50%) scale(1.2); opacity: 0.35; }
+    }
+
     @media (prefers-reduced-motion: reduce) {
         *, *::before, *::after {
             scroll-behavior: auto !important;

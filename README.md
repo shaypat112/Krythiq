@@ -1,8 +1,8 @@
-# Votrio
+# Krythiq
 
-Votrio is a code intelligence and application security platform for reviewing GitHub repositories. It combines fast static checks with optional AI-generated repository context, then presents findings, architecture notes, remediation priorities, and scan history in a team-oriented web dashboard.
+Krythiq is a code intelligence and application security platform for reviewing GitHub repositories. It combines fast static checks with optional AI-generated repository context, then presents findings, architecture notes, remediation priorities, and scan history in a team-oriented web dashboard.
 
-The repository also contains the publishable `votrio` CLI, which scans local projects and analyzes terminal failures without requiring the web application.
+The repository also contains the publishable `krythiq` CLI, which scans local projects and analyzes terminal failures without requiring the web application.
 
 ## What it does
 
@@ -17,7 +17,7 @@ The repository also contains the publishable `votrio` CLI, which scans local pro
 
 ## Architecture
 
-Votrio is split into two applications that share the same product domain but run independently:
+Krythiq is split into two applications that share the same product domain but run independently:
 
 ```text
 ┌──────────────────────────────── Web platform ────────────────────────────────┐
@@ -36,8 +36,8 @@ Votrio is split into two applications that share the same product domain but run
 
 ┌──────────────────────────────── Local CLI ──────────────────────────────────┐
 │                                                                             │
-│  votrio scan ──► file discovery ──► custom rules + Semgrep + npm audit      │
-│  votrio run  ──► wrapped process ──► trace extraction ──► Anthropic         │
+│  krythiq scan ──► file discovery ──► custom rules + Semgrep + npm audit      │
+│  krythiq run  ──► wrapped process ──► trace extraction ──► Anthropic         │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -137,10 +137,9 @@ STRIPE_WEBHOOK_SECRET=
 STRIPE_PRICE_PRO=
 STRIPE_PRICE_TEAM=
 
-# Email and waitlist notifications
+# Email notifications
 RESEND_API_KEY=
 RESEND_FROM_EMAIL=
-WAITLIST_NOTIFY_EMAIL=
 
 # Privileged server operations
 SUPABASE_SERVICE_ROLE_KEY=
@@ -176,10 +175,10 @@ node dist/index.js --help
 Common workflows:
 
 ```bash
-votrio init
-votrio scan
-votrio scan --ci --fail-on high --format sarif
-votrio run "npm test"
+krythiq init
+krythiq scan
+krythiq scan --ci --fail-on high --format sarif
+krythiq run "npm test"
 ```
 
 The base local scan does not send source code to an AI provider. AI-assisted scan summaries require an explicit `--ai` option and Mistral credentials. Terminal trace analysis uses Anthropic unless it is disabled with `--no-ai`.

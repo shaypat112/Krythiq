@@ -6,7 +6,7 @@ import { Tooltip } from "@/components/ui/tooltip-card";
 
 // NOTE: Swap the name, title, and initials below for your actual founder details.
 const FOUNDER_NAME = "Shivang patel";
-const FOUNDER_TITLE = "Founder, Votrio";
+const FOUNDER_TITLE = "Founder, Krythiq";
 const FOUNDER_INITIALS = "SP";
 
 export function Founder() {
@@ -35,14 +35,14 @@ export function Founder() {
             about it.
           </p>
           <p>
-            <span className="text-foreground">We started Votrio because that gap is only going to widen.</span>{" "}
+            <span className="text-foreground">We started Krythiq because that gap is only going to widen.</span>{" "}
             The teams moving fastest right now are also the most exposed, and
             most of them don&apos;t know it yet — not because they&apos;re
             careless, but because nothing built for the old pace of shipping
             can keep up with the new one.
           </p>
           <p>
-            Votrio exists so that {" "}
+            Krythiq exists so that {" "}
             <Tooltip content="Short feedback loops, automated checks, and fixes that fit the way modern teams already ship." containerClassName="text-foreground">
               <span className="cursor-help border-b border-dashed border-foreground/40 font-medium">shipping fast</span>
             </Tooltip>{" "}

@@ -77,7 +77,7 @@ export function WebhooksSection() {
           onChange={(e) => update("webhookSecret", e.target.value)}
           placeholder="Shared secret used to verify deliveries"
         />
-        <p className="mt-2 text-xs text-muted-foreground">Deliveries include an HMAC SHA-256 value in the <code>x-votrio-signature</code> header when this is set.</p>
+        <p className="mt-2 text-xs text-muted-foreground">Deliveries include an HMAC SHA-256 value in the <code>x-krythiq-signature</code> header when this is set.</p>
       </FieldGroup>
 
       <FieldGroup label="Events">

@@ -1,5 +1,5 @@
 export const notificationChannels = [
-  { id: "in_app", label: "In-app", description: "Notification center inside Votrio", available: true },
+  { id: "in_app", label: "In-app", description: "Notification center inside Krythiq", available: true },
   { id: "email", label: "Email", description: "Account email delivery", available: Boolean(process.env.RESEND_API_KEY) },
   { id: "webhook", label: "Webhook", description: "Signed HTTPS deliveries", available: true },
   { id: "slack", label: "Slack", description: "Selected Slack channel", available: false },

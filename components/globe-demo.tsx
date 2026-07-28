@@ -67,7 +67,7 @@ export default function GlobeDemo({
   return (
     <div
       className="relative h-[22rem] w-full overflow-hidden rounded-[2rem] border border-border/70 bg-[radial-gradient(circle_at_center,rgba(99,102,241,.16),transparent_58%)] sm:h-[30rem]"
-      aria-label="Interactive globe showing Votrio partner connections"
+      aria-label="Interactive globe showing Krythiq partner connections"
       role="img"
     >
       <World arcs={visibleArcs} locations={visibleLocations} />

@@ -13,12 +13,12 @@ type Line = {
   severity: Severity;
 };
 
-const PROMPT = "guest@votrio:~/project$";
+const PROMPT = "guest@krythiq:~/project$";
 
 const COMMANDS = [
-  "votrio init",
-  "votrio scan --sandbox",
-  "votrio fix --generate",
+  "krythiq init",
+  "krythiq scan --sandbox",
+  "krythiq fix --generate",
   "help",
   "clear",
   "whoami",
@@ -92,9 +92,9 @@ export function ScanTerminal() {
       if (normalized === "help") {
         await printLines([
           { text: "Available commands:", delay: 150 },
-          { text: "  votrio init            set up Votrio in this repository", delay: 90 },
-          { text: "  votrio scan --sandbox  run a full security scan", delay: 90 },
-          { text: "  votrio fix --generate  generate patches for found issues", delay: 90 },
+          { text: "  krythiq init            set up Krythiq in this repository", delay: 90 },
+          { text: "  krythiq scan --sandbox  run a full security scan", delay: 90 },
+          { text: "  krythiq fix --generate  generate patches for found issues", delay: 90 },
           { text: "  whoami                 show the current session", delay: 90 },
           { text: "  clear                  clear the terminal", delay: 90 },
         ]);
@@ -107,36 +107,36 @@ export function ScanTerminal() {
       }
 
       if (normalized === "whoami") {
-        await printLines([{ text: "guest @ votrio-sandbox (read-only scan)", delay: 200 }]);
+        await printLines([{ text: "guest @ krythiq-sandbox (read-only scan)", delay: 200 }]);
         return;
       }
 
-      if (normalized === "votrio init") {
+      if (normalized === "krythiq init") {
         await printLines([
-          { text: "Initializing Votrio in ~/project", severity: "info", delay: 300 },
+          { text: "Initializing Krythiq in ~/project", severity: "info", delay: 300 },
           { text: "Detected framework: Next.js, TypeScript", severity: "info", delay: 500 },
-          { text: "Creating .votrio/config.yml", severity: "info", delay: 450 },
-          { text: "✓ Ready — run `votrio scan --sandbox` to analyze this repository", severity: "success", delay: 500 },
+          { text: "Creating .krythiq/config.yml", severity: "info", delay: 450 },
+          { text: "✓ Ready — run `krythiq scan --sandbox` to analyze this repository", severity: "success", delay: 500 },
         ]);
         return;
       }
 
-      if (normalized.startsWith("votrio scan")) {
+      if (normalized.startsWith("krythiq scan")) {
         await printLines([
           { text: "Preparing isolated sandbox…", severity: "info", delay: 300 },
           { text: "Tracing dependency graph across 214 files…", severity: "info", delay: 700 },
           { text: "● HIGH — Privilege escalation via admin token fallback", severity: "high", delay: 650 },
           { text: "● MEDIUM — Unsanitized SQL builder reachable from support tools", severity: "medium", delay: 500 },
           { text: "● LOW — Webhook retry logic leaks internal error detail", severity: "low", delay: 500 },
-          { text: "3 findings ranked by exploitability. Run `votrio fix --generate` to patch.", delay: 550 },
+          { text: "3 findings ranked by exploitability. Run `krythiq fix --generate` to patch.", delay: 550 },
         ]);
         scannedRef.current = true;
         return;
       }
 
-      if (normalized.startsWith("votrio fix")) {
+      if (normalized.startsWith("krythiq fix")) {
         if (!scannedRef.current) {
-          await printLines([{ text: "No findings yet — run `votrio scan --sandbox` first.", severity: "error", delay: 250 }]);
+          await printLines([{ text: "No findings yet — run `krythiq scan --sandbox` first.", severity: "error", delay: 250 }]);
           return;
         }
         await printLines([
@@ -147,7 +147,7 @@ export function ScanTerminal() {
         return;
       }
 
-      if (normalized.startsWith("votrio")) {
+      if (normalized.startsWith("krythiq")) {
         await printLines([{ text: "unknown subcommand — try `help`", severity: "error", delay: 200 }]);
         return;
       }
@@ -180,14 +180,14 @@ export function ScanTerminal() {
     historyRef.current = [];
     historyIndexRef.current = 0;
 
-    push("Votrio CLI v1.2.0 — type `help` to see available commands", "output", "muted");
+    push("Krythiq CLI v1.2.0 — type `help` to see available commands", "output", "muted");
     await sleep(500);
     if (cancelledRef.current) return;
-    await typeIntoInput("votrio init");
+    await typeIntoInput("krythiq init");
     if (cancelledRef.current) return;
     await sleep(450);
     if (cancelledRef.current) return;
-    await typeIntoInput("votrio scan --sandbox");
+    await typeIntoInput("krythiq scan --sandbox");
     if (cancelledRef.current) return;
 
     setBusyBoth(false);
@@ -300,7 +300,7 @@ export function ScanTerminal() {
             autoCorrect="off"
             autoCapitalize="off"
             className="min-w-0 flex-1 bg-transparent text-foreground caret-amber-400 outline-none disabled:opacity-70"
-            aria-label="Votrio terminal input"
+            aria-label="Krythiq terminal input"
           />
         </div>
         <div ref={bottomRef} />
@@ -308,7 +308,7 @@ export function ScanTerminal() {
 
       {!busy && (
         <p className="mt-2 text-[10px] text-muted-foreground/70">
-          ↑ / ↓ history · Tab to autocomplete · try &quot;votrio scan --sandbox&quot;
+          ↑ / ↓ history · Tab to autocomplete · try &quot;krythiq scan --sandbox&quot;
         </p>
       )}
     </div>

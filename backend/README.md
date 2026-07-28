@@ -1,46 +1,46 @@
-# Votrio CLI
+# Krythiq CLI
 
 Security scanning and terminal trace analysis from your command line.
 
-Votrio scans source code locally, reports risky patterns in multiple formats, can fail CI at a configured severity, and optionally adds AI-assisted explanations using your own API credentials.
+Krythiq scans source code locally, reports risky patterns in multiple formats, can fail CI at a configured severity, and optionally adds AI-assisted explanations using your own API credentials.
 
 ## Install
 
 ```bash
-npm install --global votrio
+npm install --global krythiq
 ```
 
 
-Votrio requires Node.js 18 or newer.
+Krythiq requires Node.js 18 or newer.
 
 ## Quick start
 
 ```bash
 cd your-project
-votrio init
-votrio scan
+krythiq init
+krythiq scan
 ```
 
-Run `votrio --help` or `votrio scan --help` for the complete command reference.
+Run `krythiq --help` or `krythiq scan --help` for the complete command reference.
 
 ## Security scanning
 
 ```bash
 # Scan the current directory
-votrio scan
+krythiq scan
 
 # Scan another path
-votrio scan ./src
+krythiq scan ./src
 
 # Produce machine-readable output
-votrio scan --format json
-votrio scan --format sarif
+krythiq scan --format json
+krythiq scan --format sarif
 
 # Fail CI when high or critical findings are present
-votrio scan --ci --fail-on high
+krythiq scan --ci --fail-on high
 
 # Add project-specific ignore patterns
-votrio scan --ignore "generated/**" "fixtures/**"
+krythiq scan --ignore "generated/**" "fixtures/**"
 ```
 
 The scanner supports TypeScript, JavaScript, Python, Go, Rust, Java, C#, and PHP source files. Default exclusions include dependencies, Git metadata, generated builds, minified JavaScript, and common coverage directories.
@@ -65,15 +65,15 @@ on:
     branches: [main]
 
 jobs:
-  votrio:
+  krythiq:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - run: npm install --global votrio
-      - run: votrio scan --ci --fail-on high --format sarif
+      - run: npm install --global krythiq
+      - run: krythiq scan --ci --fail-on high --format sarif
 ```
 
 ## AI-assisted scanning
@@ -82,13 +82,13 @@ Set a Mistral API key and opt in for AI-assisted remediation summaries:
 
 ```bash
 export MISTRAL_API_KEY="your-key"
-votrio scan --ai
+krythiq scan --ai
 ```
 
-Choose a model with `--ai-model` or `VOTRIO_SCAN_AI_MODEL`:
+Choose a model with `--ai-model` or `KRYTHIQ_SCAN_AI_MODEL`:
 
 ```bash
-votrio scan --ai --ai-model mistral-large-latest
+krythiq scan --ai --ai-model mistral-large-latest
 ```
 
 ## Terminal trace analysis
@@ -96,28 +96,28 @@ votrio scan --ai --ai-model mistral-large-latest
 Wrap a development command to analyze terminal failures:
 
 ```bash
-votrio auth
-votrio run "npm start"
+krythiq auth
+krythiq run "npm start"
 ```
 
-`votrio auth` stores the Anthropic key in the operating system's local configuration store. You can also provide `ANTHROPIC_API_KEY` directly. Remove stored credentials with:
+`krythiq auth` stores the Anthropic key in the operating system's local configuration store. You can also provide `ANTHROPIC_API_KEY` directly. Remove stored credentials with:
 
 ```bash
-votrio auth --clear
+krythiq auth --clear
 ```
 
 Disable AI while preserving command output:
 
 ```bash
-votrio run "npm test" --no-ai
+krythiq run "npm test" --no-ai
 ```
 
 ## Configuration
 
-`votrio init` creates `votrio.config.ts` in the current project:
+`krythiq init` creates `krythiq.config.ts` in the current project:
 
 ```ts
-import { defineConfig } from "votrio";
+import { defineConfig } from "krythiq";
 
 export default defineConfig({
   traces: {
@@ -138,7 +138,7 @@ Command-line options override project configuration.
 
 ## Custom rules
 
-Pass a JSON rules file with `--rules` or place it at `.votrio/rules.json`:
+Pass a JSON rules file with `--rules` or place it at `.krythiq/rules.json`:
 
 ```json
 {
@@ -157,13 +157,13 @@ Pass a JSON rules file with `--rules` or place it at `.votrio/rules.json`:
 
 ## Publishing scan summaries
 
-Votrio can publish an authenticated scan summary to a Supabase `scan_history` table:
+Krythiq can publish an authenticated scan summary to a Supabase `scan_history` table:
 
 ```bash
 export SUPABASE_URL="https://your-project.supabase.co"
 export SUPABASE_ANON_KEY="your-anon-key"
 export SUPABASE_ACCESS_TOKEN="signed-in-user-jwt"
-votrio scan --publish
+krythiq scan --publish
 ```
 
 The access token must be a user session JWT accepted by the table's Row Level Security policy. Source file contents and credentials are not included in the published summary.
@@ -172,10 +172,10 @@ The access token must be a user session JWT accepted by the table's Row Level Se
 
 | Command | Description |
 | --- | --- |
-| `votrio init` | Create project configuration and update `.gitignore` |
-| `votrio scan [path]` | Scan a directory for security findings |
-| `votrio run "<command>"` | Run a process with terminal trace analysis |
-| `votrio auth` | Configure or clear the Anthropic credential |
+| `krythiq init` | Create project configuration and update `.gitignore` |
+| `krythiq scan [path]` | Scan a directory for security findings |
+| `krythiq run "<command>"` | Run a process with terminal trace analysis |
+| `krythiq auth` | Configure or clear the Anthropic credential |
 
 Important scan options:
 

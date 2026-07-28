@@ -22,7 +22,7 @@ type TeamContextValue = {
 };
 
 const TeamContext = createContext<TeamContextValue | undefined>(undefined);
-const SELECTED_TEAM_STORAGE_KEY = "votrio-selected-team";
+const SELECTED_TEAM_STORAGE_KEY = "krythiq-selected-team";
 const PERSONAL_WORKSPACE_VALUE = "__personal__";
 
 export function TeamProvider({ children }: { children: React.ReactNode }) {
@@ -95,10 +95,10 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
     };
 
     load();
-    window.addEventListener("votrio:teams-changed", load);
+    window.addEventListener("krythiq:teams-changed", load);
     return () => {
       mounted = false;
-      window.removeEventListener("votrio:teams-changed", load);
+      window.removeEventListener("krythiq:teams-changed", load);
     };
   }, [supabase]);
 

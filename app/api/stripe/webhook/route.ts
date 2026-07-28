@@ -35,7 +35,7 @@ export async function POST(request: Request) {
 
   const updateBilling = async (payload: Record<string, unknown>) => {
     if (!adminHeaders) throw new Error("Supabase service role is not configured.");
-    if (!payload.user_id) throw new Error("Stripe customer is missing a Votrio user identifier.");
+    if (!payload.user_id) throw new Error("Stripe customer is missing a Krythiq user identifier.");
     const response = await fetch(`${env.url}/rest/v1/billing_customers?on_conflict=user_id`, {
       method: "POST",
       headers: {

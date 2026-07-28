@@ -82,8 +82,8 @@ export async function deliverWebhooks(
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "User-Agent": "votrio-webhooks",
-          ...(endpoint.secret ? { "x-votrio-signature": createHmac("sha256", endpoint.secret).update(serializedPayload).digest("hex") } : {}),
+          "User-Agent": "krythiq-webhooks",
+          ...(endpoint.secret ? { "x-krythiq-signature": createHmac("sha256", endpoint.secret).update(serializedPayload).digest("hex") } : {}),
         },
         body: serializedPayload,
       });
@@ -164,8 +164,8 @@ export async function retryDeliveries(
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "User-Agent": "votrio-webhooks",
-          ...(endpoint.secret ? { "x-votrio-signature": createHmac("sha256", endpoint.secret).update(serializedPayload).digest("hex") } : {}),
+          "User-Agent": "krythiq-webhooks",
+          ...(endpoint.secret ? { "x-krythiq-signature": createHmac("sha256", endpoint.secret).update(serializedPayload).digest("hex") } : {}),
         },
         body: serializedPayload,
       });

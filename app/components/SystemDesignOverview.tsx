@@ -98,7 +98,7 @@ export function SystemDesignOverview({ result, docsHref }: { result: SystemDesig
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2"><p className="text-sm font-semibold">{shortLabels[scenario.id] ?? scenario.title}</p><Badge variant="outline"><Icon className="h-3 w-3" />{meta.label}</Badge></div>
                         <p className="mt-2 text-sm leading-6">{scenario.nextStep}</p>
-                        <details className="mt-2 text-xs text-muted-foreground"><summary className="cursor-pointer">Why Votrio suggested this</summary><p className="mt-2 leading-5">{scenario.reflection}</p></details>
+                        <details className="mt-2 text-xs text-muted-foreground"><summary className="cursor-pointer">Why Krythiq suggested this</summary><p className="mt-2 leading-5">{scenario.reflection}</p></details>
                       </div>
                     </div>
                   </li>

@@ -25,7 +25,7 @@ export default function StackTraces() {
           Live Trace Analysis
         </h2>
         <p className="text-sm text-muted-foreground">
-          Votrio intercepts stack traces in real-time as your process runs and
+          Krythiq intercepts stack traces in real-time as your process runs and
           explains the root cause with AI analysis — all directly in your
           terminal.
         </p>
@@ -40,7 +40,7 @@ export default function StackTraces() {
         </CardHeader>
         <CardDescription className="px-6 pb-6 space-y-4">
           <p className="text-sm text-muted-foreground">
-            When you run <code>votrio run "your-command"</code>, votrio:
+            When you run <code>krythiq run "your-command"</code>, krythiq:
           </p>
           <ol className="space-y-3 text-sm text-muted-foreground list-decimal list-inside">
             <li>Spawns your process and captures all stderr output</li>
@@ -60,17 +60,17 @@ export default function StackTraces() {
         </CardHeader>
         <CardDescription className="px-6 pb-6 space-y-4">
           <p className="text-sm text-muted-foreground">
-            Start by wrapping any process with votrio:
+            Start by wrapping any process with krythiq:
           </p>
-          <CodeBlock code={`votrio run "npm start"`} />
+          <CodeBlock code={`krythiq run "npm start"`} />
           <p className="text-sm text-muted-foreground">
             When an error occurs, you'll see:
           </p>
           <CodeBlock
             label="Example output"
-            code={`$ votrio run "npm start"
+            code={`$ krythiq run "npm start"
 
-● votrio watching — node v20.11.0
+● krythiq watching — node v20.11.0
 ● AI trace analysis enabled
 
   > myapp@1.0.0 start
@@ -83,7 +83,7 @@ TypeError: Cannot read properties of undefined (reading 'id')
     at Layer.handle [as handle_request] (/node_modules/express/lib/router/layer.js:95:16)
 
 ──────────────────────────────────────────────────────────────────
-● votrio — trace analysis
+● krythiq — trace analysis
 
   Root cause: req.user is undefined because the authentication middleware
              didn't run before this route handler.
@@ -107,7 +107,7 @@ TypeError: Cannot read properties of undefined (reading 'id')
         </CardHeader>
         <CardDescription className="px-6 pb-6 space-y-4">
           <p className="text-sm text-muted-foreground">
-            Votrio can analyze stack traces from:
+            Krythiq can analyze stack traces from:
           </p>
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
@@ -159,10 +159,10 @@ TypeError: Cannot read properties of undefined (reading 'id')
             <div>
               <code className="text-foreground">--no-ai</code>
               <p className="text-xs text-muted-foreground mt-1">
-                Disable AI analysis. Votrio will just pipe output through
+                Disable AI analysis. Krythiq will just pipe output through
                 without analyzing traces.
               </p>
-              <CodeBlock code={`votrio run --no-ai "npm start"`} />
+              <CodeBlock code={`krythiq run --no-ai "npm start"`} />
             </div>
 
             <div>
@@ -172,17 +172,17 @@ TypeError: Cannot read properties of undefined (reading 'id')
                 <code>claude-sonnet-4-20250514</code>)
               </p>
               <CodeBlock
-                code={`votrio run --model claude-opus-4-1 "npm start"`}
+                code={`krythiq run --model claude-opus-4-1 "npm start"`}
               />
             </div>
 
             <div>
               <code className="text-foreground">--verbose</code>
               <p className="text-xs text-muted-foreground mt-1">
-                Show debug information from votrio itself (useful for
+                Show debug information from krythiq itself (useful for
                 troubleshooting)
               </p>
-              <CodeBlock code={`votrio run --verbose "npm start"`} />
+              <CodeBlock code={`krythiq run --verbose "npm start"`} />
             </div>
           </div>
         </CardDescription>
@@ -194,7 +194,7 @@ TypeError: Cannot read properties of undefined (reading 'id')
         </CardHeader>
         <CardDescription className="px-6 pb-6 space-y-4">
           <p className="text-sm text-muted-foreground">
-            Control trace analysis behavior via <code>votrio.config.mjs</code>:
+            Control trace analysis behavior via <code>krythiq.config.mjs</code>:
           </p>
           <CodeBlock
             code={`export default defineConfig({
@@ -229,7 +229,7 @@ TypeError: Cannot read properties of undefined (reading 'id')
         </CardHeader>
         <CardDescription className="px-6 pb-6 space-y-4">
           <p className="text-sm text-muted-foreground">
-            Votrio recognizes and explains patterns like:
+            Krythiq recognizes and explains patterns like:
           </p>
           <ul className="space-y-2 text-sm text-muted-foreground list-disc list-inside">
             <li>Null/undefined reference errors</li>
@@ -252,10 +252,10 @@ TypeError: Cannot read properties of undefined (reading 'id')
           <ul className="space-y-2 text-sm text-muted-foreground list-disc list-inside">
             <li>
               <strong>Anthropic API Key:</strong> Run{" "}
-              <code>votrio auth</code> to configure
+              <code>krythiq auth</code> to configure
             </li>
             <li>
-              <strong>Node.js 18+:</strong> Votrio itself requires Node 18 or
+              <strong>Node.js 18+:</strong> Krythiq itself requires Node 18 or
               later
             </li>
             <li>
@@ -278,7 +278,7 @@ TypeError: Cannot read properties of undefined (reading 'id')
               </h4>
               <p className="text-xs text-muted-foreground mt-1">
                 Make sure traces are enabled in your config and your API key is
-                set: <code>votrio auth</code>
+                set: <code>krythiq auth</code>
               </p>
             </div>
 
@@ -298,7 +298,7 @@ TypeError: Cannot read properties of undefined (reading 'id')
                 Running out of API quota?
               </h4>
               <p className="text-xs text-muted-foreground mt-1">
-                Use <code>votrio run --no-ai</code> to disable AI features, or
+                Use <code>krythiq run --no-ai</code> to disable AI features, or
                 run with <code>--verbose</code> to see API usage
               </p>
             </div>

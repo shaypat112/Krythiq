@@ -96,7 +96,7 @@ export function IntegrationsSection() {
 
   return (
     <div className="space-y-6">
-      <header><p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Workspace</p><h1 className="mt-2 text-2xl font-semibold">Integrations</h1><p className="mt-2 text-sm leading-6 text-muted-foreground">Connect only what your team uses. Votrio shows unavailable adapters honestly and never asks for credentials before a provider is production-ready.</p></header>
+      <header><p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Workspace</p><h1 className="mt-2 text-2xl font-semibold">Integrations</h1><p className="mt-2 text-sm leading-6 text-muted-foreground">Connect only what your team uses. Krythiq shows unavailable adapters honestly and never asks for credentials before a provider is production-ready.</p></header>
       {error ? <div role="alert" className="rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-500">{error}</div> : null}
       {categories.map((category) => (
         <section key={category} aria-labelledby={`category-${category}`}>

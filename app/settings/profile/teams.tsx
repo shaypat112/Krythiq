@@ -338,7 +338,7 @@ export function TeamsSection() {
 
     setDeleteTarget(null);
     if (workspaceTeamId === deletingId) setWorkspaceTeamId(null);
-    window.dispatchEvent(new Event("votrio:teams-changed"));
+    window.dispatchEvent(new Event("krythiq:teams-changed"));
     await loadTeams(accessToken);
     toast.success(`${deletingName} was deleted.`);
   };
@@ -466,7 +466,7 @@ export function TeamsSection() {
                     </div>
                   ) : null}
                 </FieldGroup>
-                <FieldGroup label="Add existing Votrio user">
+                <FieldGroup label="Add existing Krythiq user">
                   <div className="flex gap-2">
                     <div className="flex-1">
                       <Select

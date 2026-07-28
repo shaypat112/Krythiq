@@ -1,8 +1,8 @@
-# Votrio-Scan Architecture
+# Krythiq-Scan Architecture
 
 ## Overview
 
-Votrio-Scan is a production-grade AI-powered repository analysis tool that produces comprehensive risk reports including code likelihood scores, architectural risks, scalability issues, security vulnerabilities, and maintainability metrics.
+Krythiq-Scan is a production-grade AI-powered repository analysis tool that produces comprehensive risk reports including code likelihood scores, architectural risks, scalability issues, security vulnerabilities, and maintainability metrics.
 
 ## Architecture Diagram
 
@@ -18,7 +18,7 @@ Votrio-Scan is a production-grade AI-powered repository analysis tool that produ
 ┌─────────────────────────────────────────────────────────────────┐
 │                      Core Orchestrator                          │
 │  ┌──────────────────────────────────────────────────────────┐   │
-│  │           VotrioScanner (Main Coordinator)               │   │
+│  │           KrythiqScanner (Main Coordinator)               │   │
 │  └──────────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────────┘
                               │

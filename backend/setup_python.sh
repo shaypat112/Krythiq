@@ -5,7 +5,7 @@
 
 set -e
 
-echo "🐍 Setting up Python AI service for Votrio..."
+echo "🐍 Setting up Python AI service for Krythiq..."
 echo ""
 
 # Check if Python 3 is installed

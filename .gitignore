@@ -70,8 +70,8 @@ __pycache__/
 .mypy_cache/
 .ruff_cache/
 
-# local Votrio state
-.votrio/
+# local Krythiq state
+.krythiq/
 
 # local database and Supabase state
 /db/

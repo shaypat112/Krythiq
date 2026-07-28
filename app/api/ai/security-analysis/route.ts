@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 const MISTRAL_API_KEY = process.env.MISTRAL_API_KEY;
 
 const SYSTEM_PROMPTS = {
-  SECURITY_ANALYST: `You are a senior Security Engineer at Votrio specializing in vulnerability detection and exploit simulation.
+  SECURITY_ANALYST: `You are a senior Security Engineer at Krythiq specializing in vulnerability detection and exploit simulation.
 Your task is to analyze code for security vulnerabilities and provide:
 - Vulnerability identification with CWE/CVE references
 - Exploitability assessment

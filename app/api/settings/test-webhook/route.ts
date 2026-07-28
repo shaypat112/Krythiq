@@ -28,7 +28,7 @@ export async function POST(request: Request) {
       event: "webhook.test",
       user_id: userId,
       status: "ok",
-      message: "Votrio webhook test delivery",
+      message: "Krythiq webhook test delivery",
       created_at: new Date().toISOString(),
     };
 
@@ -37,8 +37,8 @@ export async function POST(request: Request) {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "User-Agent": "votrio-webhooks",
-        ...(typeof webhookSecret === "string" && webhookSecret.length > 0 ? { "x-votrio-signature": createHmac("sha256", webhookSecret).update(serializedPayload).digest("hex") } : {}),
+        "User-Agent": "krythiq-webhooks",
+        ...(typeof webhookSecret === "string" && webhookSecret.length > 0 ? { "x-krythiq-signature": createHmac("sha256", webhookSecret).update(serializedPayload).digest("hex") } : {}),
       },
       body: serializedPayload,
     });

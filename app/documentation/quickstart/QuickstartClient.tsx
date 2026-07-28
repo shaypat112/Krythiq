@@ -110,42 +110,42 @@ const steps = [
     number: 1,
     title: "Initialize your project",
     description:
-      "Run this in your project root. Votrio creates a config file and detects your stack.",
-    cmd: "votrio init",
+      "Run this in your project root. Krythiq creates a config file and detects your stack.",
+    cmd: "krythiq init",
     output: `→ Detecting project stack...
 ✓ Node.js / TypeScript detected
-✓ Created votrio.config.ts
-✓ Added .votrio/ to .gitignore
+✓ Created krythiq.config.ts
+✓ Added .krythiq/ to .gitignore
 
-Ready. Run: votrio run "npm start"`,
+Ready. Run: krythiq run "npm start"`,
     tip: null,
   },
   {
     number: 2,
     title: "Wrap your start command",
     description:
-      "Replace your usual start command with votrio run. It pipes your process output through the AI analyzer.",
-    cmd: `votrio run "npm start"`,
-    output: `● votrio watching - node v20.11.0
+      "Replace your usual start command with krythiq run. It pipes your process output through the AI analyzer.",
+    cmd: `krythiq run "npm start"`,
+    output: `● krythiq watching - node v20.11.0
 ● Intercepting stderr + uncaught exceptions
 
   > myapp@1.0.0 start
   > node index.js
 
 Server listening on :3000`,
-    tip: 'Works with any process: votrio run "python app.py", votrio run "go run .", etc.',
+    tip: 'Works with any process: krythiq run "python app.py", krythiq run "go run .", etc.',
   },
   {
     number: 3,
     title: "See AI debug output on an error",
     description:
-      "When an error occurs, Votrio intercepts it and streams an AI explanation directly in your terminal.",
+      "When an error occurs, Krythiq intercepts it and streams an AI explanation directly in your terminal.",
     cmd: null,
     output: `TypeError: Cannot read properties of undefined (reading 'id')
     at /src/routes/user.ts:42:18
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-● votrio - trace analysis
+● krythiq - trace analysis
 
   Root cause: req.user is undefined because the
   auth middleware isn't applied to this route.
@@ -163,7 +163,7 @@ Server listening on :3000`,
     title: "Run a security scan",
     description:
       "Scan your codebase for vulnerabilities at any time with a single command.",
-    cmd: "votrio scan",
+    cmd: "krythiq scan",
     output: `● Scanning 1,204 files...
 
 ✓ No hardcoded secrets found
@@ -174,8 +174,8 @@ Server listening on :3000`,
 2 low-severity warnings
 0 critical issues
 
-Run: votrio scan --fix   to auto-patch`,
-    tip: "Add votrio scan to your CI pipeline with votrio scan --ci --fail-on=high",
+Run: krythiq scan --fix   to auto-patch`,
+    tip: "Add krythiq scan to your CI pipeline with krythiq scan --ci --fail-on=high",
   },
 ];
 
@@ -292,7 +292,7 @@ export default function QuickStartPage() {
             {
               href: "/documentation/stack-traces",
               title: "Stack Trace Analysis",
-              desc: "Customize how Votrio explains errors",
+              desc: "Customize how Krythiq explains errors",
             },
             {
               href: "/documentation/security",
@@ -302,7 +302,7 @@ export default function QuickStartPage() {
             {
               href: "/documentation/config",
               title: "Configuration",
-              desc: "votrio.config.ts reference",
+              desc: "krythiq.config.ts reference",
             },
             {
               href: "/documentation/cli-reference",

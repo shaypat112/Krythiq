@@ -19,6 +19,8 @@ import {
 import { Bell, ChevronDown, CreditCard } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { DesktopRequired } from "./mobile/DesktopRequired";
+import { BrandLogo } from "./BrandLogo";
+import { SiteFooter } from "./SiteFooter";
 
 const appLinks = [
   { href: "/scan", label: "Security workspace" },
@@ -154,7 +156,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     pathname?.startsWith("/landing-page") ||
     pathname?.startsWith("/auth");
   const isPublicRoute =
-    isMarketingRoute || pathname?.startsWith("/documentation");
+    isMarketingRoute || pathname?.startsWith("/documentation") || pathname === "/privacy" || pathname === "/terms";
 
   const getNotificationLabel = (item: (typeof notifications)[number]) => {
     const repoName = item.data?.["repo_name"];
@@ -217,6 +219,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     return (
       <div className="min-h-screen bg-background text-foreground transition-colors">
         <main>{children}</main>
+        <SiteFooter />
       </div>
     );
   }
@@ -246,6 +249,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         <div className="mx-auto max-w-[1600px] px-4 py-3 sm:px-6">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex min-w-0 flex-1 items-center gap-2">
+              <Link href="/scan" aria-label="Krythiq security workspace" className="shrink-0">
+                <BrandLogo className="h-8 w-8 rounded-xl" priority />
+              </Link>
               {user ? <TeamSwitcher /> : null}
               <nav aria-label="Primary" className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto px-0.5 py-1 text-sm text-muted-foreground">
 
@@ -390,6 +396,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       </header>
 
       <main id="main-content" className="mx-auto max-w-[1600px] px-4 py-8 sm:px-6 sm:py-10">{children}</main>
+      <SiteFooter />
     </div>
     </DesktopRequired>
   );

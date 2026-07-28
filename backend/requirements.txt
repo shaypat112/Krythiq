@@ -1,4 +1,4 @@
-# Python dependencies for Votrio AI Service
+# Python dependencies for Krythiq AI Service
 # Machine learning and data analysis libraries
 
 scikit-learn>=1.3.0

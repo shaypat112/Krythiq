@@ -10,7 +10,7 @@ const VIDEO_THUMBNAIL =
 export function ProductVideoStory({
   eyebrow = "See the workflow",
   title = "Watch how the product comes together.",
-  description = "A practical walkthrough of the ideas and workflow behind Votrio.",
+  description = "A practical walkthrough of the ideas and workflow behind Krythiq.",
   className = "",
 }: {
   eyebrow?: string;
@@ -40,7 +40,7 @@ export function ProductVideoStory({
           animationStyle="from-center"
           videoSrc={VIDEO_EMBED}
           thumbnailSrc={VIDEO_THUMBNAIL}
-          thumbnailAlt="Play the Votrio product walkthrough"
+          thumbnailAlt="Play the Krythiq product walkthrough"
           className="relative overflow-hidden rounded-2xl"
         />
       </div>

@@ -100,7 +100,7 @@ export default function OnboardingPage() {
           One-minute setup
         </span>
         <h1 className="mt-4 text-3xl font-semibold tracking-tight sm:text-4xl">
-          Make Votrio useful from your first scan.
+          Make Krythiq useful from your first scan.
         </h1>
         <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
           We’ll use these choices to keep explanations simple and prioritize the next action that fits how you build.
@@ -164,7 +164,7 @@ export default function OnboardingPage() {
         <div className="flex justify-end">
           <Button size="lg" onClick={() => void finish()} disabled={saving}>
             {saving ? <Loader2 className="animate-spin" /> : null}
-            {saving ? "Creating workspace…" : "Continue to Votrio"}
+            {saving ? "Creating workspace…" : "Continue to Krythiq"}
             {!saving ? <ArrowRight /> : null}
           </Button>
         </div>

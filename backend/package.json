@@ -1,5 +1,5 @@
 {
-  "name": "votrio",
+  "name": "krythiq",
   "version": "0.1.1",
   "description": "AI-powered terminal trace analyzer, security scanner, and code quality tool",
   "keywords": [
@@ -12,16 +12,16 @@
     "code-review",
     "machine-learning"
   ],
-  "homepage": "https://votrio.dev",
+  "homepage": "https://krythiq.dev",
   "repository": {
     "type": "git",
-    "url": "https://github.com/votrio/votrio"
+    "url": "https://github.com/krythiq/krythiq"
   },
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",
   "bin": {
-    "votrio": "./dist/index.js"
+    "krythiq": "./dist/index.js"
   },
   "files": [
     "dist",

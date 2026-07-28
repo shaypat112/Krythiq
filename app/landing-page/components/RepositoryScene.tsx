@@ -1,103 +1,160 @@
-"use client";
+import {
+  CheckCircle2,
+  ChevronRight,
+  FileCode2,
+  FolderGit2,
+  Search,
+  ShieldAlert,
+  Sparkles,
+} from "lucide-react";
+import { BrandLogo } from "@/app/components/BrandLogo";
 
-import { useMemo, useRef, useState } from "react";
-import { Canvas, useFrame } from "@react-three/fiber";
-import * as THREE from "three";
-import { AlertTriangle, CheckCircle2, GitBranch, ScanSearch, ShieldCheck } from "lucide-react";
-
-type ServiceNode = {
-  id: string;
-  label: string;
-  kind: string;
-  position: [number, number, number];
-  risk?: "high" | "medium";
-};
-
-const services: ServiceNode[] = [
-  { id: "edge", label: "Public API", kind: "entry point", position: [-3.2, 1.3, 0] },
-  { id: "auth", label: "Auth service", kind: "identity", position: [-1.2, .25, .5] },
-  { id: "token", label: "Token validator", kind: "trust boundary", position: [.8, 1.25, -.3], risk: "high" },
-  { id: "users", label: "User database", kind: "data store", position: [2.8, .1, .2] },
-  { id: "billing", label: "Billing webhook", kind: "integration", position: [-.8, -1.65, -.2], risk: "medium" },
-  { id: "vault", label: "Secrets vault", kind: "protected store", position: [1.6, -1.65, .5] },
-  { id: "audit", label: "Audit stream", kind: "telemetry", position: [3.45, -1.45, -.4] },
+const metrics = [
+  { label: "Overall risk", value: "82/100", detail: "Needs attention" },
+  { label: "Total findings", value: "7", detail: "Static checks completed" },
+  { label: "Code issues", value: "5", detail: "Risky-code rules" },
+  { label: "Secret exposure", value: "2", detail: "Credential-pattern rules" },
 ];
 
-const connections = [["edge", "auth"], ["auth", "token"], ["token", "users"], ["auth", "billing"], ["billing", "vault"], ["token", "vault"], ["users", "audit"], ["vault", "audit"]];
-
-function Connection({ from, to, risky }: { from: THREE.Vector3; to: THREE.Vector3; risky: boolean }) {
-  const line = useMemo(() => {
-    const geometry = new THREE.BufferGeometry().setFromPoints([from, to]);
-    const material = new THREE.LineBasicMaterial({ color: risky ? "#f97316" : "#334155", transparent: true, opacity: risky ? .75 : .55 });
-    return new THREE.Line(geometry, material);
-  }, [from, risky, to]);
-  return <primitive object={line} />;
-}
-
-function Graph({ selected, onSelect, reducedMotion }: { selected: string; onSelect: (id: string) => void; reducedMotion: boolean }) {
-  const group = useRef<THREE.Group>(null);
-  useFrame(({ clock, pointer }) => {
-    if (!group.current) return;
-    group.current.rotation.y = THREE.MathUtils.lerp(group.current.rotation.y, pointer.x * .12, .04);
-    group.current.rotation.x = THREE.MathUtils.lerp(group.current.rotation.x, -pointer.y * .07, .04);
-    if (!reducedMotion) group.current.position.y = Math.sin(clock.elapsedTime * .55) * .04;
-  });
-
-  return <group ref={group} rotation={[-.16, -.15, 0]}>
-    {connections.map(([a, b]) => {
-      const start = services.find((node) => node.id === a)!;
-      const end = services.find((node) => node.id === b)!;
-      return <Connection key={`${a}-${b}`} from={new THREE.Vector3(...start.position)} to={new THREE.Vector3(...end.position)} risky={Boolean(start.risk || end.risk)} />;
-    })}
-    {services.map((node) => {
-      const active = selected === node.id;
-      const color = node.risk === "high" ? "#fb7185" : node.risk === "medium" ? "#fbbf24" : active ? "#a78bfa" : "#38bdf8";
-      return <group key={node.id} position={node.position}>
-        {node.risk ? <mesh><sphereGeometry args={[.42, 32, 32]} /><meshBasicMaterial color={color} transparent opacity={.09} /></mesh> : null}
-        <mesh onClick={(event) => { event.stopPropagation(); onSelect(node.id); }} onPointerOver={(event) => { event.stopPropagation(); document.body.style.cursor = "pointer"; }} onPointerOut={() => { document.body.style.cursor = "default"; }} scale={active ? 1.15 : 1}>
-          <icosahedronGeometry args={[node.risk ? .22 : .17, 2]} />
-          <meshStandardMaterial color={color} emissive={color} emissiveIntensity={active || node.risk ? 1.15 : .45} roughness={.35} metalness={.2} />
-        </mesh>
-        <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, -.32, 0]}><ringGeometry args={[.2, .23, 32]} /><meshBasicMaterial color={color} transparent opacity={active ? .8 : .24} side={THREE.DoubleSide} /></mesh>
-      </group>;
-    })}
-  </group>;
-}
+const findings = [
+  {
+    severity: "high",
+    title: "Admin token fallback can bypass role validation",
+    file: "app/api/admin/route.ts:84",
+    className: "border-orange-400/25 bg-orange-400/10 text-orange-300",
+  },
+  {
+    severity: "medium",
+    title: "Webhook signature check accepts an empty secret",
+    file: "app/api/webhooks/route.ts:31",
+    className: "border-amber-400/25 bg-amber-400/10 text-amber-300",
+  },
+];
 
 export function RepositoryScene() {
-  const [selected, setSelected] = useState("token");
-  const selectedNode = services.find((node) => node.id === selected) ?? services[2];
-  const reducedMotion = typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  return (
+    <div className="h-full min-h-[300px] overflow-hidden bg-[#090b10] text-white">
+      <div className="flex h-9 items-center justify-between border-b border-white/8 bg-[#0d1017] px-3">
+        <div className="flex items-center gap-2">
+          <BrandLogo className="h-5 w-5 rounded-md" />
+          <span className="text-[9px] font-medium text-white/80 sm:text-[10px]">Security workspace</span>
+        </div>
+        <div className="flex items-center gap-1.5 text-[8px] text-white/35">
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+          Scan complete
+        </div>
+      </div>
 
-  return <div className="relative h-full min-h-[300px] overflow-hidden bg-[#080c13] text-white">
-    <div className="absolute inset-x-0 top-0 z-20 flex h-10 items-center justify-between border-b border-white/8 bg-[#0b1019]/90 px-3 backdrop-blur">
-      <div className="flex items-center gap-2 text-[9px] text-white/55 sm:text-[10px]"><span className="grid h-5 w-5 place-items-center rounded-md bg-violet-500/15 text-violet-300"><ShieldCheck className="h-3 w-3" /></span><strong className="font-medium text-white/85">acme/payments-api</strong><span className="hidden text-white/25 sm:inline">/ architecture</span></div>
-      <span className="flex items-center gap-1.5 rounded-full bg-emerald-400/8 px-2 py-1 text-[8px] text-emerald-300"><span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />SCAN COMPLETE</span>
+      <div className="h-[calc(100%-2.25rem)] overflow-hidden p-3 sm:p-4">
+        <section className="rounded-xl border border-white/8 bg-[radial-gradient(circle_at_10%_0%,rgba(14,165,233,.17),transparent_35%),radial-gradient(circle_at_90%_10%,rgba(168,85,247,.12),transparent_30%),#0d1017] p-3 sm:p-4">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h2 className="text-[13px] font-semibold tracking-tight text-white sm:text-[15px]">
+                Find the risks worth fixing first.
+              </h2>
+              <p className="mt-1 max-w-md text-[7px] leading-3 text-white/40 sm:text-[8px]">
+                Krythiq performs a read-only static source review and ranks findings by severity.
+              </p>
+            </div>
+            <span className="hidden items-center gap-1 rounded-md border border-white/10 bg-white/5 px-2 py-1 text-[7px] text-white/55 sm:flex">
+              <CheckCircle2 className="h-2.5 w-2.5 text-emerald-400" />
+              Complete
+            </span>
+          </div>
+
+          <div className="mt-3 grid grid-cols-[1fr_78px_auto] gap-1.5">
+            <div>
+              <p className="mb-1 text-[7px] font-medium text-white/65">GitHub repository</p>
+              <div className="flex h-7 items-center gap-1.5 rounded-md border border-white/10 bg-black/20 px-2 text-[7px] text-white/70">
+                <FolderGit2 className="h-2.5 w-2.5 text-white/35" />
+                github.com/krythiq/demo
+              </div>
+            </div>
+            <div>
+              <p className="mb-1 text-[7px] font-medium text-white/65">Threshold</p>
+              <div className="flex h-7 items-center justify-between rounded-md border border-white/10 bg-black/20 px-2 text-[7px] text-white/70">
+                High <ChevronRight className="h-2.5 w-2.5 rotate-90 text-white/30" />
+              </div>
+            </div>
+            <div className="self-end">
+              <div className="flex h-7 items-center gap-1 rounded-md bg-white px-2.5 text-[7px] font-semibold text-black">
+                <ShieldAlert className="h-2.5 w-2.5" />
+                Rescan
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <div className="mt-2.5 grid grid-cols-4 gap-1.5">
+          {metrics.map((metric) => (
+            <div key={metric.label} className="rounded-lg border border-white/8 bg-[#0d1017] p-2">
+              <p className="truncate text-[6px] text-white/35 sm:text-[7px]">{metric.label}</p>
+              <p className="mt-1 text-[13px] font-semibold leading-none text-white sm:text-[15px]">{metric.value}</p>
+              <p className="mt-1 truncate text-[5px] text-white/25 sm:text-[6px]">{metric.detail}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-2.5 grid gap-2 sm:grid-cols-[.8fr_1.2fr]">
+          <section className="rounded-lg border border-violet-400/20 bg-[radial-gradient(circle_at_top_right,rgba(139,92,246,.12),transparent_45%),#0d1017] p-2.5">
+            <div className="flex items-center justify-between gap-2">
+              <p className="flex items-center gap-1 text-[8px] font-medium text-white/80">
+                <Sparkles className="h-2.5 w-2.5 text-violet-300" />
+                Repository intelligence
+              </p>
+              <span className="rounded border border-violet-400/20 bg-violet-400/10 px-1.5 py-0.5 text-[5px] text-violet-300">
+                AI analysis
+              </span>
+            </div>
+            <p className="mt-2 text-[6px] leading-[10px] text-white/35 sm:text-[7px] sm:leading-3">
+              Authentication and webhook paths contain the highest-impact reachable risks. Review trust-boundary checks first.
+            </p>
+            <div className="mt-2 grid grid-cols-2 gap-1">
+              <MiniStat label="Files scanned" value="214" />
+              <MiniStat label="Lines analyzed" value="38.4k" />
+            </div>
+          </section>
+
+          <section>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[9px] font-medium text-white/80">Findings</p>
+                <p className="text-[6px] text-white/30">2 of 7 findings triaged</p>
+              </div>
+              <div className="flex h-5 items-center gap-1 rounded-md border border-white/8 bg-[#0d1017] px-1.5 text-[6px] text-white/35">
+                <Search className="h-2 w-2" />
+                Search findings
+              </div>
+            </div>
+            <div className="mt-1.5 space-y-1">
+              {findings.map((finding) => (
+                <div key={finding.title} className="flex items-start gap-1.5 rounded-lg border border-white/8 bg-[#0d1017] p-2">
+                  <ChevronRight className="mt-0.5 h-2.5 w-2.5 shrink-0 text-white/25" />
+                  <div className="min-w-0">
+                    <span className={`rounded border px-1 py-0.5 text-[5px] font-semibold uppercase ${finding.className}`}>
+                      {finding.severity}
+                    </span>
+                    <p className="mt-1 truncate text-[7px] font-medium text-white/70">{finding.title}</p>
+                    <p className="mt-0.5 flex items-center gap-1 truncate font-mono text-[5px] text-white/25">
+                      <FileCode2 className="h-2 w-2" />
+                      {finding.file}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        </div>
+      </div>
     </div>
-
-    <div className="absolute bottom-0 left-0 top-10 z-20 hidden w-28 border-r border-white/8 bg-[#0a0e16]/82 p-3 text-[8px] text-white/40 backdrop-blur sm:block">
-      <p className="mb-3 flex items-center gap-1.5 font-medium uppercase tracking-wider text-white/65"><GitBranch className="h-3 w-3" />Services</p>
-      <div className="space-y-2">{services.map((node) => <button key={node.id} onClick={() => setSelected(node.id)} className={`block w-full truncate rounded px-1.5 py-1 text-left transition ${selected === node.id ? "bg-white/8 text-white" : "hover:text-white/70"}`}>{node.label}</button>)}</div>
-    </div>
-
-    <div className="absolute inset-0 top-10 sm:left-28 sm:right-36">
-      <Canvas camera={{ position: [0, .3, 7.8], fov: 46 }} dpr={[1, 1.5]} gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}>
-        <ambientLight intensity={.8} /><pointLight position={[-3, 4, 5]} intensity={20} color="#60a5fa" /><pointLight position={[4, -2, 3]} intensity={14} color="#8b5cf6" />
-        <Graph selected={selected} onSelect={setSelected} reducedMotion={reducedMotion} />
-      </Canvas>
-      <div className="pointer-events-none absolute bottom-3 left-3 rounded-lg border border-white/8 bg-black/35 px-2.5 py-2 backdrop-blur"><p className="text-[8px] uppercase tracking-widest text-white/30">Selected service</p><p className="mt-1 text-[10px] font-medium text-white/85">{selectedNode.label}</p><p className="text-[8px] text-white/35">{selectedNode.kind}</p></div>
-    </div>
-
-    <aside className="absolute bottom-0 right-0 top-10 z-20 w-36 border-l border-white/8 bg-[#0a0e16]/88 p-3 backdrop-blur max-sm:hidden">
-      <p className="flex items-center gap-1.5 text-[8px] font-medium uppercase tracking-wider text-white/55"><ScanSearch className="h-3 w-3" />Findings</p>
-      <div className="mt-3 space-y-2"><Finding severity="High" title="Token role fallback" file="session.ts:84" /><Finding severity="Medium" title="Unsigned webhook" file="billing.ts:31" /></div>
-      <div className="mt-3 rounded-lg border border-emerald-400/15 bg-emerald-400/5 p-2"><p className="flex items-center gap-1 text-[8px] text-emerald-300"><CheckCircle2 className="h-3 w-3" />2 fixes generated</p><p className="mt-1 text-[7px] leading-3 text-white/35">Validated against the repository context.</p></div>
-    </aside>
-
-    <div className="absolute bottom-2 right-2 z-30 sm:hidden"><span className="flex items-center gap-1 rounded-full border border-red-400/15 bg-red-400/8 px-2 py-1 text-[8px] text-red-300"><AlertTriangle className="h-2.5 w-2.5" />2 risks mapped</span></div>
-  </div>;
+  );
 }
 
-function Finding({ severity, title, file }: { severity: string; title: string; file: string }) {
-  return <button className="w-full rounded-lg border border-white/8 bg-white/[.025] p-2 text-left transition hover:border-white/15 hover:bg-white/[.05]"><span className={`text-[7px] font-semibold uppercase ${severity === "High" ? "text-red-300" : "text-amber-300"}`}>{severity}</span><p className="mt-1 text-[8px] leading-3 text-white/75">{title}</p><p className="mt-1 truncate font-mono text-[7px] text-white/30">{file}</p></button>;
+function MiniStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-md border border-white/7 bg-black/15 p-1.5">
+      <p className="text-[5px] text-white/25">{label}</p>
+      <p className="mt-0.5 text-[8px] font-medium text-white/65">{value}</p>
+    </div>
+  );
 }

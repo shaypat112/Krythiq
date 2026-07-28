@@ -19,6 +19,10 @@ import MultiStepLoaderDemo from "@/components/multi-step-loader-demo";
 import { SystemDesignOverview } from "@/app/components/SystemDesignOverview";
 import { HelpTooltip } from "@/app/components/HelpTooltip";
 import { toast } from "sonner";
+import FileUpload from "@/components/kokonutui/file-upload";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ActionSearchBar, scanActionIcons, type ScanAction } from "./ActionSearchBar";
+import { TechnologyCloud } from "./TechnologyCloud";
 
 type Severity = "low" | "medium" | "high" | "critical";
 type Finding = {
@@ -33,11 +37,13 @@ type RepositoryProfile = {
   fileTypes: Array<{ name: string; files: number; lines: number }>;
   largestFiles: Array<{ path: string; bytes: number; lines: number }>;
   manifests: string[];
+  technologies: string[];
+  dependencies: string[];
 };
 type ScanIntelligence = { summary: string; architecture: string; securityPosture: string; strengths: string[]; priorities: Array<{ title: string; reason: string; effort: "low" | "medium" | "high" }>; observations: string[] };
 type SystemDesignScenario = { id: "traffic-spike" | "data-growth" | "dependency-failure" | "multi-region" | "cost-pressure"; title: string; status: "ready" | "watch" | "risk" | "unknown"; confidence: "low" | "medium"; reflection: string; evidence: string[]; nextStep: string };
 type SystemDesignAssessment = { summary: string; disclaimer: string; scenarios: SystemDesignScenario[] };
-type ScanResult = { repoUrl: string; totalFindings: number; findings: Finding[]; profile: RepositoryProfile; systemDesign: SystemDesignAssessment; intelligence: ScanIntelligence | null; scan?: { score?: number; created_at?: string } | null };
+type ScanResult = { sourceType?: "repository" | "file"; repoUrl: string; totalFindings: number; findings: Finding[]; profile: RepositoryProfile; systemDesign: SystemDesignAssessment; intelligence: ScanIntelligence | null; scan?: { score?: number; created_at?: string } | null };
 type Stage = "validating" | "cloning" | "detecting" | "reading" | "analyzing" | "recommendations";
 const stages: { id: Stage; title: string; fallback: string }[] = [
   { id: "validating", title: "Validating repository", fallback: "Checking the GitHub URL and preparing isolation." },
@@ -95,6 +101,7 @@ export function ScanWorkspace() {
   const [ignoreTarget, setIgnoreTarget] = useState<string | null>(null);
   const [ignoreReason, setIgnoreReason] = useState("");
   const [scanController, setScanController] = useState<AbortController | null>(null);
+  const [scanMode, setScanMode] = useState<"repository" | "file">("repository");
 
   const findingKey = (finding: Finding) => `${finding.file}:${finding.line}:${finding.type}`;
   const notify = (message: string) => toast(message);
@@ -127,7 +134,7 @@ export function ScanWorkspace() {
   const startScan = async () => {
     const normalizedUrl = normalizeGitHubUrl(repoUrl);
     if (!/^https:\/\/github\.com\/[\w.-]+\/[\w.-]+\/?$/.test(normalizedUrl)) {
-      setError("Enter a GitHub URL or owner/repository, for example github.com/acme/api."); return;
+      setError("Enter a GitHub URL or owner/repository, for example github.com/krythiq/demo."); return;
     }
     const { data } = await supabase.auth.getSession();
     const token = data.session?.access_token;
@@ -166,6 +173,31 @@ export function ScanWorkspace() {
     }
   };
 
+  const scanFile = async (file: File) => {
+    setPhase("scanning"); setError(null); setResult(null); setActiveStage("reading");
+    try {
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+      if (!token) throw new Error("Sign in to scan a file.");
+      setActiveStage("analyzing");
+      const body = new FormData();
+      body.append("file", file);
+      const response = await fetch("/api/scan/file", {
+        method: "POST",
+        headers: buildTeamAuthHeaders(token, selectedTeamId),
+        body,
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error ?? "Unable to scan file.");
+      setResult(payload as ScanResult);
+      setPhase("done");
+      setActiveStage("recommendations");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Unable to scan file.");
+      setPhase("error");
+    }
+  };
+
   const findings = (result?.findings ?? []).filter((finding) => {
     const text = `${finding.message} ${finding.file} ${finding.type}`.toLowerCase();
     return (severity === "all" || finding.severity === severity) && text.includes(query.toLowerCase());
@@ -177,12 +209,30 @@ export function ScanWorkspace() {
   const activeStageIndex = activeStage ? stages.findIndex((stage) => stage.id === activeStage) : 0;
   const progress = phase === "done" ? 100 : Math.max(8, Math.round(((activeStageIndex + 0.5) / stages.length) * 100));
   const reviewedCount = reviewed.size + falsePositive.size + ignored.size;
+  const actions = useMemo<ScanAction[]>(() => result ? [
+    { id: "intelligence", label: "Open repository intelligence", description: "Jump to the AI summary and priorities", icon: scanActionIcons.intelligence, run: () => document.getElementById("repository-intelligence")?.scrollIntoView({ behavior: "smooth" }) },
+    { id: "cloud", label: "Explore technology cloud", description: "View languages, frameworks, and dependencies in 3D", icon: scanActionIcons.cloud, run: () => document.getElementById("technology-cloud")?.scrollIntoView({ behavior: "smooth" }) },
+    { id: "high", label: "Show high-priority findings", description: "Filter findings to critical or high severity", icon: scanActionIcons.filter, run: () => { setSeverity(counts.critical ? "critical" : "high"); document.getElementById("findings")?.scrollIntoView({ behavior: "smooth" }); } },
+    { id: "export", label: "Export JSON report", description: "Download the complete result for CI or review", icon: scanActionIcons.export, run: () => download("krythiq-scan.json", JSON.stringify(result, null, 2), "application/json") },
+    { id: "reset", label: "Start another scan", description: "Clear this result and return to the scan input", icon: scanActionIcons.reset, run: () => { setResult(null); setPhase("idle"); window.scrollTo({ top: 0, behavior: "smooth" }); } },
+  ] : [], [counts.critical, result]);
 
   return <main className="mx-auto max-w-7xl space-y-6 pb-12">
     <MultiStepLoaderDemo loading={phase === "scanning"} />
     <section className="overflow-hidden rounded-3xl border border-border bg-[radial-gradient(circle_at_10%_0%,rgba(14,165,233,.16),transparent_32%),radial-gradient(circle_at_90%_10%,rgba(168,85,247,.12),transparent_28%),var(--card)] p-6 sm:p-8">
-      <div className="mt-4 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between"><div><h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Find the risks worth fixing first.</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">Votrio reads supported files through the GitHub API and performs a static source review. Repository credentials are never included in scan output.</p></div>{result && <Button variant="outline" onClick={() => { setResult(null); setPhase("idle"); }}><RotateCw /> New scan</Button>}</div>
-      <div className="mt-7 grid gap-3 lg:grid-cols-[1fr_150px_auto]"><div><label htmlFor="repo-url" className="mb-2 block text-sm font-medium">GitHub repository</label><div className="relative"><FolderGit2 className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" /><Input id="repo-url" value={repoUrl} onChange={(event) => setRepoUrl(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && phase !== "scanning") void startScan(); }} placeholder="owner/repository or GitHub URL" disabled={phase === "scanning"} className="h-9 pl-9" aria-describedby="repo-help" autoCapitalize="none" autoCorrect="off" spellCheck={false} /></div><p id="repo-help" className="mt-2 text-xs text-muted-foreground">Paste a public GitHub URL or owner/repository. Votrio uses read-only API access and does not execute repository code.</p></div><div><div className="mb-2 flex items-center gap-1.5"><label htmlFor="fail-on" className="text-sm font-medium">Attention threshold</label><HelpTooltip side="bottom">Controls which severity should demand attention first. It does not hide lower-severity findings.</HelpTooltip></div><select id="fail-on" value={failOn} onChange={(event) => setFailOn(event.target.value as Severity)} className="h-9 w-full rounded-lg border border-input bg-background px-2 text-sm" disabled={phase === "scanning"}><option value="critical">Critical</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option></select></div>{phase === "scanning" ? <Button size="lg" variant="outline" onClick={() => scanController?.abort()} className="self-end"><CircleStop /> Cancel</Button> : <Button size="lg" onClick={startScan} className="self-end"><ShieldAlert /> {result ? "Rescan" : "Start scan"}</Button>}</div>
+      <div className="mt-4 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between"><div><h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Find the risks worth fixing first.</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">Krythiq reads supported files through the GitHub API and performs a static source review. Repository credentials are never included in scan output.</p></div>{result && <Button variant="outline" onClick={() => { setResult(null); setPhase("idle"); }}><RotateCw /> New scan</Button>}</div>
+      <Tabs value={scanMode} onValueChange={(value) => setScanMode(value as "repository" | "file")} className="mt-7">
+        <TabsList className="grid w-full max-w-sm grid-cols-2"><TabsTrigger value="repository"><FolderGit2 /> Repository</TabsTrigger><TabsTrigger value="file"><FileCode2 /> Single file</TabsTrigger></TabsList>
+        <TabsContent value="repository" className="mt-5">
+          <div className="grid gap-3 lg:grid-cols-[1fr_150px_auto]"><div><label htmlFor="repo-url" className="mb-2 block text-sm font-medium">GitHub repository</label><div className="relative"><FolderGit2 className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" /><Input id="repo-url" value={repoUrl} onChange={(event) => setRepoUrl(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && phase !== "scanning") void startScan(); }} placeholder="owner/repository or GitHub URL" disabled={phase === "scanning"} className="h-9 pl-9" aria-describedby="repo-help" autoCapitalize="none" autoCorrect="off" spellCheck={false} /></div><p id="repo-help" className="mt-2 text-xs text-muted-foreground">Paste a public GitHub URL or owner/repository. Krythiq uses read-only API access and does not execute repository code.</p></div><div><div className="mb-2 flex items-center gap-1.5"><label htmlFor="fail-on" className="text-sm font-medium">Attention threshold</label><HelpTooltip side="bottom">Controls which severity should demand attention first. It does not hide lower-severity findings.</HelpTooltip></div><select id="fail-on" value={failOn} onChange={(event) => setFailOn(event.target.value as Severity)} className="h-9 w-full rounded-lg border border-input bg-background px-2 text-sm" disabled={phase === "scanning"}><option value="critical">Critical</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option></select></div>{phase === "scanning" ? <Button size="lg" variant="outline" onClick={() => scanController?.abort()} className="self-end"><CircleStop /> Cancel</Button> : <Button size="lg" onClick={startScan} className="self-end"><ShieldAlert /> {result ? "Rescan" : "Start scan"}</Button>}</div>
+        </TabsContent>
+        <TabsContent value="file" className="mt-5">
+          <div className="grid gap-5 lg:grid-cols-[minmax(0,420px)_1fr] lg:items-center">
+            <FileUpload uploadDelay={450} maxFileSize={1024 * 1024} acceptedFileTypes={[]} validateFile={(file) => /\.(?:tsx?|jsx?|py|go|rs|java|cs|php|rb|sh|ya?ml|json|txt)$/i.test(file.name) ? null : { code: "UNSUPPORTED_FILE", message: "Choose a supported source, config, or manifest file." }} onUploadSuccess={(file) => void scanFile(file)} onUploadError={(uploadError) => setError(uploadError.message)} />
+            <div className="rounded-2xl border border-border bg-background/45 p-5"><p className="font-medium">Private, focused file review</p><p className="mt-2 text-sm leading-6 text-muted-foreground">Upload one source or manifest file up to 1 MB. Krythiq checks supported risky-code and credential patterns and returns line-level remediation guidance.</p></div>
+          </div>
+        </TabsContent>
+      </Tabs>
       {error && <div role="alert" className="mt-5 flex gap-3 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive"><AlertCircle className="h-4 w-4 shrink-0" />{error}</div>}
     </section>
 
@@ -191,21 +241,25 @@ export function ScanWorkspace() {
     {phase === "scanning" && <div className="grid gap-4 md:grid-cols-4">{Array.from({ length: 4 }).map((_, index) => <Skeleton key={index} className="h-28" />)}</div>}
 
     {result && <section className="space-y-6">
+      <ActionSearchBar actions={actions} />
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4"><Metric title="Overall risk" value={`${score}/100`} detail={score >= 75 ? "Needs attention" : score >= 55 ? "Review recommended" : "Lower observed risk"} /><Metric title="Total findings" value={String(result.totalFindings)} detail="Static checks completed" /><Metric title="Code issues" value={String(categoryCount("code"))} detail="Risky-code rules" /><Metric title="Secret exposure" value={String(categoryCount("secrets"))} detail="Credential-pattern rules" /></div>
       <Card><CardHeader><CardTitle>Repository overview</CardTitle></CardHeader><CardContent className="space-y-5"><p className="text-sm leading-6 text-muted-foreground">{result.profile.metadata.description ?? "No GitHub repository description is available."}</p><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5"><Coverage label="Source files scanned" value={result.profile.metrics.scannedFiles.toLocaleString()} detail={`${result.profile.metrics.repositoryFiles.toLocaleString()} files in repository tree`} /><Coverage label="Lines analyzed" value={result.profile.metrics.scannedLines.toLocaleString()} detail={formatBytes(result.profile.metrics.scannedBytes)} /><Coverage label="Directories" value={result.profile.metrics.directories.toLocaleString()} detail={`Default branch: ${result.profile.metadata.defaultBranch}`} /><Coverage label="GitHub activity" value={`${result.profile.metadata.stars} stars`} detail={`${result.profile.metadata.forks} forks · ${result.profile.metadata.openIssues} open issues`} /><Coverage label="Visibility" value={result.profile.metadata.visibility} detail={result.profile.metadata.pushedAt ? `Pushed ${new Date(result.profile.metadata.pushedAt).toLocaleDateString()}` : "Push date unavailable"} /></div>{result.profile.manifests.length > 0 && <div className="flex flex-wrap gap-2">{result.profile.manifests.map((manifest) => <Badge key={manifest} variant="outline">{manifest}</Badge>)}</div>}</CardContent></Card>
 
-      {result.intelligence ? <Card className="border-violet-500/30 bg-[radial-gradient(circle_at_top_right,rgba(139,92,246,.12),transparent_35%),var(--card)]"><CardHeader><div className="flex items-center justify-between gap-3"><CardTitle>Mistral repository intelligence</CardTitle><Badge className="border-violet-500/30 bg-violet-500/10 text-violet-300">AI analysis</Badge></div></CardHeader><CardContent className="space-y-5"><p className="text-sm leading-6">{result.intelligence.summary}</p><div className="grid gap-3 md:grid-cols-2"><Detail label="Architecture" value={result.intelligence.architecture} /><Detail label="Security posture" value={result.intelligence.securityPosture} /></div><div><p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Priorities</p><div className="mt-2 grid gap-2">{result.intelligence.priorities.map((priority) => <div key={priority.title} className="rounded-xl border border-border bg-background/60 p-3"><div className="flex items-center justify-between gap-3"><p className="text-sm font-medium">{priority.title}</p><Badge variant="outline" className="capitalize">{priority.effort} effort</Badge></div><p className="mt-1 text-xs leading-5 text-muted-foreground">{priority.reason}</p></div>)}</div></div>{result.intelligence.observations.length > 0 && <div><p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Observations</p><ul className="mt-2 grid gap-2 text-sm text-muted-foreground md:grid-cols-2">{result.intelligence.observations.map((item) => <li key={item} className="rounded-lg bg-muted/30 p-3">{item}</li>)}</ul></div>}</CardContent></Card> : <Card><CardContent className="p-5"><p className="text-sm font-medium">AI repository intelligence unavailable</p><p className="mt-1 text-xs text-muted-foreground">The static scan completed normally. Configure MISTRAL_API_KEY in production to add bounded architecture and remediation analysis.</p></CardContent></Card>}
+      {result.intelligence ? <Card id="repository-intelligence" className="border-violet-500/30 bg-[radial-gradient(circle_at_top_right,rgba(139,92,246,.12),transparent_35%),var(--card)]"><CardHeader><div className="flex items-center justify-between gap-3"><CardTitle>Mistral repository intelligence</CardTitle><Badge className="border-violet-500/30 bg-violet-500/10 text-violet-300">AI analysis</Badge></div></CardHeader><CardContent className="space-y-5"><p className="text-sm leading-6">{result.intelligence.summary}</p><div className="grid gap-3 md:grid-cols-2"><Detail label="Architecture" value={result.intelligence.architecture} /><Detail label="Security posture" value={result.intelligence.securityPosture} /></div><div><p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Priorities</p><div className="mt-2 grid gap-2">{result.intelligence.priorities.map((priority) => <div key={priority.title} className="rounded-xl border border-border bg-background/60 p-3"><div className="flex items-center justify-between gap-3"><p className="text-sm font-medium">{priority.title}</p><Badge variant="outline" className="capitalize">{priority.effort} effort</Badge></div><p className="mt-1 text-xs leading-5 text-muted-foreground">{priority.reason}</p></div>)}</div></div>{result.intelligence.observations.length > 0 && <div><p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Observations</p><ul className="mt-2 grid gap-2 text-sm text-muted-foreground md:grid-cols-2">{result.intelligence.observations.map((item) => <li key={item} className="rounded-lg bg-muted/30 p-3">{item}</li>)}</ul></div>}</CardContent></Card> : <Card><CardContent className="p-5"><p className="text-sm font-medium">AI repository intelligence unavailable</p><p className="mt-1 text-xs text-muted-foreground">The static scan completed normally. Configure MISTRAL_API_KEY in production to add bounded architecture and remediation analysis.</p></CardContent></Card>}
+
+      <TechnologyCloud languages={result.profile.languages.map((language) => language.name)} technologies={result.profile.technologies ?? []} dependencies={result.profile.dependencies ?? []} />
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card><CardHeader><CardTitle>Language composition</CardTitle></CardHeader><CardContent className="h-72"><ResponsiveContainer width="100%" height="100%"><BarChart data={result.profile.languages.slice(0, 8)} layout="vertical" margin={{ left: 8, right: 16 }}><CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={false} /><XAxis type="number" tick={{ fontSize: 10, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} /><YAxis type="category" dataKey="name" width={80} tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} /><Tooltip formatter={(value, name) => [name === "percent" ? `${value}%` : value, name === "percent" ? "GitHub bytes" : name]} contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 8 }} /><Bar dataKey="percent" fill="#38bdf8" radius={[0, 5, 5, 0]} /></BarChart></ResponsiveContainer></CardContent></Card>
         <Card><CardHeader><CardTitle>File type distribution</CardTitle></CardHeader><CardContent className="h-72"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={result.profile.fileTypes.slice(0, 8)} dataKey="lines" nameKey="name" innerRadius={54} outerRadius={88} paddingAngle={3}>{result.profile.fileTypes.slice(0, 8).map((entry, index) => <Cell key={entry.name} fill={["#38bdf8", "#a78bfa", "#34d399", "#fbbf24", "#fb7185", "#60a5fa", "#f97316", "#94a3b8"][index]} />)}</Pie><Tooltip formatter={(value, name) => [Number(value).toLocaleString(), `${name} lines`]} contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 8 }} /></PieChart></ResponsiveContainer></CardContent></Card>
       </div>
 
+
       <div className="grid gap-6 lg:grid-cols-2"><Card><CardHeader><CardTitle>Severity distribution</CardTitle></CardHeader><CardContent className="h-64"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={severityChart} dataKey="value" nameKey="name" innerRadius={48} outerRadius={76} paddingAngle={4}>{severityChart.map((entry) => <Cell key={entry.name} fill={entry.color} />)}</Pie><Tooltip formatter={(value, name) => [value, String(name).toUpperCase()]} contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 8 }} /></PieChart></ResponsiveContainer></CardContent></Card><Card><CardHeader><CardTitle>Largest analyzed files</CardTitle></CardHeader><CardContent className="space-y-2">{result.profile.largestFiles.slice(0, 6).map((file) => <div key={file.path} className="flex items-center justify-between gap-4 rounded-lg border border-border bg-muted/20 p-3"><div className="min-w-0"><p className="truncate text-sm font-medium">{file.path}</p><p className="mt-0.5 text-xs text-muted-foreground">{file.lines.toLocaleString()} lines</p></div><span className="shrink-0 font-mono text-xs text-muted-foreground">{formatBytes(file.bytes)}</span></div>)}</CardContent></Card></div>
 
       <Card><CardHeader><CardTitle>Scan coverage</CardTitle></CardHeader><CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"><Coverage label="Source analysis" value="Assessed" detail={`${result.profile.metrics.scannedFiles.toLocaleString()} supported files`} /><Coverage label="Repository structure" value="Assessed" detail="Tree, languages, manifests, and file sizes" /><Coverage label="Dependency advisories" value="Not assessed" detail="No vulnerability registry comparison" /><Coverage label="Supply chain & licenses" value="Not assessed" detail="No SBOM or license engine" /></CardContent></Card>
-      <SystemDesignOverview result={result.systemDesign} docsHref="/documentation/system-design" />
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between"><div><h2 className="text-xl font-semibold">Findings</h2><p className="mt-1 text-sm text-muted-foreground">{result.totalFindings === 0 ? "No high-confidence static findings were detected in the supported files." : `${reviewedCount} of ${result.totalFindings} findings triaged. Decisions are synced when you are signed in.`}</p></div><div className="flex flex-wrap gap-2"><Button variant="outline" size="sm" onClick={() => download("votrio-findings.json", JSON.stringify(result, null, 2), "application/json")}><Download /> JSON</Button><Button variant="outline" size="sm" onClick={() => download("votrio-findings.csv", ["severity,category,file,line,type,message", ...result.findings.map((f) => [f.severity, f.category ?? "code", f.file, f.line, f.type, f.message].map(csvCell).join(","))].join("\n"), "text/csv")}><Download /> CSV</Button></div></div>
+      {result.sourceType !== "file" && <SystemDesignOverview result={result.systemDesign} docsHref="/documentation/system-design" />}
+      <div id="findings" className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between"><div><h2 className="text-xl font-semibold">Findings</h2><p className="mt-1 text-sm text-muted-foreground">{result.totalFindings === 0 ? "No high-confidence static findings were detected in the supported files." : `${reviewedCount} of ${result.totalFindings} findings triaged. Decisions are synced when you are signed in.`}</p></div><div className="flex flex-wrap gap-2"><Button variant="outline" size="sm" onClick={() => download("krythiq-findings.json", JSON.stringify(result, null, 2), "application/json")}><Download /> JSON</Button><Button variant="outline" size="sm" onClick={() => download("krythiq-findings.csv", ["severity,category,file,line,type,message", ...result.findings.map((f) => [f.severity, f.category ?? "code", f.file, f.line, f.type, f.message].map(csvCell).join(","))].join("\n"), "text/csv")}><Download /> CSV</Button></div></div>
       <Card><CardContent className="p-4"><div className="grid gap-3 md:grid-cols-[1fr_160px_160px]"><div className="relative"><Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" /><Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search file, rule, or message" className="pl-9" /></div><select value={severity} onChange={(event) => setSeverity(event.target.value as "all" | Severity)} className="h-8 rounded-lg border border-input bg-background px-2 text-sm"><option value="all">All severities</option>{(["critical", "high", "medium", "low"] as Severity[]).map((level) => <option key={level} value={level}>{level} ({counts[level]})</option>)}</select><select value={sort} onChange={(event) => setSort(event.target.value as "severity" | "path")} className="h-8 rounded-lg border border-input bg-background px-2 text-sm"><option value="severity">Sort by severity</option><option value="path">Sort by path</option></select></div></CardContent></Card>
       <div className="space-y-3">
         {findings.length === 0 ? <Card className={result.totalFindings === 0 ? "border-emerald-500/20 bg-emerald-500/5" : ""}><CardContent className="p-10 text-center">{result.totalFindings === 0 ? <CheckCircle2 className="mx-auto h-7 w-7 text-emerald-400" /> : <Filter className="mx-auto h-6 w-6 text-muted-foreground" />}<p className="mt-3 font-medium">{result.totalFindings === 0 ? "Static scan completed cleanly" : "No matching findings"}</p><p className="mx-auto mt-1 max-w-lg text-sm text-muted-foreground">{result.totalFindings === 0 ? "No supported rule matched. This is a useful signal, not a guarantee: runtime behavior, dependencies, and supply-chain risk were not assessed." : "Try clearing the search or choosing another severity."}</p></CardContent></Card> : findings.map((finding) => {

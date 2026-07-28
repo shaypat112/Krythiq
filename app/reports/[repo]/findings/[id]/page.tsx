@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { FindingDetailClient } from "../../../components/FindingDetailClient";
 
 export const metadata: Metadata = {
-  title: "Finding details - Votrio",
+  title: "Finding details - Krythiq",
   description: "Detailed repository finding, risk context, and remediation guidance.",
 };
 

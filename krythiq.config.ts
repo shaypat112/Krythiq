@@ -1,4 +1,4 @@
-import { defineConfig } from "votrio";
+import { defineConfig } from "krythiq";
 
 export default defineConfig({
   // AI model for trace analysis

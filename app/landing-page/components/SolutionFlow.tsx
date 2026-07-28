@@ -12,8 +12,8 @@ import { FadeIn } from "../shared/FadeIn";
 import { Eyebrow } from "../shared/Eyebrow";
 
 const steps = [
-  { icon: GitBranch, title: "Connect your repository", detail: "GitHub or GitLab, read-only access, scoped to what Votrio needs." },
-  { icon: Network, title: "Votrio maps the architecture", detail: "Builds a knowledge graph of services, data flow, and trust boundaries." },
+  { icon: GitBranch, title: "Connect your repository", detail: "GitHub or GitLab, read-only access, scoped to what Krythiq needs." },
+  { icon: Network, title: "Krythiq maps the architecture", detail: "Builds a knowledge graph of services, data flow, and trust boundaries." },
   { icon: Bug, title: "Vulnerabilities surface", detail: "AI-guided detection finds what pattern-matching scanners miss." },
   { icon: Route, title: "Attack paths get traced", detail: "See exactly how a finding chains into real, exploitable access." },
   { icon: Wrench, title: "Fixes get generated", detail: "Production-ready patches, scoped to your code, not generic advice." },

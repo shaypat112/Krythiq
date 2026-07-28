@@ -42,7 +42,7 @@ function AcceptInvitation() {
         setMessage(payload?.error ?? "Unable to accept this invitation.");
         return;
       }
-      window.dispatchEvent(new Event("votrio:teams-changed"));
+      window.dispatchEvent(new Event("krythiq:teams-changed"));
       setStatus("success");
       setMessage(`You joined ${payload?.team?.name ?? "the team"}.`);
     };

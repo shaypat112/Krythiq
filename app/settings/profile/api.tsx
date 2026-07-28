@@ -18,7 +18,7 @@ export function ApiSection() {
       <header>
         <div className="flex flex-wrap items-center gap-2"><Badge variant="outline"><KeyRound /> API settings</Badge><Badge>{plan.name} plan</Badge></div>
         <h1 className="mt-4 text-2xl font-semibold">Control API usage</h1>
-        <p className="mt-2 text-sm leading-6 text-muted-foreground">These controls change the request limits Votrio enforces for your account. Lower limits can protect a prototype from loops, runaway scripts, and unexpected AI usage.</p>
+        <p className="mt-2 text-sm leading-6 text-muted-foreground">These controls change the request limits Krythiq enforces for your account. Lower limits can protect a prototype from loops, runaway scripts, and unexpected AI usage.</p>
       </header>
 
       <Card>
@@ -52,7 +52,7 @@ export function ApiSection() {
 
       <section aria-labelledby="business-model-heading">
         <div className="flex items-center gap-2"><Activity className="h-5 w-5 text-muted-foreground" /><h2 id="business-model-heading" className="text-lg font-semibold">How the business model works</h2></div>
-        <p className="mt-2 text-sm leading-6 text-muted-foreground">Votrio keeps the first security workflow accessible, then charges for the capacity and collaboration real production teams need. Exact checkout prices come from Stripe.</p>
+        <p className="mt-2 text-sm leading-6 text-muted-foreground">Krythiq keeps the first security workflow accessible, then charges for the capacity and collaboration real production teams need. Exact checkout prices come from Stripe.</p>
         <div className="mt-4 grid gap-3">
           {(Object.entries(apiPlanCatalog) as Array<[keyof typeof apiPlanCatalog, (typeof apiPlanCatalog)[keyof typeof apiPlanCatalog]]>).map(([id, item]) => (
             <Card key={id} className={id === apiPlan ? "border-foreground/30" : ""}>

@@ -95,7 +95,7 @@ export async function scanCommand(
 
   const resolved = path.resolve(process.cwd(), scanPath);
 
-  console.log(`\n${chalk.bold("votrio")} ${chalk.dim("scan")}\n`);
+  console.log(`\n${chalk.bold("krythiq")} ${chalk.dim("scan")}\n`);
 
   const ignore = [
     "node_modules/**",
@@ -112,17 +112,17 @@ export async function scanCommand(
   const aiEnabled =
     options.ai ||
     scanConfig.ai ||
-    process.env.VOTRIO_SCAN_AI === "true";
+    process.env.KRYTHIQ_SCAN_AI === "true";
   const aiModel =
     options.aiModel ||
     scanConfig.aiModel ||
-    process.env.VOTRIO_SCAN_AI_MODEL ||
+    process.env.KRYTHIQ_SCAN_AI_MODEL ||
     "mistral-large-latest";
 
   const publishEnabled =
     options.publish ||
     scanConfig.publish ||
-    process.env.VOTRIO_PUBLISH === "true";
+    process.env.KRYTHIQ_PUBLISH === "true";
 
   const files = await discoverFiles(resolved, ignore);
 
@@ -230,7 +230,7 @@ async function runSemgrep(root: string): Promise<{ findings: Finding[]; warnings
   } catch (error) {
     const output = typeof error === "object" && error && "stdout" in error ? String((error as { stdout?: unknown }).stdout ?? "") : "";
     if (output) return parseSemgrep(output, root);
-    return { findings: [], warnings: ["Semgrep is unavailable; install Semgrep or provide .votrio/rules.json for code-rule scanning."] };
+    return { findings: [], warnings: ["Semgrep is unavailable; install Semgrep or provide .krythiq/rules.json for code-rule scanning."] };
   }
 }
 
@@ -274,7 +274,7 @@ function normalizeSeverity(value?: string): Severity {
 }
 
 async function defaultRulesPath(cwd: string): Promise<string | undefined> {
-  const p = path.join(cwd, ".votrio", "rules.json");
+  const p = path.join(cwd, ".krythiq", "rules.json");
   return (await exists(p)) ? p : undefined;
 }
 
@@ -352,7 +352,7 @@ function outputResults(
   }
 
   if (options.format === "markdown") {
-    console.log("# Votrio Scan Report\n");
+    console.log("# Krythiq Scan Report\n");
 
     console.log("| Severity | File | Line | Type | Message |");
     console.log("|---|---|---|---|---|");
@@ -455,8 +455,8 @@ function toSarif(findings: Finding[]) {
       {
         tool: {
           driver: {
-            name: "votrio",
-            informationUri: "https://votrio.dev",
+            name: "krythiq",
+            informationUri: "https://krythiq.dev",
             rules,
           },
         },

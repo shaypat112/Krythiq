@@ -1,13 +1,10 @@
 "use client";
 
-import { Play } from "lucide-react";
-
 import { LaptopFrame } from "./LaptopFrame";
 import { ScanTerminal } from "./ScanTerminal";
 import { RiskGauge } from "./RiskGauge";
 import { AttackPathChain } from "./AttackPathChain";
 import { FadeIn } from "../shared/FadeIn";
-import { Eyebrow } from "../shared/Eyebrow";
 
 export function ProductShowcase() {
   return (

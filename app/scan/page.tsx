@@ -4,8 +4,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ScanHub } from "./scan-hub";
 
 export const metadata: Metadata = {
-  title: "Security workspace - Votrio",
-  description: "Run repository security scans and review scan history.",
+  title: "Security workspace - Krythiq",
+  description: "Scan a GitHub repository or individual source file, explore its technology stack, and review security findings.",
 };
 
 export default function ScanPage() {
