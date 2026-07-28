@@ -12,7 +12,7 @@ interface RunOptions {
   verbose: boolean;
 }
 
-const HEADER = chalk.dim("●") + " " + chalk.bold("votrio");
+const HEADER = chalk.dim("●") + " " + chalk.bold("krythiq");
 const DEFAULT_MODEL = "claude-sonnet-4-20250514";
 
 export async function runCommand(userCommand: string, options: RunOptions) {
@@ -28,8 +28,8 @@ export async function runCommand(userCommand: string, options: RunOptions) {
 
   const traceConfig = config.traces ?? {};
   const envModel =
-    process.env.VOTRIO_TRACE_MODEL ||
-    process.env.VOTRIO_MODEL ||
+    process.env.KRYTHIQ_TRACE_MODEL ||
+    process.env.KRYTHIQ_MODEL ||
     process.env.ANTHROPIC_MODEL;
   const model =
     options.model !== DEFAULT_MODEL
@@ -57,7 +57,7 @@ export async function runCommand(userCommand: string, options: RunOptions) {
   } else if (options.ai && !apiKey) {
     console.log(
       chalk.yellow(
-        `${chalk.dim("●")} AI disabled — run ${chalk.cyan("votrio auth")} to enable trace analysis\n`
+        `${chalk.dim("●")} AI disabled — run ${chalk.cyan("krythiq auth")} to enable trace analysis\n`
       )
     );
   }

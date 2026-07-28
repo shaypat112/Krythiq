@@ -1,9 +1,9 @@
-# votrio
+# krythiq
 
 > AI-powered terminal trace analysis, security scanning, and code quality for developers who ship fast.
 
 ```bash
-npm install -g votrio
+npm install -g krythiq
 ```
 
 ## Features
@@ -18,33 +18,33 @@ npm install -g votrio
 
 ```bash
 # Install
-npm install -g votrio
+npm install -g krythiq
 
 # Initialize in your project
-votrio init
+krythiq init
 
 # Wrap your start command
-votrio run "npm start"
+krythiq run "npm start"
 
 # Scan for security issues
-votrio scan
+krythiq scan
 ```
 
 ## Commands
 
 | Command              | Description                                   |
 | -------------------- | --------------------------------------------- |
-| `votrio init`        | Initialize votrio in the current project      |
-| `votrio run "<cmd>"` | Wrap a process and analyze its output         |
-| `votrio scan [path]` | Scan a directory for security vulnerabilities |
-| `votrio auth`        | Configure your Anthropic API key              |
+| `krythiq init`        | Initialize krythiq in the current project      |
+| `krythiq run "<cmd>"` | Wrap a process and analyze its output         |
+| `krythiq scan [path]` | Scan a directory for security vulnerabilities |
+| `krythiq auth`        | Configure your Anthropic API key              |
 
 ## Configuration
 
-After running `votrio init`, a `votrio.config.ts` file is created:
+After running `krythiq init`, a `krythiq.config.ts` file is created:
 
 ```ts
-import { defineConfig } from "votrio";
+import { defineConfig } from "krythiq";
 
 export default defineConfig({
   model: "claude-sonnet-4-20250514",
@@ -62,16 +62,16 @@ export default defineConfig({
 
 ## Authentication
 
-Votrio uses the Anthropic API for AI features. Set your key via:
+Krythiq uses the Anthropic API for AI features. Set your key via:
 
 ```bash
-votrio auth
+krythiq auth
 # or
 export ANTHROPIC_API_KEY=sk-ant-...
 ```
 
-Your key is stored locally and never sent to Votrio's servers.
+Your key is stored locally and never sent to Krythiq's servers.
 
 ## License
 
-MIT © Votrio, Inc.
+MIT © Krythiq, Inc.

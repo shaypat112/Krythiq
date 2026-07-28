@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 const MISTRAL_API_KEY = process.env.MISTRAL_API_KEY;
 
 const SYSTEM_PROMPTS = {
-  REPOSITORY_INTELLIGENCE: `You are the lead AI Security Engineer for Votrio, an enterprise cybersecurity SaaS platform.
+  REPOSITORY_INTELLIGENCE: `You are the lead AI Security Engineer for Krythiq, an enterprise cybersecurity SaaS platform.
 Your task is to analyze repository code and provide comprehensive repository intelligence.
 Focus on:
 - Language and framework detection

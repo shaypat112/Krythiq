@@ -110,10 +110,10 @@ function Step({
 }
 
 const packageManagers = [
-  { id: "npm", label: "npm", cmd: "npm install -g votrio" },
-  { id: "pnpm", label: "pnpm", cmd: "pnpm add -g votrio" },
-  { id: "yarn", label: "yarn", cmd: "yarn global add votrio" },
-  { id: "bun", label: "bun", cmd: "bun add -g votrio" },
+  { id: "npm", label: "npm", cmd: "npm install -g krythiq" },
+  { id: "pnpm", label: "pnpm", cmd: "pnpm add -g krythiq" },
+  { id: "yarn", label: "yarn", cmd: "yarn global add krythiq" },
+  { id: "bun", label: "bun", cmd: "bun add -g krythiq" },
 ];
 
 export default function InstallationPage() {
@@ -132,7 +132,7 @@ export default function InstallationPage() {
           Installation
         </h1>
         <p className="text-zinc-400 text-base leading-relaxed max-w-xl">
-          Votrio is a global CLI tool distributed via npm. Install it once and
+          Krythiq is a global CLI tool distributed via npm. Install it once and
           use it across every project on your machine.
         </p>
       </div>
@@ -158,7 +158,7 @@ export default function InstallationPage() {
 
       {/* Steps */}
       <div>
-        <Step number={1} title="Install votrio globally">
+        <Step number={1} title="Install krythiq globally">
           <p className="text-sm text-zinc-500 mb-3">
             Choose your preferred package manager:
           </p>
@@ -184,24 +184,24 @@ export default function InstallationPage() {
 
         <Step number={2} title="Verify the installation">
           <p className="text-sm text-zinc-500 mb-3">
-            Confirm votrio was installed correctly:
+            Confirm krythiq was installed correctly:
           </p>
-          <CodeBlock code="votrio --version" />
+          <CodeBlock code="krythiq --version" />
           <div className="mt-3 rounded-lg border border-zinc-800 bg-zinc-950 px-4 py-3 font-mono text-sm text-zinc-500">
-            <span className="text-zinc-600">→ </span>votrio v0.1.0
+            <span className="text-zinc-600">→ </span>krythiq v0.1.0
           </div>
         </Step>
 
         <Step number={3} title="Authenticate (optional for AI features)">
           <p className="text-sm text-zinc-500 mb-3">
-            AI-powered trace analysis requires an API key. Votrio uses Anthropic
+            AI-powered trace analysis requires an API key. Krythiq uses Anthropic
             Claude under the hood.
           </p>
-          <CodeBlock code="votrio auth" />
+          <CodeBlock code="krythiq auth" />
           <p className="text-xs text-zinc-600 mt-2">
             You can also set{" "}
             <code className="text-zinc-400">ANTHROPIC_API_KEY</code> in your
-            environment and Votrio will pick it up automatically.
+            environment and Krythiq will pick it up automatically.
           </p>
         </Step>
 
@@ -267,7 +267,7 @@ export default function InstallationPage() {
           <div className="flex items-center gap-2">
             <Terminal size={14} className="text-zinc-400" />
             <p className="text-sm font-semibold text-white">
-              command not found: votrio (after install)
+              command not found: krythiq (after install)
             </p>
           </div>
           <p className="text-sm text-zinc-400">

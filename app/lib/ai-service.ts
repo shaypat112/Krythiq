@@ -1,4 +1,4 @@
-// AI Service for Votrio - Real AI-powered analysis integration
+// AI Service for Krythiq - Real AI-powered analysis integration
 
 export interface RepositoryData {
   files: Array<{ path: string; content?: string; size: number }>;

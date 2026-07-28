@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { ArrowRight, Laptop, ScanSearch, ShieldCheck, Sparkles } from "lucide-react";
+import { ArrowRight, Laptop, ScanSearch, Sparkles } from "lucide-react";
 
+import { BrandLogo } from "@/app/components/BrandLogo";
 import { Button } from "@/components/ui/button";
 
 export function DesktopRequired({
@@ -23,10 +24,8 @@ export function DesktopRequired({
 
         <div className="relative mx-auto flex w-full max-w-sm flex-col justify-center">
           <div className="mb-8 flex items-center gap-2 text-sm font-semibold">
-            <span className="grid h-8 w-8 place-items-center rounded-xl border border-violet-400/30 bg-violet-400/10 text-violet-300">
-              <ShieldCheck className="h-4 w-4" />
-            </span>
-            Votrio
+            <BrandLogo className="h-8 w-8 rounded-xl" priority />
+            Krythiq
           </div>
 
           <div className="relative mx-auto mb-10 w-full max-w-[19rem]">
@@ -71,7 +70,7 @@ export function DesktopRequired({
               Desktop workspace
             </span>
             <h1 className="mt-5 text-3xl font-semibold tracking-tight">
-              Open Votrio on a desktop.
+              Open Krythiq on a desktop.
             </h1>
             <p className="mt-3 text-sm leading-6 text-muted-foreground">
               Repository scans, findings, charts, and remediation tools need more room than a phone provides. Continue on a laptop or desktop for the complete workspace.

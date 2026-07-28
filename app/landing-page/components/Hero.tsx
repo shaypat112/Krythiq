@@ -1,15 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import dynamic from "next/dynamic";
 import { ArrowRight, Check, Play } from "lucide-react";
 import { FadeIn } from "../shared/FadeIn";
 import MacbookScrollDemo from "@/components/macbook-scroll-demo";
-
-const RepositoryScene = dynamic(() => import("./RepositoryScene").then((module) => module.RepositoryScene), {
-  ssr: false,
-  loading: () => <div className="h-full animate-pulse bg-[#080c13]" />,
-});
+import { RepositoryScene } from "./RepositoryScene";
 
 export function Hero() {
   return (
@@ -22,7 +17,7 @@ export function Hero() {
             Ship AI-generated code without shipping its vulnerabilities.
           </h1>
           <p className="mx-auto max-w-2xl text-balance text-base leading-7 text-muted-foreground sm:text-lg sm:leading-8">
-            Votrio maps your architecture, traces exploitable paths, and turns repository context into fixes your team can review and ship.
+            Krythiq maps your architecture, traces exploitable paths, and turns repository context into fixes your team can review and ship.
           </p>
         </div>
 
@@ -33,7 +28,7 @@ export function Hero() {
             href="/auth"
             className="inline-flex items-center gap-2 rounded-full bg-foreground px-5 py-3 text-sm font-semibold text-background transition hover:opacity-85"
           >
-            Join waitlist
+            Create account
             <ArrowRight className="h-4 w-4" />
           </Link>
           <Link

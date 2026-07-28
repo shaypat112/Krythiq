@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Votrio AI Service - Real machine learning based code analysis
+Krythiq AI Service - Real machine learning based code analysis
 Uses scikit-learn and natural language processing for code intelligence
 """
 

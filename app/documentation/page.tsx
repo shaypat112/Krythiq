@@ -62,7 +62,7 @@ export default function MainDocsPage() {
             </span>
           </h1>
           <p className="max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg">
-            Votrio wraps your terminal process, intercepts errors in real time,
+            Krythiq wraps your terminal process, intercepts errors in real time,
             and explains stack traces while scanning for security risks.
           </p>
         </div>
@@ -81,7 +81,7 @@ export default function MainDocsPage() {
 
       <div className="rounded-xl border border-border bg-card px-4 py-3 font-mono text-sm text-foreground">
         <span className="select-none text-muted-foreground">$</span> npm install -g
-        votrio
+        krythiq
         <span className="ml-auto hidden text-xs text-muted-foreground sm:inline">
           node larger than 18 required
         </span>
@@ -101,7 +101,7 @@ export default function MainDocsPage() {
       </div>
 
       <section className="space-y-4">
-        <h2 className="text-lg font-semibold text-foreground">What Votrio does</h2>
+        <h2 className="text-lg font-semibold text-foreground">What Krythiq does</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {features.map((f) => {
             const Icon = f.icon;
@@ -121,9 +121,9 @@ export default function MainDocsPage() {
       </section>
 
       <section className="space-y-4 rounded-xl border border-border bg-card p-6">
-        <h2 className="text-lg font-semibold text-foreground">Why Votrio?</h2>
+        <h2 className="text-lg font-semibold text-foreground">Why Krythiq?</h2>
         <p className="text-sm leading-relaxed text-muted-foreground">
-          Most security tools are reactive. Votrio is proactive by sitting
+          Most security tools are reactive. Krythiq is proactive by sitting
           directly in your shell and catching issues before they ship.
         </p>
         <ul className="space-y-2 pt-1">

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { BrandLogo } from "@/app/components/BrandLogo";
 import { ThemeToggle } from "./ThemeToggle";
 
 const links = [
@@ -27,9 +28,9 @@ export function Nav() {
     >
       <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 sm:px-8 lg:px-10">
         <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight">
-
+          <BrandLogo className="h-8 w-8 rounded-xl" priority />
           <span className="text-[15px]">
-            Votrio
+            Krythiq
           </span>
         </Link>
 

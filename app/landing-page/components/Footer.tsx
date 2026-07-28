@@ -1,15 +1,16 @@
 import Link from "next/link";
+import { BrandLogo } from "@/app/components/BrandLogo";
 
 export function Footer() {
   return (
     <footer className="border-t border-border py-10">
       <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
         <Link href="/" className="flex items-center gap-2 text-sm font-semibold tracking-tight">
-
-          Votrio
+          <BrandLogo className="h-7 w-7" />
+          Krythiq
         </Link>
         <p className="font-mono text-xs text-muted-foreground">
-          © {new Date().getFullYear()} Votrio. All rights reserved.
+          © {new Date().getFullYear()} Krythiq. All rights reserved.
         </p>
         <div className="flex gap-6 font-mono text-xs text-muted-foreground">
           <Link href="/documentation" className="transition hover:text-foreground">Docs</Link>

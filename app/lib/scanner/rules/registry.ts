@@ -50,7 +50,7 @@ function compileRules(): SecurityRule[] {
       category: definition.category,
       message: definition.message,
       suggestion: definition.suggestion,
-      advisoryId: `VOTRIO-${definition.id}`,
+      advisoryId: `KRYTHIQ-${definition.id}`,
       validator,
     };
   });

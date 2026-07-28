@@ -21,10 +21,10 @@ export default function CommandsPage() {
     <div className="max-w-4xl space-y-8">
       <div>
         <h2 className="text-2xl font-semibold mb-4 text-foreground">
-          Votrio CLI Commands
+          Krythiq CLI Commands
         </h2>
         <p className="text-sm text-muted-foreground mb-6">
-          Complete reference for all votrio commands and options.
+          Complete reference for all krythiq commands and options.
         </p>
       </div>
 
@@ -37,11 +37,11 @@ export default function CommandsPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Initialize votrio in your project. Creates config file, .votrio/
+            Initialize krythiq in your project. Creates config file, .krythiq/
             directory, and updates .gitignore.
           </p>
 
-          <CodeBlock code={`votrio init`} />
+          <CodeBlock code={`krythiq init`} />
 
           <div>
             <h4 className="text-sm font-semibold text-foreground mb-3">
@@ -63,9 +63,9 @@ export default function CommandsPage() {
             </h4>
             <ul className="space-y-2 text-sm text-muted-foreground list-disc list-inside">
               <li>Detects your project stack (Node.js, TypeScript, Go, etc)</li>
-              <li>Creates votrio.config.mjs with sensible defaults</li>
-              <li>Creates .votrio/ directory for custom rules and data</li>
-              <li>Adds .votrio/ to .gitignore to avoid committing cache</li>
+              <li>Creates krythiq.config.mjs with sensible defaults</li>
+              <li>Creates .krythiq/ directory for custom rules and data</li>
+              <li>Adds .krythiq/ to .gitignore to avoid committing cache</li>
             </ul>
           </div>
 
@@ -76,14 +76,14 @@ export default function CommandsPage() {
             <CodeBlock
               label="Output"
               code={`$ cd my-project
-$ votrio init
+$ krythiq init
 
 → Detecting project stack...
 ✓ Node.js / TypeScript detected
-✓ Created votrio.config.mjs
-✓ Added .votrio/ to .gitignore
+✓ Created krythiq.config.mjs
+✓ Added .krythiq/ to .gitignore
 
-Ready. Run: votrio run "npm start"`}
+Ready. Run: krythiq run "npm start"`}
             />
           </div>
         </CardContent>
@@ -102,7 +102,7 @@ Ready. Run: votrio run "npm start"`}
             explanations as errors occur.
           </p>
 
-          <CodeBlock code={`votrio run "npm start"`} />
+          <CodeBlock code={`krythiq run "npm start"`} />
 
           <div>
             <h4 className="text-sm font-semibold text-foreground mb-3">
@@ -124,7 +124,7 @@ Ready. Run: votrio run "npm start"`}
               <div>
                 <code className="text-foreground">--verbose</code>
                 <p className="text-muted-foreground">
-                  Print debug info from votrio itself
+                  Print debug info from krythiq itself
                 </p>
               </div>
             </div>
@@ -136,21 +136,21 @@ Ready. Run: votrio run "npm start"`}
             </h4>
             <CodeBlock
               code={`# Wrap your dev server
-votrio run "npm start"
+krythiq run "npm start"
 
 # Works with any process
-votrio run "python app.py"
-votrio run "go run ."
-votrio run "cargo run"
+krythiq run "python app.py"
+krythiq run "go run ."
+krythiq run "cargo run"
 
 # Use a different AI model for faster analysis
-votrio run --model claude-haiku-3.5 "npm test"
+krythiq run --model claude-haiku-3.5 "npm test"
 
 # Disable AI (just pipe output through)
-votrio run --no-ai "npm start"
+krythiq run --no-ai "npm start"
 
-# Debug votrio itself
-votrio run --verbose "npm start"`}
+# Debug krythiq itself
+krythiq run --verbose "npm start"`}
             />
           </div>
 
@@ -159,8 +159,8 @@ votrio run --verbose "npm start"`}
               Requirements
             </h4>
             <ul className="space-y-1 text-sm text-muted-foreground list-disc list-inside">
-              <li>Anthropic API key configured (run votrio auth)</li>
-              <li>votrio.config.mjs present in project root</li>
+              <li>Anthropic API key configured (run krythiq auth)</li>
+              <li>krythiq.config.mjs present in project root</li>
             </ul>
           </div>
         </CardContent>
@@ -179,7 +179,7 @@ votrio run --verbose "npm start"`}
             issues. Supports multiple output formats and CI integration.
           </p>
 
-          <CodeBlock code={`votrio scan [path]`} />
+          <CodeBlock code={`krythiq scan [path]`} />
 
           <div>
             <h4 className="text-sm font-semibold text-foreground mb-3">
@@ -227,7 +227,7 @@ votrio run --verbose "npm start"`}
               <div>
                 <code className="text-foreground">--rules &lt;path&gt;</code>
                 <p className="text-muted-foreground">
-                  Path to custom rules JSON (default: .votrio/rules.json)
+                  Path to custom rules JSON (default: .krythiq/rules.json)
                 </p>
               </div>
               <div>
@@ -263,28 +263,28 @@ votrio run --verbose "npm start"`}
             </h4>
             <CodeBlock
               code={`# Scan current directory
-votrio scan
+krythiq scan
 
 # Scan specific path
-votrio scan ./src
+krythiq scan ./src
 
 # Scan and auto-fix safe issues
-votrio scan --fix
+krythiq scan --fix
 
 # CI/CD integration
-votrio scan --ci --fail-on high
+krythiq scan --ci --fail-on high
 
 # Export as JSON for tooling
-votrio scan --format json > scan-results.json
+krythiq scan --format json > scan-results.json
 
 # Ignore certain paths
-votrio scan --ignore "**/*.test.js" --ignore "**/node_modules/**"
+krythiq scan --ignore "**/*.test.js" --ignore "**/node_modules/**"
 
 # Watch mode for development
-votrio scan --watch
+krythiq scan --watch
 
 # Get AI suggestions
-votrio scan --ai --ai-model mistral-large-latest`}
+krythiq scan --ai --ai-model mistral-large-latest`}
             />
           </div>
 
@@ -297,7 +297,7 @@ votrio scan --ai --ai-model mistral-large-latest`}
               <li>eval() usage and code injection risks</li>
               <li>dangerouslySetInnerHTML and XSS vulnerabilities</li>
               <li>Child process execution risks</li>
-              <li>Custom security rules (from .votrio/rules.json)</li>
+              <li>Custom security rules (from .krythiq/rules.json)</li>
             </ul>
           </div>
         </CardContent>
@@ -316,7 +316,7 @@ votrio scan --ai --ai-model mistral-large-latest`}
             credentials securely in your home directory.
           </p>
 
-          <CodeBlock code={`votrio auth`} />
+          <CodeBlock code={`krythiq auth`} />
 
           <div>
             <h4 className="text-sm font-semibold text-foreground mb-3">
@@ -338,14 +338,14 @@ votrio scan --ai --ai-model mistral-large-latest`}
             </h4>
             <CodeBlock
               code={`# Set up API key (prompts for input)
-votrio auth
+krythiq auth
 
 # Clear stored credentials
-votrio auth --clear
+krythiq auth --clear
 
 # Alternative: Set via environment variable
 export ANTHROPIC_API_KEY="sk-ant-..."
-votrio run "npm start"`}
+krythiq run "npm start"`}
             />
           </div>
 
@@ -368,7 +368,7 @@ votrio run "npm start"`}
               <li>Sign up or log in to your account</li>
               <li>Navigate to API Keys section</li>
               <li>Create a new API key</li>
-              <li>Run votrio auth and paste the key when prompted</li>
+              <li>Run krythiq auth and paste the key when prompted</li>
             </ol>
           </div>
         </CardContent>
@@ -383,12 +383,12 @@ votrio run "npm start"`}
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            These options work with any votrio command:
+            These options work with any krythiq command:
           </p>
           <div className="space-y-3 text-xs">
             <div>
               <code className="text-foreground">-v, --version</code>
-              <p className="text-muted-foreground">Print votrio version</p>
+              <p className="text-muted-foreground">Print krythiq version</p>
             </div>
             <div>
               <code className="text-foreground">-h, --help</code>
@@ -397,9 +397,9 @@ votrio run "npm start"`}
           </div>
 
           <CodeBlock
-            code={`votrio --version
-votrio --help
-votrio run --help`}
+            code={`krythiq --version
+krythiq --help
+krythiq run --help`}
           />
         </CardContent>
       </Card>
@@ -411,13 +411,13 @@ votrio run --help`}
         <CardContent className="space-y-4">
           <CodeBlock
             code={`# General help
-votrio --help
+krythiq --help
 
 # Help for specific command
-votrio init --help
-votrio run --help
-votrio scan --help
-votrio auth --help`}
+krythiq init --help
+krythiq run --help
+krythiq scan --help
+krythiq auth --help`}
           />
         </CardContent>
       </Card>

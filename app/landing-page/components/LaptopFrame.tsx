@@ -9,7 +9,7 @@ export function LaptopFrame({ children }: { children: React.ReactNode }) {
             <div className="h-3 w-3 rounded-full bg-emerald-400/70" />
           </div>
           <div className="rounded-md bg-background/60 px-3 py-0.5 font-mono text-xs text-muted-foreground">
-            votrio · ~/project
+            krythiq · ~/project
           </div>
           <div className="w-12" />
         </div>

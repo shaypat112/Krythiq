@@ -5,8 +5,7 @@ import { Problem } from "./components/Problem";
 import { SolutionFlow } from "./components/SolutionFlow";
 import { ProductShowcase } from "./components/ProductShowcase";
 import { Founder } from "./components/Founder";
-import { FinalCTA } from "./components/FinalCTA";
-import { Footer } from "./components/Footer";
+
 import { ProductVideoStory } from "@/app/components/ProductVideoStory";
 
 export default function LandingPage() {
@@ -21,15 +20,14 @@ export default function LandingPage() {
         <ProductVideoStory
           className="py-16 sm:py-24"
           eyebrow="Product walkthrough"
-          title="See the thinking behind Votrio."
+          title="See the thinking behind Krythiq."
           description="Watch the walkthrough, then connect a repository and turn the ideas into a real security workflow."
         />
         <Problem />
         <SolutionFlow />
         <ProductShowcase />
         <Founder />
-        <FinalCTA />
-        <Footer />
+
       </div>
     </div>
   );

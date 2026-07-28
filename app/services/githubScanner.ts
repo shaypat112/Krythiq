@@ -51,6 +51,8 @@ export type RepositoryProfile = {
   fileTypes: Array<{ name: string; files: number; lines: number }>;
   largestFiles: Array<{ path: string; bytes: number; lines: number }>;
   manifests: string[];
+  technologies: string[];
+  dependencies: string[];
 };
 
 export type SystemDesignScenario = {
@@ -147,6 +149,7 @@ function buildRepositoryProfile(input: {
     lines: languageStats.get(name)?.lines ?? 0,
     percent: totalLanguageBytes ? Math.round(((input.languageBytes[name] ?? 0) / totalLanguageBytes) * 1000) / 10 : 0,
   })).sort((a, b) => b.bytes - a.bytes || b.lines - a.lines);
+  const detected = detectTechnologies(input.files, input.manifests, languages.map((language) => language.name));
 
   return {
     metadata: {
@@ -170,7 +173,46 @@ function buildRepositoryProfile(input: {
     fileTypes: [...fileTypeStats].map(([name, value]) => ({ name, ...value })).sort((a, b) => b.lines - a.lines),
     largestFiles: largestFiles.sort((a, b) => b.bytes - a.bytes).slice(0, 8),
     manifests: input.manifests,
+    technologies: detected.technologies,
+    dependencies: detected.dependencies,
   };
+}
+
+function detectTechnologies(files: RepositoryFile[], manifests: string[], languages: string[]) {
+  const dependencies = new Set<string>();
+  const technologies = new Set(languages);
+  const packageFile = files.find((file) => file.path === "package.json");
+  if (packageFile) {
+    try {
+      const manifest = JSON.parse(packageFile.content) as {
+        dependencies?: Record<string, string>;
+        devDependencies?: Record<string, string>;
+      };
+      Object.keys({ ...manifest.dependencies, ...manifest.devDependencies }).forEach((name) => dependencies.add(name));
+    } catch {
+      // A malformed manifest should not fail an otherwise valid scan.
+    }
+  }
+  const requirements = files.find((file) => file.path === "requirements.txt");
+  requirements?.content.split("\n").forEach((line) => {
+    const name = line.trim().match(/^([A-Za-z0-9_.-]+)/)?.[1];
+    if (name) dependencies.add(name);
+  });
+  const dependencySignals: Array<[RegExp, string]> = [
+    [/^next$/i, "Next.js"], [/^react$/i, "React"], [/tailwind/i, "Tailwind CSS"],
+    [/supabase/i, "Supabase"], [/prisma/i, "Prisma"], [/drizzle/i, "Drizzle"],
+    [/express/i, "Express"], [/fastapi/i, "FastAPI"], [/django/i, "Django"],
+    [/three/i, "Three.js"], [/stripe/i, "Stripe"], [/postgres|pg$/i, "PostgreSQL"],
+  ];
+  for (const dependency of dependencies) {
+    for (const [pattern, label] of dependencySignals) if (pattern.test(dependency)) technologies.add(label);
+  }
+  manifests.forEach((manifest) => {
+    if (/docker/i.test(manifest)) technologies.add("Docker");
+    if (/cargo/i.test(manifest)) technologies.add("Rust");
+    if (/go\.mod/i.test(manifest)) technologies.add("Go");
+  });
+  return { technologies: [...technologies].slice(0, 24), dependencies: [...dependencies].slice(0, 60) };
 }
 
 function shouldScanFile(filePath: string, ignore: Set<string>) {
@@ -291,7 +333,7 @@ async function scanFiles(files: RepositoryFile[], options: ScanOptions, onProgre
           category: rule.category,
           confidence: "high",
           advisoryId: rule.advisoryId,
-          technicalDetails: `Matched Votrio ruleset ${securityRuleRegistry.rulesetVersion}, rule ${rule.id}, in ${file.path}:${line}.`,
+          technicalDetails: `Matched Krythiq ruleset ${securityRuleRegistry.rulesetVersion}, rule ${rule.id}, in ${file.path}:${line}.`,
         });
       }
     }
@@ -332,7 +374,7 @@ export async function runGitHubScanWithToken(
   const token = providerToken ?? process.env.GITHUB_TOKEN;
   const headers: HeadersInit = {
     Accept: "application/vnd.github+json",
-    "User-Agent": "votrio-scanner",
+    "User-Agent": "krythiq-scanner",
     "X-GitHub-Api-Version": "2022-11-28",
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
@@ -379,7 +421,7 @@ export async function runGitHubScanWithToken(
     const eligibleBlobs = tree.tree.filter((entry) =>
       entry.type === "blob" &&
       (entry.size ?? scannerPolicy.limits.maxFileBytes + 1) <= scannerPolicy.limits.maxFileBytes &&
-      shouldScanFile(entry.path, ignore),
+      (shouldScanFile(entry.path, ignore) || manifests.includes(entry.path)),
     );
     const blobs: typeof eligibleBlobs = [];
     let selectedBytes = 0;

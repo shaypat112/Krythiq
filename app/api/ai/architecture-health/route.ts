@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 const MISTRAL_API_KEY = process.env.MISTRAL_API_KEY;
 
 const SYSTEM_PROMPTS = {
-  ARCHITECTURE_EVALUATOR: `You are a Systems Architect and Technical Lead at Votrio.
+  ARCHITECTURE_EVALUATOR: `You are a Systems Architect and Technical Lead at Krythiq.
 Your task is to evaluate software architecture for:
 - Maintainability and modularity
 - Coupling and cohesion analysis

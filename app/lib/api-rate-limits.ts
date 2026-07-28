@@ -14,7 +14,7 @@ export const apiPlanCatalog: Record<ApiPlanId, {
 }> = {
   free: {
     name: "Free",
-    audience: "Trying Votrio on personal projects",
+    audience: "Trying Krythiq on personal projects",
     pricePosition: "$0 while validating the workflow",
     included: "Core repository scans and in-app results",
     limits: { apiRequestsPerMinute: 60, expensiveRequestsPerMinute: 5 },

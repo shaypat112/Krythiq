@@ -14,23 +14,23 @@ const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"),
-  title: "Votrio — AI-Powered Code Intelligence & Security Platform",
+  title: "Krythiq — AI-Powered Code Intelligence & Security Platform",
   description:
     "Enterprise-grade code analysis, security scanning, and repository intelligence. Transform your development workflow with AI-powered insights.",
   icons: {
-    icon: "/votrio_logo.jpeg",
-    shortcut: "/votrio_logo.jpeg",
-    apple: "/votrio_logo.jpeg",
+    icon: "/krythiq_logo.jpeg",
+    shortcut: "/krythiq_logo.jpeg",
+    apple: "/krythiq_logo.jpeg",
   },
   openGraph: {
-    title: "Votrio — AI-Powered Code Intelligence & Security Platform",
+    title: "Krythiq — AI-Powered Code Intelligence & Security Platform",
     description:
       "Enterprise-grade code analysis, security scanning, and repository intelligence. Transform your development workflow with AI-powered insights.",
-    images: [{ url: "/og.png", width: 1731, height: 909, alt: "Votrio repository security intelligence" }],
+    images: [{ url: "/og.png", width: 1731, height: 909, alt: "Krythiq repository security intelligence" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Votrio — AI-Powered Code Intelligence & Security Platform",
+    title: "Krythiq — AI-Powered Code Intelligence & Security Platform",
     description: "Ship AI-generated code without shipping its vulnerabilities.",
     images: ["/og.png"],
   },

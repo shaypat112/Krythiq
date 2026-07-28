@@ -3,7 +3,7 @@ import path from "path";
 import { pathToFileURL } from "url";
 import { createRequire } from "module";
 
-export interface VotrioConfig {
+export interface KrythiqConfig {
   model?: string;
   traces?: {
     enabled?: boolean;
@@ -24,25 +24,25 @@ export interface VotrioConfig {
   };
 }
 
-export function defineConfig(config: VotrioConfig): VotrioConfig {
+export function defineConfig(config: KrythiqConfig): KrythiqConfig {
   return config;
 }
 
 interface LoadedConfig {
-  config: VotrioConfig;
+  config: KrythiqConfig;
   source?: string;
   warnings: string[];
 }
 
 const CONFIG_FILES = [
-  "votrio.config.mjs",
-  "votrio.config.js",
-  "votrio.config.cjs",
-  "votrio.config.json",
-  ".votrio/config.json",
+  "krythiq.config.mjs",
+  "krythiq.config.js",
+  "krythiq.config.cjs",
+  "krythiq.config.json",
+  ".krythiq/config.json",
 ];
 
-const TS_CONFIG = "votrio.config.ts";
+const TS_CONFIG = "krythiq.config.ts";
 
 export async function loadConfig(cwd: string = process.cwd()): Promise<LoadedConfig> {
   const warnings: string[] = [];
@@ -52,7 +52,7 @@ export async function loadConfig(cwd: string = process.cwd()): Promise<LoadedCon
     const tsPath = path.join(cwd, TS_CONFIG);
     if (await exists(tsPath)) {
       warnings.push(
-        `Found ${TS_CONFIG} but it is not loadable at runtime. Rename to votrio.config.mjs or votrio.config.json.`
+        `Found ${TS_CONFIG} but it is not loadable at runtime. Rename to krythiq.config.mjs or krythiq.config.json.`
       );
     }
     return { config: {}, warnings };
@@ -69,7 +69,7 @@ export async function loadConfig(cwd: string = process.cwd()): Promise<LoadedCon
   }
 }
 
-async function importConfig(filePath: string): Promise<VotrioConfig | undefined> {
+async function importConfig(filePath: string): Promise<KrythiqConfig | undefined> {
   if (filePath.endsWith(".json")) {
     const raw = await fs.readFile(filePath, "utf8");
     return JSON.parse(raw);

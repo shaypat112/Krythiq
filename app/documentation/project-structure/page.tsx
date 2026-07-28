@@ -6,9 +6,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tree, type TreeViewElement } from "@/components/ui/file-tree";
 
 export const metadata: Metadata = {
-  title: "Project structure - Votrio",
+  title: "Project structure - Krythiq",
   description:
-    "Explore the real Votrio repository structure and learn where the product, scanner, CLI, and database code live.",
+    "Explore the real Krythiq repository structure and learn where the product, scanner, CLI, and database code live.",
 };
 
 const repositoryTree: TreeViewElement[] = [
@@ -138,7 +138,7 @@ const repositoryTree: TreeViewElement[] = [
   { id: "public", name: "public", type: "folder" },
   { id: "proxy", name: "proxy.ts", type: "file" },
   { id: "next-config", name: "next.config.ts", type: "file" },
-  { id: "votrio-config", name: "votrio.config.ts", type: "file" },
+  { id: "krythiq-config", name: "krythiq.config.ts", type: "file" },
   { id: "package", name: "package.json", type: "file" },
 ];
 
@@ -186,7 +186,7 @@ export default function ProjectStructurePage() {
       <Card>
         <CardHeader className="border-b">
           <CardTitle className="flex items-center justify-between gap-3">
-            <span>votrio/</span>
+            <span>krythiq/</span>
             <span className="text-xs font-normal text-muted-foreground">
               Select folders to expand
             </span>
@@ -194,7 +194,7 @@ export default function ProjectStructurePage() {
         </CardHeader>
         <CardContent className="p-0">
           <Tree
-            aria-label="Votrio repository file structure"
+            aria-label="Krythiq repository file structure"
             elements={repositoryTree}
             initialExpandedItems={["app", "app-lib", "backend", "components", "supabase"]}
             className="h-[34rem] py-5 font-mono"

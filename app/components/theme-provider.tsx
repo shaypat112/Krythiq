@@ -16,7 +16,7 @@ type ThemeContextValue = {
   toggleTheme: () => void;
 };
 
-const STORAGE_KEY = "votrio-theme";
+const STORAGE_KEY = "krythiq-theme";
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 

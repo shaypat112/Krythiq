@@ -24,7 +24,7 @@ export default function AIDetectionPage() {
           AI Detection & Architecture Analysis
         </h2>
         <p className="text-sm text-muted-foreground mb-6">
-          Votrio uses advanced techniques to detect AI-generated code and analyze
+          Krythiq uses advanced techniques to detect AI-generated code and analyze
           architectural patterns. This guide explains how the detection works
           under the hood.
         </p>
@@ -36,7 +36,7 @@ export default function AIDetectionPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Votrio detects AI-generated code using a hybrid approach combining
+            Krythiq detects AI-generated code using a hybrid approach combining
             multiple analysis techniques. Instead of relying on a single method,
             it scores code across three independent detectors that each look for
             different patterns:
@@ -295,7 +295,7 @@ const handleUser = (user: User) => {
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Beyond AI detection, Votrio analyzes your codebase architecture to
+            Beyond AI detection, Krythiq analyzes your codebase architecture to
             identify structural issues that impact maintainability:
           </p>
 
@@ -454,16 +454,16 @@ src/services/user.ts → src/utils/auth.ts → src/services/user.ts
           <CodeBlock
             label="Run AI detection via scan"
             code={`# Scan for AI-generated code
-votrio scan
+krythiq scan
 
 # Get detailed JSON output for programmatic processing
-votrio scan --format json
+krythiq scan --format json
 
 # Fail CI if high AI likelihood detected
-votrio scan --ci --fail-on high
+krythiq scan --ci --fail-on high
 
 # Watch mode for continuous monitoring
-votrio scan --watch`}
+krythiq scan --watch`}
           />
 
           <div className="mt-4">

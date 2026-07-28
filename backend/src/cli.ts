@@ -17,9 +17,9 @@ export function runCli() {
   const program = new Command();
 
   program
-    .name("votrio")
+    .name("krythiq")
     .description(
-      chalk.bold("votrio") +
+      chalk.bold("krythiq") +
         " — AI-powered terminal trace analysis & security scanning"
     )
     .version(pkg.version, "-v, --version", "print current version")
@@ -29,16 +29,16 @@ export function runCli() {
 
   program
     .command("init")
-    .description("initialize votrio in the current project")
+    .description("initialize krythiq in the current project")
     .option("--skip-gitignore", "do not modify .gitignore")
     .action(initCommand);
 
   program
     .command("run <command>")
-    .description('wrap a process and analyze its output (e.g. votrio run "npm start")')
+    .description('wrap a process and analyze its output (e.g. krythiq run "npm start")')
     .option("--no-ai", "disable AI analysis, just pipe output")
     .option("--model <model>", "Anthropic model to use", "claude-sonnet-4-20250514")
-    .option("--verbose", "print debug info from votrio itself")
+    .option("--verbose", "print debug info from krythiq itself")
     .allowUnknownOption()
     .action(runCommand);
 
@@ -50,7 +50,7 @@ export function runCli() {
     .option("--fail-on <severity>", "fail on: low | medium | high | critical", "high")
     .option("--format <fmt>", "output format: text | json | markdown | sarif", "text")
     .option("--ignore <patterns...>", "glob patterns to ignore")
-    .option("--rules <path>", "path to custom rules JSON (default: .votrio/rules.json)")
+    .option("--rules <path>", "path to custom rules JSON (default: .krythiq/rules.json)")
     .option("--watch", "daemon mode: rescan on file changes")
     .option("--publish", "publish scan summary to Supabase scan_history")
     .option("--ai", "enable AI refactoring suggestions via Mistral")
@@ -69,7 +69,7 @@ export function runCli() {
     console.error(
       chalk.red(`\nError: unknown command '${operands[0]}'\n`)
     );
-    console.log(`Run ${chalk.cyan("votrio --help")} to see available commands.\n`);
+    console.log(`Run ${chalk.cyan("krythiq --help")} to see available commands.\n`);
     process.exit(1);
   });
 

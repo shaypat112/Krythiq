@@ -7,7 +7,7 @@ interface AuthOptions {
   clear: boolean;
 }
 
-const store = new Conf<{ apiKey?: string }>({ projectName: "votrio" });
+const store = new Conf<{ apiKey?: string }>({ projectName: "krythiq" });
 
 export async function authCommand(options: AuthOptions) {
   if (options.clear) {
@@ -20,12 +20,12 @@ export async function authCommand(options: AuthOptions) {
 
   if (envKey) {
     console.log(
-      `\n${chalk.green("✓")} ANTHROPIC_API_KEY found in environment — votrio will use it automatically.\n`
+      `\n${chalk.green("✓")} ANTHROPIC_API_KEY found in environment — krythiq will use it automatically.\n`
     );
     return;
   }
 
-  console.log(`\n${chalk.bold("votrio")} ${chalk.dim("— Enable AI Logic ")}\n`);
+  console.log(`\n${chalk.bold("krythiq")} ${chalk.dim("— Enable AI Logic ")}\n`);
   console.log(
     chalk.dim("  Your key is stored locally and never accesed publicly.\n")
   );
@@ -52,7 +52,7 @@ export async function authCommand(options: AuthOptions) {
     });
     store.set("apiKey", apiKey);
     spinner.succeed("Key verified and saved");
-    console.log(`\n  You're all set. Run ${chalk.cyan('votrio run "npm start"')} to begin.\n`);
+    console.log(`\n  You're all set. Run ${chalk.cyan('krythiq run "npm start"')} to begin.\n`);
   } catch (err: any) {
     spinner.fail("Key verification failed");
     console.error(chalk.red(`  ${err.message}\n`));

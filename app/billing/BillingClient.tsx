@@ -30,14 +30,14 @@ function EmbeddedCheckout({ clientSecret, publishableKey, onClose }: { clientSec
         }
         if (!window.Stripe) throw new Error("Stripe payment form is unavailable.");
         checkout = await window.Stripe(publishableKey).initEmbeddedCheckout({ fetchClientSecret: async () => clientSecret });
-        checkout.mount("#votrio-embedded-checkout");
+        checkout.mount("#krythiq-embedded-checkout");
       } catch (cause) { setError(cause instanceof Error ? cause.message : "Unable to load checkout."); }
     };
     void mount();
     return () => checkout?.destroy();
   }, [clientSecret, publishableKey]);
 
-  return <Card className="border-primary/30"><CardHeader><div className="flex items-center justify-between gap-3"><div><CardTitle>Secure checkout</CardTitle><CardDescription>Payment fields are securely hosted by Stripe inside Votrio.</CardDescription></div><Button variant="ghost" onClick={onClose}>Close</Button></div></CardHeader><CardContent>{error ? <p role="alert" className="text-sm text-destructive">{error}</p> : <div id="votrio-embedded-checkout" className="min-h-96" />}</CardContent></Card>;
+  return <Card className="border-primary/30"><CardHeader><div className="flex items-center justify-between gap-3"><div><CardTitle>Secure checkout</CardTitle><CardDescription>Payment fields are securely hosted by Stripe inside Krythiq.</CardDescription></div><Button variant="ghost" onClick={onClose}>Close</Button></div></CardHeader><CardContent>{error ? <p role="alert" className="text-sm text-destructive">{error}</p> : <div id="krythiq-embedded-checkout" className="min-h-96" />}</CardContent></Card>;
 }
 
 export function BillingClient() {

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BrandLogo } from "@/app/components/BrandLogo";
 
 export default function DocsLayout({
   children,
@@ -9,12 +10,16 @@ export default function DocsLayout({
     <div className="min-h-screen bg-background text-foreground md:flex">
       <aside className="sticky top-0 hidden h-screen w-64 border-r border-border bg-background md:block">
         <div className="space-y-8 p-6">
+          <Link href="/" className="flex items-center gap-2 text-sm font-semibold tracking-tight">
+            <BrandLogo className="h-8 w-8 rounded-xl" priority />
+            Krythiq
+          </Link>
           <div className="rounded-2xl border border-border bg-background p-4">
             <p className="text-xs uppercase tracking-[0.28em] text-muted-foreground">
               Documentation
             </p>
             <p className="mt-2 text-sm font-medium text-foreground">
-              Setup, install guides, and usage notes for Votrio.
+              Setup, install guides, and usage notes for Krythiq.
             </p>
           </div>
 
@@ -76,7 +81,7 @@ export default function DocsLayout({
                         href="/documentation/commands"
                         className="hover:text-foreground"
                       >
-                        votrio init — setup project
+                        krythiq init — setup project
                       </Link>
                     </li>
                     <li>
@@ -84,7 +89,7 @@ export default function DocsLayout({
                         href="/documentation/commands"
                         className="hover:text-foreground"
                       >
-                        votrio run — wrap a process
+                        krythiq run — wrap a process
                       </Link>
                     </li>
                     <li>
@@ -92,7 +97,7 @@ export default function DocsLayout({
                         href="/documentation/commands"
                         className="hover:text-foreground"
                       >
-                        votrio scan — security scan
+                        krythiq scan — security scan
                       </Link>
                     </li>
                     <li>
@@ -100,7 +105,7 @@ export default function DocsLayout({
                         href="/documentation/commands"
                         className="hover:text-foreground"
                       >
-                        votrio auth — configure API key
+                        krythiq auth — configure API key
                       </Link>
                     </li>
                   </ul>
