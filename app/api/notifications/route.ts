@@ -8,6 +8,7 @@ import {
 } from "@/app/lib/server/supabaseRest";
 
 export const runtime = "nodejs";
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export async function GET(request: Request) {
   try {
@@ -62,12 +63,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: true });
     }
 
-    if (!Array.isArray(notificationIds) || notificationIds.length === 0) {
+    if (
+      !Array.isArray(notificationIds) ||
+      notificationIds.length === 0 ||
+      notificationIds.length > 100 ||
+      !notificationIds.every((id): id is string => typeof id === "string" && UUID_PATTERN.test(id))
+    ) {
       return NextResponse.json({ error: "Missing notificationIds." }, { status: 400 });
     }
 
-    const filter = notificationIds.map((id: string) => `id.eq.${id}`).join(",");
-    const res = await supabaseFetch(env, `notifications?or=(${filter})`, {
+    const filter = notificationIds.map((id) => `id.eq.${id}`).join(",");
+    const res = await supabaseFetch(env, `notifications?user_id=eq.${userId}&or=(${filter})`, {
       method: "PATCH",
       accessToken,
       headers: { Prefer: "return=minimal" },

@@ -37,6 +37,7 @@ export async function handleGitHubScan(input: {
     profile: result.profile,
     findings: result.findings,
     model: input.options?.aiModel,
+    scanTier: input.options?.scanTier ?? "mid",
   });
 
   const scanPayload: Record<string, unknown> = {

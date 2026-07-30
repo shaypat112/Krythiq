@@ -1,0 +1,29 @@
+declare module "@tabler/icons-react" {
+  import type { ForwardRefExoticComponent, RefAttributes, SVGProps } from "react";
+  export type IconProps = SVGProps<SVGSVGElement> & { size?: number | string; stroke?: number | string };
+  export type Icon = ForwardRefExoticComponent<IconProps & RefAttributes<SVGSVGElement>>;
+  export const IconBrandGithub: Icon;
+  export const IconBrightnessDown: Icon;
+  export const IconBrightnessUp: Icon;
+  export const IconCaretRightFilled: Icon;
+  export const IconCaretUpFilled: Icon;
+  export const IconChevronUp: Icon;
+  export const IconMicrophone: Icon;
+  export const IconDownload: Icon;
+  export const IconMoon: Icon;
+  export const IconPlayerSkipForward: Icon;
+  export const IconPlayerTrackNext: Icon;
+  export const IconPlayerTrackPrev: Icon;
+  export const IconTable: Icon;
+  export const IconVolume: Icon;
+  export const IconVolume2: Icon;
+  export const IconVolume3: Icon;
+  export const IconSearch: Icon;
+  export const IconWorld: Icon;
+  export const IconCommand: Icon;
+  export const IconCaretLeftFilled: Icon;
+  export const IconCaretDownFilled: Icon;
+  export const IconSun: Icon;
+  export const IconTerminal2: Icon;
+  export const IconWindow: Icon;
+}

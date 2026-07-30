@@ -112,6 +112,66 @@
       "category": "code",
       "message": "Direct HTML assignment detected",
       "suggestion": "Prefer textContent or sanitize trusted markup before assigning HTML."
+    },
+    {
+      "id": "SQL_INJECTION",
+      "pattern": "(?:query|execute|raw)\\s*\\(\\s*`[^`]*\\$\\{",
+      "flags": "gi",
+      "severity": "critical",
+      "score": 95,
+      "category": "code",
+      "message": "Dynamic value interpolated into a database query",
+      "suggestion": "Use parameterized queries and bind every user-controlled value."
+    },
+    {
+      "id": "SSRF_RISK",
+      "pattern": "\\b(?:fetch|axios\\.(?:get|post)|requests\\.(?:get|post))\\s*\\(\\s*(?:req(?:uest)?\\.|params\\.|body\\.)",
+      "flags": "gi",
+      "severity": "high",
+      "score": 75,
+      "category": "code",
+      "message": "Request-derived URL passed to an outbound HTTP client",
+      "suggestion": "Allowlist destinations, block private network ranges, and parse URLs before connecting."
+    },
+    {
+      "id": "INSECURE_PERMISSIONS",
+      "pattern": "\\b(?:chmod\\s*\\([^)]*0?777|chmod\\s+777)\\b",
+      "flags": "gi",
+      "severity": "high",
+      "score": 75,
+      "category": "code",
+      "message": "World-writable file permissions detected",
+      "suggestion": "Grant the minimum required owner and group permissions."
+    },
+    {
+      "id": "SENSITIVE_DATA_LOG",
+      "pattern": "\\bconsole\\.log\\s*\\([^)]*(?:password|secret|token|authorization|cookie)",
+      "flags": "gi",
+      "severity": "high",
+      "score": 75,
+      "category": "secrets",
+      "message": "Sensitive authentication data may be written to logs",
+      "suggestion": "Remove the log or redact sensitive fields before structured logging."
+    },
+    {
+      "id": "AUTH_METADATA_TRUST",
+      "pattern": "\\buser_metadata\\b[^\\n]*(?:role|admin|permission)",
+      "flags": "gi",
+      "severity": "high",
+      "score": 75,
+      "category": "code",
+      "message": "Authorization may trust user-editable account metadata",
+      "suggestion": "Read authorization claims from protected server-managed metadata or a policy-controlled membership table."
+    },
+    {
+      "id": "PERMISSIVE_CORS",
+      "pattern": "(?:Access-Control-Allow-Origin[\"']?\\s*[:=]\\s*[\"']\\*|origin\\s*:\\s*[\"']\\*[\"'])",
+      "flags": "gi",
+      "severity": "medium",
+      "score": 55,
+      "category": "code",
+      "message": "Permissive cross-origin policy detected",
+      "suggestion": "Allowlist trusted origins and never combine wildcard origins with credentialed requests."
     }
   ]
 }

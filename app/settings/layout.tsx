@@ -14,6 +14,8 @@ import {
   Plug,
   BellRing,
   Braces,
+  Mail,
+  Coins,
 } from "lucide-react";
 import { cn } from "../lib/utils";
 import { SettingsProvider, useSettings } from "./profile/context";
@@ -26,6 +28,8 @@ const NAV_SECTIONS = [
   { id: "retention", label: "Data", icon: Database },
   { id: "teams", label: "Teams", icon: Users },
   { id: "integrations", label: "Integrations", icon: Plug },
+  { id: "email", label: "Email", icon: Mail },
+  { id: "tokens", label: "Tokens", icon: Coins },
   { id: "notifications", label: "Notifications", icon: BellRing },
   { id: "api", label: "API", icon: Braces },
 ] as const;

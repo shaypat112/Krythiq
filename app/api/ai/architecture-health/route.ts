@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { runPaidAiAction } from "@/app/lib/server/tokenLedger";
 
 const MISTRAL_API_KEY = process.env.MISTRAL_API_KEY;
 
@@ -97,18 +98,14 @@ Provide architecture health assessment in JSON format:
   ]
 }`;
 
-    const analysis = await callMistralAPI(
-      SYSTEM_PROMPTS.ARCHITECTURE_EVALUATOR,
-      prompt,
-      model || "mistral-large-latest",
-      2000
-    );
-
-    if (!analysis) {
-      return NextResponse.json({ error: "AI analysis failed" }, { status: 500 });
-    }
-
-    return NextResponse.json({ analysis });
+    return runPaidAiAction(request, "architecture_health", async () => {
+      const analysis = await callMistralAPI(
+        SYSTEM_PROMPTS.ARCHITECTURE_EVALUATOR, prompt,
+        model || "mistral-large-latest", 2000,
+      );
+      if (!analysis) throw new Error("AI analysis failed");
+      return { analysis };
+    });
   } catch (error) {
     console.error("Architecture health evaluation error:", error);
     return NextResponse.json({ error: "Analysis failed" }, { status: 500 });

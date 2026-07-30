@@ -16,7 +16,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Bell, ChevronDown, CreditCard } from "lucide-react";
+import { Bell, ChevronDown, Coins, CreditCard } from "lucide-react";
+import { formatTokens } from "@/app/lib/tokens";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { DesktopRequired } from "./mobile/DesktopRequired";
 import { BrandLogo } from "./BrandLogo";
@@ -70,6 +71,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     }>
   >([]);
   const [notifLoading, setNotifLoading] = useState(false);
+  const [tokenBalance, setTokenBalance] = useState<number | null>(null);
 
   const supabase = useMemo(() => createClient(), []);
 
@@ -129,6 +131,29 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
     return () => {
       mounted = false;
+    };
+  }, [user, supabase]);
+
+  useEffect(() => {
+    let mounted = true;
+    const loadTokens = async () => {
+      if (!user) {
+        setTokenBalance(null);
+        return;
+      }
+      const { data } = await supabase.auth.getSession();
+      const accessToken = data.session?.access_token;
+      if (!accessToken) return;
+      const response = await fetch("/api/tokens", { headers: buildAuthHeaders(accessToken) });
+      const payload = await response.json().catch(() => ({}));
+      if (mounted && response.ok) setTokenBalance(Number(payload.balance));
+    };
+    void loadTokens();
+    const refresh = () => void loadTokens();
+    window.addEventListener("tokens:updated", refresh);
+    return () => {
+      mounted = false;
+      window.removeEventListener("tokens:updated", refresh);
     };
   }, [user, supabase]);
 
@@ -273,8 +298,17 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               </nav>
             </div>
 
-            {!loading && user ? (
-              <div className="flex items-center gap-3">
+	            {!loading && user ? (
+	              <div className="flex items-center gap-3">
+                  <Link
+                    href="/settings?section=tokens"
+                    className="inline-flex h-9 items-center gap-1.5 rounded-full border border-border bg-card px-3 text-xs font-medium transition hover:bg-muted"
+                    aria-label={tokenBalance === null ? "Loading Token balance" : formatTokens(tokenBalance)}
+                  >
+                    <Coins className="h-4 w-4 text-amber-500" />
+                    <span>{tokenBalance === null ? "…" : tokenBalance.toLocaleString()}</span>
+                    <span className="hidden text-muted-foreground sm:inline">Tokens</span>
+                  </Link>
                 <DropdownMenu>
                   <Tooltip>
                     <TooltipTrigger asChild>

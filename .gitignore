@@ -73,6 +73,6 @@ __pycache__/
 # local Krythiq state
 .krythiq/
 
-# local database and Supabase state
+# local database and Supabase CLI state
 /db/
-/supabase/
+/supabase/.temp/

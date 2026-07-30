@@ -1,8 +1,11 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { Minus, Plus } from "lucide-react";
 
 import { BrandLogo } from "./BrandLogo";
 import { SocialButton } from "./SocialButton";
-import { GitHubStarButton } from "./GitHubStarButton";
 
 const footerLinks = [
   { href: "/privacy", label: "Privacy" },
@@ -13,8 +16,50 @@ const footerLinks = [
 ];
 
 export function SiteFooter() {
+  const [minimized, setMinimized] = useState(false);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setMinimized(window.localStorage.getItem("krythiq-footer-minimized") === "true");
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  const setFooterMinimized = (value: boolean) => {
+    setMinimized(value);
+    window.localStorage.setItem("krythiq-footer-minimized", String(value));
+  };
+
+  if (minimized) {
+    return (
+      <footer className="border-t border-border bg-card/30">
+        <div className="mx-auto flex max-w-[1600px] items-center justify-between gap-4 px-5 py-3 sm:px-8">
+          <span className="text-xs text-muted-foreground">© {new Date().getFullYear()} Krythiq</span>
+          <button
+            type="button"
+            onClick={() => setFooterMinimized(false)}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-border bg-background text-muted-foreground transition hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            aria-label="Expand site footer"
+            aria-expanded="false"
+          >
+            <Plus className="h-4 w-4" />
+          </button>
+        </div>
+      </footer>
+    );
+  }
+
   return (
-    <footer className="border-t border-border bg-card/30">
+    <footer className="relative border-t border-border bg-card/30">
+      <button
+        type="button"
+        onClick={() => setFooterMinimized(true)}
+        className="absolute left-1/2 top-0 inline-flex h-8 w-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-background text-muted-foreground shadow-sm transition hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        aria-label="Minimize site footer"
+        aria-expanded="true"
+      >
+        <Minus className="h-4 w-4" />
+      </button>
       <div className="mx-auto grid max-w-[1600px] gap-8 px-5 py-10 sm:px-8 md:grid-cols-[1fr_auto] md:items-end">
         <div>
           <Link href="/" className="inline-flex items-center gap-2 font-semibold"><BrandLogo className="h-8 w-8 rounded-xl" />Krythiq</Link>
@@ -24,8 +69,7 @@ export function SiteFooter() {
           </nav>
         </div>
         <div className="md:text-right">
-          <GitHubStarButton />
-          <SocialButton className="mt-3 md:ml-auto" />
+          <SocialButton className="md:ml-auto" />
           <p className="mt-4 text-xs text-muted-foreground">© {new Date().getFullYear()} Krythiq. All rights reserved.</p>
         </div>
       </div>

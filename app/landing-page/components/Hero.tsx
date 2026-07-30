@@ -5,16 +5,39 @@ import { ArrowRight, Check, Play } from "lucide-react";
 import { FadeIn } from "../shared/FadeIn";
 import MacbookScrollDemo from "@/components/macbook-scroll-demo";
 import { RepositoryScene } from "./RepositoryScene";
+import { TypingAnimation } from "@/components/ui/typing-animation";
+import { useReducedMotion } from "motion/react";
 
 export function Hero() {
+  const reducedMotion = useReducedMotion();
+  const headline = "Ship AI-generated code without shipping its vulnerabilities.";
+
   return (
     <section className="relative py-16 sm:py-24 lg:py-28">
       <FadeIn className="mx-auto max-w-4xl text-center">
 
 
         <div className="space-y-6">
-          <h1 className="text-balance text-[clamp(3rem,7.4vw,5.8rem)] font-semibold leading-[0.98] tracking-[-0.055em]">
-            Ship AI-generated code without shipping its vulnerabilities.
+          <h1
+            aria-label={headline}
+            className="text-balance text-[clamp(3rem,7.4vw,5.8rem)] font-semibold leading-[0.98] tracking-[-0.055em]"
+          >
+            <span className="grid">
+              <span aria-hidden="true" className="invisible col-start-1 row-start-1">{headline}</span>
+              {reducedMotion ? (
+                <span aria-hidden="true" className="col-start-1 row-start-1">{headline}</span>
+              ) : (
+                <TypingAnimation
+                  aria-hidden="true"
+                  className="col-start-1 row-start-1 leading-[0.98] tracking-[-0.055em]"
+                  duration={78}
+                  delay={220}
+                  startOnView
+                >
+                  {headline}
+                </TypingAnimation>
+              )}
+            </span>
           </h1>
           <p className="mx-auto max-w-2xl text-balance text-base leading-7 text-muted-foreground sm:text-lg sm:leading-8">
             Krythiq maps your architecture, traces exploitable paths, and turns repository context into fixes your team can review and ship.

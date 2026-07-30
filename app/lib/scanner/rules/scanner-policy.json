@@ -18,6 +18,9 @@
     ".php",
     ".rb",
     ".sh",
+    ".sql",
+    ".tf",
+    ".toml",
     ".yaml",
     ".yml"
   ],
@@ -25,6 +28,11 @@
     ".env",
     ".npmrc",
     ".pypirc",
+    ".env.local",
+    ".env.production",
+    ".env.development",
+    "vercel.json",
+    "supabase.toml",
     "dockerfile"
   ],
   "defaultIgnoreDirectories": [

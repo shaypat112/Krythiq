@@ -71,6 +71,9 @@ export default function AuthClient() {
   const searchParams = useSearchParams();
   const supabase = useMemo(() => createClient(), []);
   const nextPath = safeNextPath(searchParams.get("next"));
+  const referralCode = /^[A-Za-z0-9_-]{20,80}$/.test(searchParams.get("ref") ?? "")
+    ? searchParams.get("ref")
+    : null;
   const [mode, setMode] = useState<Mode>("sign-in");
   const [recoveryMode, setRecoveryMode] = useState<RecoveryMode>(
     searchParams.get("mode") === "reset" ? "reset" : null,
@@ -140,7 +143,7 @@ export default function AuthClient() {
       const response = await fetch("/api/auth/email-link", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ kind: "signup", email: normalizedEmail, password }),
+        body: JSON.stringify({ kind: "signup", email: normalizedEmail, password, referralCode }),
       });
       const result = await response.json().catch(() => ({}));
       if (!response.ok) {
@@ -182,7 +185,7 @@ export default function AuthClient() {
     const { error: oauthError } = await supabase.auth.signInWithOAuth({
       provider: "github",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}`,
+        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}${referralCode ? `&ref=${encodeURIComponent(referralCode)}` : ""}`,
       },
     });
     if (oauthError) {
@@ -480,7 +483,7 @@ function AuthError({ message }: { message: string }) {
 
 function AuthFrame({ children }: { children: React.ReactNode }) {
   return (
-    <div className="relative flex min-h-dvh items-center justify-center overflow-hidden px-4 py-12">
+    <div className="relative flex items-center justify-center overflow-hidden px-4 py-12 sm:py-16">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_15%,rgba(56,189,248,.12),transparent_35%),radial-gradient(circle_at_90%_80%,rgba(139,92,246,.1),transparent_30%)]" />
       <div className="relative flex w-full justify-center">{children}</div>
     </div>

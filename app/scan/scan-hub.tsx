@@ -1,6 +1,7 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { FileSearch, FolderGit2, History } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScanWorkspace } from "./scan-workspace";
@@ -10,29 +11,30 @@ import ProfileClient from "@/app/profile/ProfileClient";
 type WorkspaceView = "new" | "history" | "repositories";
 
 export function ScanHub() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const requestedView = searchParams.get("view");
   const view: WorkspaceView = requestedView === "history" || requestedView === "repositories" ? requestedView : "new";
 
-  const selectView = (next: WorkspaceView) => {
-    router.replace(next === "new" ? "/scan" : `/scan?view=${next}`, { scroll: false });
-  };
-
   return (
     <div className="space-y-6">
       <nav aria-label="Security workspace views" className="grid w-full grid-cols-3 gap-1.5 rounded-xl border border-border bg-card p-1.5 sm:w-fit">
-        <Button className="px-2 sm:px-4" variant={view === "new" ? "default" : "ghost"} onClick={() => selectView("new")} aria-current={view === "new" ? "page" : undefined}>
-          <FileSearch /> New scan
+        <Button asChild className="px-2 sm:px-4" variant={view === "new" ? "default" : "ghost"}>
+          <Link href="/scan" scroll={false} aria-current={view === "new" ? "page" : undefined}>
+            <FileSearch /> New scan
+          </Link>
         </Button>
-        <Button className="px-2 sm:px-4" variant={view === "history" ? "default" : "ghost"} onClick={() => selectView("history")} aria-current={view === "history" ? "page" : undefined}>
-          <History /> Scan history
+        <Button asChild className="px-2 sm:px-4" variant={view === "history" ? "default" : "ghost"}>
+          <Link href="/scan?view=history" scroll={false} aria-current={view === "history" ? "page" : undefined}>
+            <History /> Scan history
+          </Link>
         </Button>
-        <Button className="px-2 sm:px-4" variant={view === "repositories" ? "default" : "ghost"} onClick={() => selectView("repositories")} aria-current={view === "repositories" ? "page" : undefined}>
-          <FolderGit2 /> Repositories
+        <Button asChild className="px-2 sm:px-4" variant={view === "repositories" ? "default" : "ghost"}>
+          <Link href="/scan?view=repositories" scroll={false} aria-current={view === "repositories" ? "page" : undefined}>
+            <FolderGit2 /> Repositories
+          </Link>
         </Button>
       </nav>
-      {view === "new" ? <ScanWorkspace /> : view === "history" ? <ReportsIndexClient embedded onNewScan={() => selectView("new")} /> : <ProfileClient initialTab="integrations" />}
+      {view === "new" ? <ScanWorkspace /> : view === "history" ? <ReportsIndexClient embedded onNewScan={() => window.location.assign("/scan")} /> : <ProfileClient initialTab="integrations" />}
     </div>
   );
 }

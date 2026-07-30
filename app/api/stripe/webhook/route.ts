@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { stripe } from "@/app/lib/stripe";
 import { getSupabaseEnv } from "@/app/lib/server/supabaseRest";
+import { getConfiguredTokenPack, isTokenPackId } from "@/app/lib/token-packs";
 
 export const runtime = "nodejs";
 
@@ -53,10 +54,56 @@ export async function POST(request: Request) {
     return customer.deleted ? null : customer.metadata.user_id ?? null;
   };
 
+  const fulfillTokenPurchase = async (session: Stripe.Checkout.Session) => {
+    if (session.payment_status !== "paid") return;
+    if (!adminHeaders) throw new Error("Supabase service role is not configured.");
+
+    const userId = session.metadata?.user_id;
+    const packId = session.metadata?.pack_id;
+    if (!userId || !isTokenPackId(packId)) {
+      throw new Error("Token purchase metadata is invalid.");
+    }
+
+    const pack = getConfiguredTokenPack(packId);
+    if (!pack) throw new Error("Token purchase pack is not configured.");
+
+    const lineItems = await stripe.checkout.sessions.listLineItems(session.id, { limit: 10 });
+    if (
+      lineItems.data.length !== 1 ||
+      lineItems.data[0]?.price?.id !== pack.priceId ||
+      lineItems.data[0]?.quantity !== 1
+    ) {
+      throw new Error("Token purchase line item did not match the configured pack.");
+    }
+
+    const paymentIntentId =
+      typeof session.payment_intent === "string"
+        ? session.payment_intent
+        : session.payment_intent?.id ?? "";
+    const response = await fetch(`${env.url}/rest/v1/rpc/credit_token_purchase`, {
+      method: "POST",
+      headers: adminHeaders,
+      body: JSON.stringify({
+        target_user_id: userId,
+        checkout_session_id: session.id,
+        payment_intent_id: paymentIntentId,
+        purchased_pack_id: pack.id,
+        purchased_tokens: pack.tokens,
+        paid_amount: session.amount_total ?? 0,
+        paid_currency: session.currency ?? "",
+      }),
+    });
+    if (!response.ok) throw new Error("Unable to credit token purchase.");
+  };
+
   try {
     switch (event.type) {
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
+        if (session.metadata?.kind === "token_purchase") {
+          await fulfillTokenPurchase(session);
+          break;
+        }
         const customerId = session.customer as string;
         const subscriptionId = session.subscription as string;
         const priceId = session.metadata?.price_id ?? null;
@@ -70,6 +117,13 @@ export async function POST(request: Request) {
           price_id: priceId,
           updated_at: new Date().toISOString(),
         });
+        break;
+      }
+      case "checkout.session.async_payment_succeeded": {
+        const session = event.data.object as Stripe.Checkout.Session;
+        if (session.metadata?.kind === "token_purchase") {
+          await fulfillTokenPurchase(session);
+        }
         break;
       }
       case "customer.subscription.updated":

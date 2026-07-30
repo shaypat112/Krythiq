@@ -1,5 +1,6 @@
 import path from "path";
 import { scannerPolicy, securityRuleRegistry } from "@/app/lib/scanner/rules/registry";
+import { scanLevelConfig, type ScanTier } from "@/app/lib/scanner/scan-levels";
 
 export type Severity = "low" | "medium" | "high" | "critical";
 
@@ -11,6 +12,7 @@ export type ScanOptions = {
   failOn?: Severity;
   format?: "text" | "json" | "markdown";
   ignore?: string[];
+  scanTier?: ScanTier;
 };
 
 export type Finding = {
@@ -75,6 +77,7 @@ export type ScanStage =
   | "validating"
   | "cloning"
   | "detecting"
+  | "dependencies"
   | "reading"
   | "analyzing"
   | "recommendations";
@@ -93,6 +96,71 @@ function extractRepoName(repoUrl: string) {
 }
 
 type RepositoryFile = { path: string; content: string };
+
+function dependencyQueries(files: RepositoryFile[]) {
+  const queries: Array<{ package: { name: string; ecosystem: string }; version: string; file: string }> = [];
+  const lock = files.find((file) => file.path === "package-lock.json");
+  if (lock) {
+    try {
+      const parsed = JSON.parse(lock.content) as { packages?: Record<string, { name?: string; version?: string }> };
+      for (const [location, value] of Object.entries(parsed.packages ?? {})) {
+        const name = value.name ?? location.match(/node_modules\/(.+)$/)?.[1];
+        if (name && value.version) queries.push({ package: { name, ecosystem: "npm" }, version: value.version, file: lock.path });
+      }
+    } catch { /* malformed lockfiles are reported by other checks */ }
+  }
+  const requirements = files.find((file) => file.path === "requirements.txt");
+  for (const line of requirements?.content.split("\n") ?? []) {
+    const match = line.trim().match(/^([A-Za-z0-9_.-]+)==([A-Za-z0-9_.+-]+)$/);
+    if (match) queries.push({ package: { name: match[1], ecosystem: "PyPI" }, version: match[2], file: requirements!.path });
+  }
+  const goMod = files.find((file) => file.path === "go.mod");
+  for (const line of goMod?.content.split("\n") ?? []) {
+    const match = line.trim().match(/^(\S+)\s+v([0-9][^\s]*)$/);
+    if (match) queries.push({ package: { name: match[1], ecosystem: "Go" }, version: match[2], file: goMod!.path });
+  }
+  return queries.slice(0, 200);
+}
+
+async function scanKnownDependencies(files: RepositoryFile[], onProgress?: ScanProgress): Promise<Finding[]> {
+  const queries = dependencyQueries(files);
+  onProgress?.("dependencies", queries.length ? `Checking ${queries.length} pinned package versions against OSV.` : "No supported pinned dependency versions were found.");
+  if (!queries.length) return [];
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 12_000);
+  try {
+    const response = await fetch("https://api.osv.dev/v1/querybatch", {
+      method: "POST",
+      signal: controller.signal,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ queries: queries.map(({ package: pkg, version }) => ({ package: pkg, version })) }),
+    });
+    if (!response.ok) {
+      onProgress?.("dependencies", "OSV dependency data was unavailable; continuing with repository checks.");
+      return [];
+    }
+    const payload = await response.json() as { results?: Array<{ vulns?: Array<{ id: string; summary?: string }> }> };
+    return (payload.results ?? []).flatMap((result, index) => (result.vulns ?? []).slice(0, 10).map((vulnerability) => ({
+      file: queries[index]?.file ?? "dependency manifest",
+      line: 1,
+      severity: "high" as const,
+      score: 75,
+      type: "DEPENDENCY_VULNERABILITY",
+      message: vulnerability.summary ?? `Known vulnerability in ${queries[index]?.package.name}`,
+      suggestion: `Upgrade ${queries[index]?.package.name} from ${queries[index]?.version} to a patched release after reviewing the advisory.`,
+      source: "regex" as const,
+      category: "code" as const,
+      confidence: "high" as const,
+      advisoryId: vulnerability.id,
+      technicalDetails: `OSV reports ${vulnerability.id} for ${queries[index]?.package.name}@${queries[index]?.version}.`,
+    })));
+  } catch {
+    onProgress?.("dependencies", "OSV dependency data was unavailable; continuing with repository checks.");
+    return [];
+  } finally {
+    clearTimeout(timeout);
+  }
+}
 
 const LANGUAGE_BY_EXTENSION: Record<string, string> = {
   ".ts": "TypeScript", ".tsx": "TypeScript", ".js": "JavaScript", ".jsx": "JavaScript",
@@ -221,7 +289,8 @@ function shouldScanFile(filePath: string, ignore: Set<string>) {
   return (
     !segments.some((segment) => ignore.has(segment)) &&
     (scannerPolicy.extensions.has(path.extname(filePath).toLowerCase()) ||
-      scannerPolicy.securityConfigFiles.has(baseName))
+      scannerPolicy.securityConfigFiles.has(baseName) ||
+      baseName.startsWith(".env."))
   );
 }
 
@@ -311,10 +380,31 @@ async function scanFiles(files: RepositoryFile[], options: ScanOptions, onProgre
   onProgress?.("analyzing", "Reviewing supported source files for risky code and exposed credentials.");
   const findings: Finding[] = [];
 
+  const level = scanLevelConfig[options.scanTier ?? "mid"];
+  const allowedRules = level.ruleIds ? new Set<string>(level.ruleIds) : null;
   for (const file of selectedFiles) {
     const content = file.content;
     const lines = content.split("\n");
+    const baseName = file.path.split("/").at(-1)?.toLowerCase() ?? "";
+    if (baseName === ".env" || baseName.startsWith(".env.")) {
+      findings.push({
+        file: file.path,
+        line: 1,
+        severity: "high",
+        score: 75,
+        type: "TRACKED_ENV_FILE",
+        message: "Environment file is present in the repository",
+        snippet: "[contents redacted]",
+        suggestion: "Remove environment files from version control, rotate exposed values, and commit a placeholder-only example file.",
+        source: "regex",
+        category: "secrets",
+        confidence: "high",
+        advisoryId: "KRYTHIQ-TRACKED_ENV_FILE",
+        technicalDetails: `A tracked environment file was detected at ${file.path}. Its contents are intentionally omitted.`,
+      });
+    }
     for (const rule of securityRuleRegistry.rules) {
+      if (allowedRules && !allowedRules.has(rule.id)) continue;
       const matches = [...content.matchAll(rule.pattern)];
       for (const match of matches) {
         const line = content.slice(0, match.index ?? 0).split("\n").length;
@@ -418,16 +508,19 @@ export async function runGitHubScanWithToken(
         : "No supported manifest found at the repository root; continuing with source analysis.",
     );
     const ignore = new Set([...scannerPolicy.defaultIgnoreDirectories, ...(options.ignore ?? [])]);
-    const eligibleBlobs = tree.tree.filter((entry) =>
-      entry.type === "blob" &&
-      (entry.size ?? scannerPolicy.limits.maxFileBytes + 1) <= scannerPolicy.limits.maxFileBytes &&
-      (shouldScanFile(entry.path, ignore) || manifests.includes(entry.path)),
-    );
+    const eligibleBlobs = tree.tree.filter((entry) => {
+      const isManifest = manifests.includes(entry.path);
+      const sizeLimit = isManifest ? Math.min(5 * 1024 * 1024, scannerPolicy.limits.maxScanBytes) : scannerPolicy.limits.maxFileBytes;
+      return entry.type === "blob" &&
+        (entry.size ?? sizeLimit + 1) <= sizeLimit &&
+        (shouldScanFile(entry.path, ignore) || isManifest);
+    });
     const blobs: typeof eligibleBlobs = [];
     let selectedBytes = 0;
+    const tierFileLimit = scanLevelConfig[options.scanTier ?? "mid"].maxFiles;
     for (const blob of eligibleBlobs) {
       const blobBytes = blob.size ?? 0;
-      if (blobs.length >= scannerPolicy.limits.maxFiles || selectedBytes + blobBytes > scannerPolicy.limits.maxScanBytes) break;
+      if (blobs.length >= Math.min(tierFileLimit, scannerPolicy.limits.maxFiles) || selectedBytes + blobBytes > scannerPolicy.limits.maxScanBytes) break;
       blobs.push(blob);
       selectedBytes += blobBytes;
     }
@@ -441,7 +534,9 @@ export async function runGitHubScanWithToken(
       }));
       files.push(...loaded.filter((file): file is RepositoryFile => file !== null));
     }
-    const findings = await scanFiles(files, options, onProgress);
+    const dependencyFindings = await scanKnownDependencies(files, onProgress);
+    const findings = [...dependencyFindings, ...await scanFiles(files, options, onProgress)]
+      .sort((a, b) => b.score - a.score);
     const profile = buildRepositoryProfile({ repository, tree: tree.tree, files, manifests, languageBytes });
     const systemDesign = buildSystemDesignAssessment(files, tree.tree, manifests);
     onProgress?.("recommendations", "Ranking findings and generating remediation guidance.");

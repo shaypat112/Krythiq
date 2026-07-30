@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import {
   AlertCircle, CheckCircle2, ChevronDown, ChevronRight, Clipboard, Download,
-  FileCode2, Filter, FolderGit2, LoaderCircle, RotateCw, Search, ShieldAlert, X, CircleStop,
+  FileCode2, Filter, FolderGit2, Github, LoaderCircle, RotateCw, Search, ShieldAlert, X, CircleStop,
 } from "lucide-react";
 import { createClient } from "@/app/lib/supabase";
 import { buildTeamAuthHeaders } from "@/app/lib/http";
@@ -23,6 +23,8 @@ import FileUpload from "@/components/kokonutui/file-upload";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ActionSearchBar, scanActionIcons, type ScanAction } from "./ActionSearchBar";
 import { TechnologyCloud } from "./TechnologyCloud";
+import { scanTierCatalog, type ScanTier } from "@/app/lib/tokens";
+import { useRouter } from "next/navigation";
 
 type Severity = "low" | "medium" | "high" | "critical";
 type Finding = {
@@ -44,11 +46,12 @@ type ScanIntelligence = { summary: string; architecture: string; securityPosture
 type SystemDesignScenario = { id: "traffic-spike" | "data-growth" | "dependency-failure" | "multi-region" | "cost-pressure"; title: string; status: "ready" | "watch" | "risk" | "unknown"; confidence: "low" | "medium"; reflection: string; evidence: string[]; nextStep: string };
 type SystemDesignAssessment = { summary: string; disclaimer: string; scenarios: SystemDesignScenario[] };
 type ScanResult = { sourceType?: "repository" | "file"; repoUrl: string; totalFindings: number; findings: Finding[]; profile: RepositoryProfile; systemDesign: SystemDesignAssessment; intelligence: ScanIntelligence | null; scan?: { score?: number; created_at?: string } | null };
-type Stage = "validating" | "cloning" | "detecting" | "reading" | "analyzing" | "recommendations";
+type Stage = "validating" | "cloning" | "detecting" | "dependencies" | "reading" | "analyzing" | "recommendations";
 const stages: { id: Stage; title: string; fallback: string }[] = [
   { id: "validating", title: "Validating repository", fallback: "Checking the GitHub URL and preparing isolation." },
   { id: "cloning", title: "Reading files", fallback: "Fetching repository metadata and files through GitHub." },
   { id: "detecting", title: "Detecting package managers", fallback: "Looking for manifests and lockfiles." },
+  { id: "dependencies", title: "Checking dependencies", fallback: "Comparing pinned package versions with known OSV advisories." },
   { id: "reading", title: "Parsing manifests", fallback: "Cataloging supported source and manifest files." },
   { id: "analyzing", title: "Analyzing risky code", fallback: "Reviewing code and possible secret exposure." },
   { id: "recommendations", title: "Generating recommendations", fallback: "Ranking findings and generating bounded Mistral intelligence." },
@@ -82,10 +85,13 @@ function formatBytes(bytes: number) {
 }
 
 export function ScanWorkspace() {
+  const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
   const { selectedTeamId } = useTeam();
   const [repoUrl, setRepoUrl] = useState("");
   const [failOn, setFailOn] = useState<Severity>("high");
+  const [scanTier, setScanTier] = useState<ScanTier>("mid");
+  const [finalTokenBalance, setFinalTokenBalance] = useState<number | null>(null);
   const [phase, setPhase] = useState<"idle" | "scanning" | "done" | "error">("idle");
   const [activeStage, setActiveStage] = useState<Stage | null>(null);
   const [stageDetails, setStageDetails] = useState<Partial<Record<Stage, string>>>({});
@@ -102,9 +108,43 @@ export function ScanWorkspace() {
   const [ignoreReason, setIgnoreReason] = useState("");
   const [scanController, setScanController] = useState<AbortController | null>(null);
   const [scanMode, setScanMode] = useState<"repository" | "file">("repository");
+  const [githubStatus, setGithubStatus] = useState<"loading" | "connected" | "disconnected" | "expired">("loading");
+  const [connectingGitHub, setConnectingGitHub] = useState(false);
 
   const findingKey = (finding: Finding) => `${finding.file}:${finding.line}:${finding.type}`;
   const notify = (message: string) => toast(message);
+
+  useEffect(() => {
+    let active = true;
+    const updateGitHubStatus = async () => {
+      const { data } = await supabase.auth.getSession();
+      if (!active) return;
+      const hasGitHubIdentity = data.session?.user.identities?.some((identity) => identity.provider === "github") === true;
+      setGithubStatus(hasGitHubIdentity ? (data.session?.provider_token ? "connected" : "expired") : "disconnected");
+    };
+    void updateGitHubStatus();
+    const { data: listener } = supabase.auth.onAuthStateChange(() => { void updateGitHubStatus(); });
+    return () => {
+      active = false;
+      listener.subscription.unsubscribe();
+    };
+  }, [supabase]);
+
+  const connectGitHub = async () => {
+    setConnectingGitHub(true);
+    setError(null);
+    const options = {
+      redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent("/scan")}`,
+      scopes: "repo read:user user:email",
+    };
+    const result = githubStatus === "disconnected"
+      ? await supabase.auth.linkIdentity({ provider: "github", options })
+      : await supabase.auth.signInWithOAuth({ provider: "github", options });
+    if (result.error) {
+      setError(result.error.message);
+      setConnectingGitHub(false);
+    }
+  };
 
   const saveFindingStatus = async (findingKey: string, status: "reviewed" | "false_positive" | "ignored" | "open", reason?: string) => {
     const { data } = await supabase.auth.getSession();
@@ -139,6 +179,13 @@ export function ScanWorkspace() {
     const { data } = await supabase.auth.getSession();
     const token = data.session?.access_token;
     if (!token) { setError("Sign in to run a repository scan."); return; }
+    const tokenResponse = await fetch("/api/tokens", { headers: buildTeamAuthHeaders(token, selectedTeamId) });
+    const tokenAccount = await tokenResponse.json().catch(() => ({}));
+    if (!tokenResponse.ok) { setError(tokenAccount.error ?? "Unable to verify your Token balance."); return; }
+    if (Number(tokenAccount.balance) < scanTierCatalog[scanTier].cost) {
+      router.push(`/billing?reason=insufficient_tokens&tier=${scanTier}`);
+      return;
+    }
     setPhase("scanning"); setError(null); setResult(null); setActiveStage("validating"); setStageDetails({});
     setRepoUrl(normalizedUrl);
     setReviewed(new Set()); setFalsePositive(new Set()); setIgnored(new Map());
@@ -146,10 +193,14 @@ export function ScanWorkspace() {
     setScanController(controller);
     try {
       const response = await fetch("/api/scan/github", {
-        method: "POST", headers: buildTeamAuthHeaders(token, selectedTeamId, { "Content-Type": "application/json", Accept: "text/event-stream" }),
-        body: JSON.stringify({ repoUrl: normalizedUrl, providerToken: data.session?.provider_token ?? null, options: { failOn } }),
+        method: "POST", headers: buildTeamAuthHeaders(token, selectedTeamId, { "Content-Type": "application/json", Accept: "text/event-stream", "Idempotency-Key": `repo-scan:${crypto.randomUUID()}` }),
+        body: JSON.stringify({ repoUrl: normalizedUrl, providerToken: data.session?.provider_token ?? null, scanTier, options: { failOn } }),
         signal: controller.signal,
       });
+      if (response.status === 402) {
+        router.push(`/billing?reason=insufficient_tokens&tier=${scanTier}`);
+        return;
+      }
       if (!response.ok || !response.body) throw new Error((await response.json().catch(() => ({}))).error ?? "Unable to start scan.");
       const reader = response.body.getReader(); const decoder = new TextDecoder(); let buffer = "";
       while (true) {
@@ -159,10 +210,18 @@ export function ScanWorkspace() {
         for (const message of messages) {
           const event = message.match(/^event: (.+)$/m)?.[1]; const raw = message.match(/^data: (.+)$/m)?.[1];
           if (!event || !raw) continue;
-          const payload = JSON.parse(raw) as { stage?: Stage; detail?: string; error?: string } | ScanResult;
+          const payload = JSON.parse(raw) as { stage?: Stage; detail?: string; error?: string; balance?: number; refunded?: boolean } | ScanResult;
           if (event === "progress" && "stage" in payload && payload.stage) { setActiveStage(payload.stage); setStageDetails((previous) => ({ ...previous, [payload.stage!]: payload.detail ?? "" })); }
-          if (event === "complete") { setResult(payload as ScanResult); setPhase("done"); setActiveStage("recommendations"); }
-          if (event === "error") throw new Error("error" in payload ? payload.error : "Scan failed.");
+          if (event === "complete") {
+            const completed = payload as ScanResult & { tokenCharge?: { balance?: number } };
+            setResult(completed);
+            setFinalTokenBalance(typeof completed.tokenCharge?.balance === "number" ? completed.tokenCharge.balance : null);
+            setPhase("done"); setActiveStage("recommendations"); window.dispatchEvent(new Event("tokens:updated"));
+          }
+          if (event === "error") {
+            if ("balance" in payload && typeof payload.balance === "number") setFinalTokenBalance(payload.balance);
+            throw new Error("error" in payload ? `${payload.error}${payload.refunded ? ` Tokens were refunded; balance: ${Number(payload.balance).toLocaleString()} Tokens.` : ""}` : "Scan failed.");
+          }
         }
       }
     } catch (cause) {
@@ -224,7 +283,50 @@ export function ScanWorkspace() {
       <Tabs value={scanMode} onValueChange={(value) => setScanMode(value as "repository" | "file")} className="mt-7">
         <TabsList className="grid w-full max-w-sm grid-cols-2"><TabsTrigger value="repository"><FolderGit2 /> Repository</TabsTrigger><TabsTrigger value="file"><FileCode2 /> Single file</TabsTrigger></TabsList>
         <TabsContent value="repository" className="mt-5">
-          <div className="grid gap-3 lg:grid-cols-[1fr_150px_auto]"><div><label htmlFor="repo-url" className="mb-2 block text-sm font-medium">GitHub repository</label><div className="relative"><FolderGit2 className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" /><Input id="repo-url" value={repoUrl} onChange={(event) => setRepoUrl(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && phase !== "scanning") void startScan(); }} placeholder="owner/repository or GitHub URL" disabled={phase === "scanning"} className="h-9 pl-9" aria-describedby="repo-help" autoCapitalize="none" autoCorrect="off" spellCheck={false} /></div><p id="repo-help" className="mt-2 text-xs text-muted-foreground">Paste a public GitHub URL or owner/repository. Krythiq uses read-only API access and does not execute repository code.</p></div><div><div className="mb-2 flex items-center gap-1.5"><label htmlFor="fail-on" className="text-sm font-medium">Attention threshold</label><HelpTooltip side="bottom">Controls which severity should demand attention first. It does not hide lower-severity findings.</HelpTooltip></div><select id="fail-on" value={failOn} onChange={(event) => setFailOn(event.target.value as Severity)} className="h-9 w-full rounded-lg border border-input bg-background px-2 text-sm" disabled={phase === "scanning"}><option value="critical">Critical</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option></select></div>{phase === "scanning" ? <Button size="lg" variant="outline" onClick={() => scanController?.abort()} className="self-end"><CircleStop /> Cancel</Button> : <Button size="lg" onClick={startScan} className="self-end"><ShieldAlert /> {result ? "Rescan" : "Start scan"}</Button>}</div>
+          {githubStatus !== "loading" && githubStatus !== "connected" ? (
+            <div className="mb-5 flex flex-col gap-3 rounded-xl border border-sky-500/25 bg-sky-500/10 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-medium">{githubStatus === "expired" ? "Reconnect GitHub to scan private repositories" : "Connect GitHub for full repository access"}</p>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">Public repositories can be scanned now. GitHub access adds private repositories and a higher authenticated API limit.</p>
+              </div>
+              <Button type="button" onClick={() => void connectGitHub()} disabled={connectingGitHub} className="shrink-0">
+                {connectingGitHub ? <LoaderCircle className="animate-spin" /> : <Github />}
+                {connectingGitHub ? "Connecting…" : githubStatus === "expired" ? "Reconnect GitHub" : "Connect GitHub"}
+              </Button>
+            </div>
+          ) : null}
+          <fieldset className="mb-5">
+            <legend className="text-sm font-medium">Scan coverage</legend>
+            <div className="mt-2 grid gap-2 sm:grid-cols-3">
+              {(Object.entries(scanTierCatalog) as Array<[ScanTier, (typeof scanTierCatalog)[ScanTier]]>).map(([tier, details]) => (
+                <div key={tier} className="relative">
+                  <button
+                    type="button"
+                    disabled={phase === "scanning"}
+                    aria-pressed={scanTier === tier}
+                    onClick={() => setScanTier(tier)}
+                    className={`h-full w-full rounded-xl border p-3 pr-9 text-left transition disabled:cursor-not-allowed disabled:opacity-60 ${scanTier === tier ? "border-sky-500 bg-sky-500/10 ring-1 ring-sky-500/30" : "border-border bg-background/50 hover:border-foreground/30"}`}
+                  >
+                    <span className="flex items-center justify-between gap-2 text-sm font-medium"><span>{details.label}</span><span>{details.cost} Tokens</span></span>
+                    <span className="mt-2 block text-xs leading-5 text-muted-foreground">{details.checks.slice(0, tier === "high" ? 4 : 3).map((check) => `✓ ${check}`).join(" · ")}</span>
+                  </button>
+                  <span className="absolute right-3 top-3">
+                    <HelpTooltip side="bottom">
+                      <span className="block font-medium">{details.label} includes:</span>
+                      <span className="mt-1 block whitespace-pre-line">{details.checks.map((check) => `• ${check}`).join("\n")}</span>
+                    </HelpTooltip>
+                  </span>
+                </div>
+              ))}
+            </div>
+            <div className="mt-3 rounded-xl border border-border bg-background/40 p-4">
+              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Included in {scanTierCatalog[scanTier].label}</p>
+              <ul className="mt-2 grid gap-x-6 gap-y-1.5 text-xs leading-5 sm:grid-cols-2">
+                {scanTierCatalog[scanTier].checks.map((check) => <li key={check} className="flex gap-2"><CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-500" /><span>{check}</span></li>)}
+              </ul>
+            </div>
+          </fieldset>
+          <div className="grid gap-3 lg:grid-cols-[1fr_150px_auto]"><div><label htmlFor="repo-url" className="mb-2 block text-sm font-medium">GitHub repository</label><div className="relative"><FolderGit2 className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" /><Input id="repo-url" value={repoUrl} onChange={(event) => setRepoUrl(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && phase !== "scanning") void startScan(); }} placeholder="owner/repository or GitHub URL" disabled={phase === "scanning"} className="h-9 pl-9" aria-describedby="repo-help" autoCapitalize="none" autoCorrect="off" spellCheck={false} /></div><p id="repo-help" className="mt-2 text-xs text-muted-foreground">Paste a public GitHub URL or owner/repository. Krythiq uses read-only API access and does not execute repository code.</p></div><div><div className="mb-2 flex items-center gap-1.5"><label htmlFor="fail-on" className="text-sm font-medium">Attention threshold</label><HelpTooltip side="bottom">Controls which severity should demand attention first. It does not hide lower-severity findings.</HelpTooltip></div><select id="fail-on" value={failOn} onChange={(event) => setFailOn(event.target.value as Severity)} className="h-9 w-full rounded-lg border border-input bg-background px-2 text-sm" disabled={phase === "scanning"}><option value="critical">Critical</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option></select></div>{phase === "scanning" ? <Button size="lg" variant="outline" onClick={() => scanController?.abort()} className="self-end"><CircleStop /> Cancel</Button> : <Button size="lg" onClick={startScan} className="self-end"><ShieldAlert /> {result ? "Rescan" : "Start scan"} · {scanTierCatalog[scanTier].cost} Tokens</Button>}</div>
         </TabsContent>
         <TabsContent value="file" className="mt-5">
           <div className="grid gap-5 lg:grid-cols-[minmax(0,420px)_1fr] lg:items-center">
@@ -237,6 +339,7 @@ export function ScanWorkspace() {
     </section>
 
     {phase === "scanning" && <Card><CardHeader><div className="flex items-center justify-between gap-4"><CardTitle className="flex items-center gap-2"><LoaderCircle className="h-4 w-4 animate-spin text-sky-400" /> Scan in progress</CardTitle><span className="text-sm font-medium text-muted-foreground">{progress}%</span></div><div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-sky-400 transition-[width] duration-500" style={{ width: `${progress}%` }} /></div></CardHeader><CardContent className="space-y-1">{stages.map((stage, index) => { const reached = activeStage ? stages.findIndex((item) => item.id === activeStage) >= index : false; const current = activeStage === stage.id; return <div key={stage.id} className={`flex gap-3 rounded-xl p-3 ${current ? "bg-sky-500/5" : ""}`}><div className="mt-0.5">{current ? <LoaderCircle className="h-4 w-4 animate-spin text-sky-400" /> : reached ? <CheckCircle2 className="h-4 w-4 text-emerald-400" /> : <div className="h-4 w-4 rounded-full border border-muted-foreground/40" />}</div><div><p className={reached ? "text-sm font-medium" : "text-sm text-muted-foreground"}>{stage.title}</p><p className="mt-0.5 text-xs text-muted-foreground">{stageDetails[stage.id] ?? stage.fallback}</p></div></div>; })}</CardContent></Card>}
+    {phase === "done" && finalTokenBalance !== null ? <div role="status" className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3 text-sm text-emerald-500">Scan completed. Final balance: {finalTokenBalance.toLocaleString()} Tokens.</div> : null}
 
     {phase === "scanning" && <div className="grid gap-4 md:grid-cols-4">{Array.from({ length: 4 }).map((_, index) => <Skeleton key={index} className="h-28" />)}</div>}
 

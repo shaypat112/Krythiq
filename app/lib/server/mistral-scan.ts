@@ -1,5 +1,6 @@
 import type { Finding, RepositoryProfile } from "@/app/services/githubScanner";
 import { logServerError } from "@/app/lib/server/logger";
+import { scanLevelConfig, type ScanTier } from "@/app/lib/scanner/scan-levels";
 
 export type ScanIntelligence = {
   summary: string;
@@ -33,6 +34,7 @@ export async function generateScanIntelligence(input: {
   profile: RepositoryProfile;
   findings: Finding[];
   model?: string;
+  scanTier: ScanTier;
 }): Promise<ScanIntelligence | null> {
   const apiKey = process.env.MISTRAL_API_KEY;
   if (!apiKey) return null;
@@ -54,10 +56,10 @@ export async function generateScanIntelligence(input: {
         model: input.model ?? process.env.MISTRAL_MODEL ?? "mistral-large-latest",
         temperature: 0.15,
         response_format: { type: "json_object" },
-        max_tokens: 1800,
+        max_tokens: input.scanTier === "low" ? 700 : input.scanTier === "mid" ? 1400 : 2200,
         messages: [
           { role: "system", content: "You are a senior application security architect. Analyze only the supplied repository metrics and static findings. Do not invent frameworks, vulnerabilities, or dependencies. Return valid JSON only." },
-          { role: "user", content: `Analyze this bounded scan context:\n${JSON.stringify({ repository: input.repoName, profile: input.profile, findings: safeFindings })}\n\nReturn: {\"summary\":string,\"architecture\":string,\"securityPosture\":string,\"strengths\":string[],\"priorities\":[{\"title\":string,\"reason\":string,\"effort\":\"low\"|\"medium\"|\"high\"}],\"observations\":string[]}.` },
+          { role: "user", content: `Produce a ${scanLevelConfig[input.scanTier].summaryMode} ${scanLevelConfig[input.scanTier].label} security report using only this bounded context:\n${JSON.stringify({ repository: input.repoName, profile: input.profile, findings: safeFindings, includedChecks: scanLevelConfig[input.scanTier].checks })}\n\nReturn: {\"summary\":string,\"architecture\":string,\"securityPosture\":string,\"strengths\":string[],\"priorities\":[{\"title\":string,\"reason\":string,\"effort\":\"low\"|\"medium\"|\"high\"}],\"observations\":string[]}.` },
         ],
       }),
     });

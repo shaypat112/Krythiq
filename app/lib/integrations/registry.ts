@@ -1,9 +1,15 @@
 import type { IntegrationProvider } from "./types";
 
 const provider = (
-  definition: Omit<IntegrationProvider, "availability"> & { implemented?: boolean; requiredEnv?: string[] },
+  definition: Omit<IntegrationProvider, "availability"> & {
+    implemented?: boolean;
+    requiredEnv?: string[];
+    requiredAnyEnv?: string[];
+  },
 ): IntegrationProvider => {
-  const configured = definition.requiredEnv?.every((name) => Boolean(process.env[name])) ?? true;
+  const configured =
+    (definition.requiredEnv?.every((name) => Boolean(process.env[name])) ?? true) &&
+    (definition.requiredAnyEnv?.some((name) => Boolean(process.env[name])) ?? true);
   return {
     id: definition.id,
     name: definition.name,
@@ -19,7 +25,7 @@ const provider = (
 };
 
 export const integrationProviders: IntegrationProvider[] = [
-  provider({ id: "github", name: "GitHub", description: "Repositories, pull requests, and push-triggered scans.", category: "source", auth: "oauth", permissions: ["Read repository metadata", "Read source code"], implemented: true, requiredEnv: ["NEXT_PUBLIC_SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_ANON_KEY"] }),
+  provider({ id: "github", name: "GitHub", description: "Repositories, pull requests, and push-triggered scans.", category: "source", auth: "oauth", permissions: ["Read repository metadata", "Read source code"], implemented: true, requiredEnv: ["NEXT_PUBLIC_SUPABASE_URL"], requiredAnyEnv: ["NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY", "NEXT_PUBLIC_SUPABASE_ANON_KEY"] }),
   provider({ id: "local-cli", name: "Local CLI", description: "Scan local repositories without uploading an entire working tree.", category: "source", auth: "local", permissions: ["Read selected local project files"], implemented: true, documentationUrl: "/documentation/installation" }),
   provider({ id: "webhook", name: "Webhooks", description: "Deliver signed security events to your own HTTPS endpoint.", category: "notifications", auth: "webhook", permissions: ["Send selected Krythiq events"], implemented: true, documentationUrl: "/settings?section=webhooks" }),
   provider({ id: "gitlab", name: "GitLab", description: "Projects, merge requests, and pipelines.", category: "source", auth: "oauth", permissions: ["Read repositories", "Read project metadata"] }),

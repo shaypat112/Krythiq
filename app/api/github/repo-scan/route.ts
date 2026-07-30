@@ -11,11 +11,13 @@ import { logActivity } from "@/app/lib/server/activity";
 import { createNotification } from "@/app/lib/server/notifications";
 import { purgeUserData } from "@/app/lib/server/retention";
 import { aiScanner } from "@/app/services/aiScanner";
+import { runPaidAiAction } from "@/app/lib/server/tokenLedger";
+import { readScanTier, scanTierCatalog } from "@/app/lib/tokens";
 
 export const runtime = "nodejs";
 
 type ErrorWithStatus = Error & { status?: number };
-export async function POST(request: Request) {
+async function executeScan(request: Request) {
   const body = await request.json();
   const providerToken =
     (body?.providerToken as string | null | undefined) ?? undefined;
@@ -221,4 +223,17 @@ export async function POST(request: Request) {
     }
     return NextResponse.json({ error: message }, { status: 500 });
   }
+}
+
+export async function POST(request: Request) {
+  const body = await request.clone().json().catch(() => ({}));
+  const scanTier = readScanTier(body?.scanTier) ?? "mid";
+  return runPaidAiAction(request, scanTierCatalog[scanTier].action, async () => {
+    const response = await executeScan(request);
+    const payload = await response.json().catch(() => ({})) as Record<string, unknown>;
+    if (!response.ok) {
+      throw new Error(typeof payload.error === "string" ? payload.error : "Repository scan failed.");
+    }
+    return payload;
+  });
 }

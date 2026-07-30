@@ -7,6 +7,7 @@ import {
   requireRequestAuth,
   supabaseFetch,
 } from "@/app/lib/server/supabaseRest";
+import { adminSupabaseFetch } from "@/app/lib/server/admin";
 
 export const runtime = "nodejs";
 
@@ -61,9 +62,8 @@ export async function POST(request: Request) {
       });
       customerId = customer.id;
 
-      const customerInsert = await supabaseFetch(env, "billing_customers", {
+      const customerInsert = await adminSupabaseFetch("billing_customers", {
         method: "POST",
-        accessToken,
         headers: { Prefer: "resolution=merge-duplicates" },
         body: JSON.stringify({
           user_id: userId,

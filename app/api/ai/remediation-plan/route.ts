@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { runPaidAiAction } from "@/app/lib/server/tokenLedger";
 
 const MISTRAL_API_KEY = process.env.MISTRAL_API_KEY;
 
@@ -108,18 +109,14 @@ Provide remediation plan in JSON format:
   "totalEstimatedEffort": "total hours"
 }`;
 
-    const analysis = await callMistralAPI(
-      SYSTEM_PROMPTS.REMEDIATION_PLANNER,
-      prompt,
-      model || "mistral-large-latest",
-      2000
-    );
-
-    if (!analysis) {
-      return NextResponse.json({ error: "AI analysis failed" }, { status: 500 });
-    }
-
-    return NextResponse.json({ plan: analysis });
+    return runPaidAiAction(request, "remediation_plan", async () => {
+      const analysis = await callMistralAPI(
+        SYSTEM_PROMPTS.REMEDIATION_PLANNER, prompt,
+        model || "mistral-large-latest", 2000,
+      );
+      if (!analysis) throw new Error("AI analysis failed");
+      return { plan: analysis };
+    });
   } catch (error) {
     console.error("Remediation planning error:", error);
     return NextResponse.json({ error: "Analysis failed" }, { status: 500 });

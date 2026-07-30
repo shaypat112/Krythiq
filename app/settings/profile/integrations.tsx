@@ -59,10 +59,14 @@ export function IntegrationsSection() {
   const connectGitHub = async () => {
     setWorking("github");
     setError(null);
-    const { error: oauthError } = await supabase.auth.signInWithOAuth({
-      provider: "github",
-      options: { redirectTo: `${window.location.origin}/settings?section=integrations` },
-    });
+    const options = {
+      redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent("/settings?section=integrations")}`,
+      scopes: "repo read:user user:email",
+    };
+    const result = githubStatus === "disconnected"
+      ? await supabase.auth.linkIdentity({ provider: "github", options })
+      : await supabase.auth.signInWithOAuth({ provider: "github", options });
+    const oauthError = result.error;
     if (oauthError) {
       setError(oauthError.message);
       setWorking(null);

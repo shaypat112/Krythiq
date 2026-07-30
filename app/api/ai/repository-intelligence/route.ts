@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { runPaidAiAction } from "@/app/lib/server/tokenLedger";
 
 const MISTRAL_API_KEY = process.env.MISTRAL_API_KEY;
 
@@ -110,21 +111,14 @@ Provide analysis in JSON format:
   }
 }`;
 
-    const analysis = await callMistralAPI(
-      SYSTEM_PROMPTS.REPOSITORY_INTELLIGENCE,
-      prompt,
-      model || "mistral-large-latest",
-      1500,
-    );
-
-    if (!analysis) {
-      return NextResponse.json(
-        { error: "AI analysis failed" },
-        { status: 500 },
+    return runPaidAiAction(request, "repository_intelligence", async () => {
+      const analysis = await callMistralAPI(
+        SYSTEM_PROMPTS.REPOSITORY_INTELLIGENCE, prompt,
+        model || "mistral-large-latest", 1500,
       );
-    }
-
-    return NextResponse.json({ analysis });
+      if (!analysis) throw new Error("AI analysis failed");
+      return { analysis };
+    });
   } catch (error) {
     console.error("Repository intelligence error:", error);
     return NextResponse.json({ error: "Analysis failed" }, { status: 500 });

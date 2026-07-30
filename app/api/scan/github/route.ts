@@ -8,6 +8,14 @@ import {
 import { logServerError, logServerInfo } from "@/app/lib/server/logger";
 import { deliverWebhooks } from "@/app/lib/server/webhooks";
 import { getSupabaseEnv } from "@/app/lib/server/supabaseRest";
+import { requireVerifiedRequestAuth } from "@/app/lib/server/requestAuth";
+import {
+  completeTokenUsage,
+  readIdempotencyKey,
+  refundTokenUsage,
+  reserveTokenUsage,
+} from "@/app/lib/server/tokenLedger";
+import { readScanTier, scanTierCatalog } from "@/app/lib/tokens";
 
 export const runtime = "nodejs";
 
@@ -19,6 +27,8 @@ export async function POST(request: Request) {
   const wantsEvents = request.headers.get("accept")?.includes("text/event-stream");
   let repoUrlForFailure: string | undefined;
   let accessTokenForFailure: string | undefined;
+  let chargedUserId: string | undefined;
+  let chargeKey: string | undefined;
 
   const notifyFailure = async (message: string) => {
     if (!repoUrlForFailure || !accessTokenForFailure) return;
@@ -36,7 +46,11 @@ export async function POST(request: Request) {
     const body = await request.json();
     const repoUrl = body?.repoUrl as string | undefined;
     repoUrlForFailure = repoUrl;
-    const options = body?.options;
+    const scanTier = readScanTier(body?.scanTier);
+    if (!scanTier) {
+      return NextResponse.json({ error: "Choose a valid scan tier.", code: "INVALID_SCAN_TIER" }, { status: 400 });
+    }
+    const options = { ...(body?.options ?? {}), scanTier };
     const providerToken = typeof body?.providerToken === "string" ? body.providerToken : undefined;
     const { accessToken } = requireRequestAuth(request);
     accessTokenForFailure = accessToken;
@@ -45,6 +59,21 @@ export async function POST(request: Request) {
     if (!repoUrl) {
       return NextResponse.json({ error: "Missing repoUrl." }, { status: 400 });
     }
+
+    const verified = await requireVerifiedRequestAuth(request);
+    const idempotencyKey = readIdempotencyKey(request);
+    if (!idempotencyKey) {
+      return NextResponse.json({ error: "A valid Idempotency-Key header is required.", code: "INVALID_IDEMPOTENCY_KEY" }, { status: 400 });
+    }
+    const reservation = await reserveTokenUsage(verified.userId, scanTierCatalog[scanTier].action, idempotencyKey);
+    if (reservation.usage_status === "insufficient") {
+      return NextResponse.json({ error: `This scan costs ${reservation.token_cost} Tokens.`, code: "INSUFFICIENT_TOKENS", cost: reservation.token_cost, balance: reservation.balance }, { status: 402 });
+    }
+    if (!reservation.reservation_created) {
+      return NextResponse.json({ error: reservation.usage_status === "pending" ? "This scan is already processing." : "Use a new request key to retry this scan.", code: "DUPLICATE_SCAN" }, { status: 409 });
+    }
+    chargedUserId = verified.userId;
+    chargeKey = idempotencyKey;
 
     logServerInfo("scan.started", { transport: wantsEvents ? "sse" : "json" });
 
@@ -64,12 +93,14 @@ export async function POST(request: Request) {
               providerToken,
               onProgress: (stage, detail) => send("progress", { stage, detail }),
             });
-            send("complete", result);
+            const finalBalance = await completeTokenUsage(verified.userId, idempotencyKey, result as unknown as Record<string, unknown>);
+            send("complete", { ...result, scanTier, includedChecks: scanTierCatalog[scanTier].checks, tokenCharge: { cost: reservation.token_cost, balance: Number(finalBalance) } });
             logServerInfo("scan.completed", { findings: result.totalFindings });
           } catch (error) {
+            const refundedBalance = await refundTokenUsage(verified.userId, idempotencyKey, getErrorMessage(error)).catch(() => undefined);
             logServerError("scan.failed", error);
             await notifyFailure(getErrorMessage(error));
-            send("error", { error: getErrorMessage(error) });
+            send("error", { error: getErrorMessage(error), refunded: true, balance: refundedBalance === undefined ? undefined : Number(refundedBalance) });
           } finally {
             controller.close();
           }
@@ -85,10 +116,14 @@ export async function POST(request: Request) {
     }
 
     const result = await handleGitHubScan({ repoUrl, options, accessToken, teamId: selectedTeamId, providerToken });
+    const finalBalance = await completeTokenUsage(verified.userId, idempotencyKey, result as unknown as Record<string, unknown>);
     logServerInfo("scan.completed", { findings: result.totalFindings });
 
-    return NextResponse.json(result);
+    return NextResponse.json({ ...result, scanTier, includedChecks: scanTierCatalog[scanTier].checks, tokenCharge: { cost: reservation.token_cost, balance: Number(finalBalance) } });
   } catch (error) {
+    if (chargedUserId && chargeKey) {
+      await refundTokenUsage(chargedUserId, chargeKey, getErrorMessage(error)).catch(() => undefined);
+    }
     if (error instanceof RequestAuthError) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }

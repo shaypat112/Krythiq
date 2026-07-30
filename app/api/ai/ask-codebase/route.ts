@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { runPaidAiAction } from "@/app/lib/server/tokenLedger";
 
 const MISTRAL_API_KEY = process.env.MISTRAL_API_KEY;
 
@@ -85,18 +86,14 @@ ${f.content.slice(0, 2000)}
 
 Provide a comprehensive answer with specific code references and explanations.`;
 
-    const analysis = await callMistralAPI(
-      SYSTEM_PROMPTS.CODEBASE_ASSISTANT,
-      prompt,
-      model || "mistral-large-latest",
-      2000
-    );
-
-    if (!analysis) {
-      return NextResponse.json({ error: "AI analysis failed" }, { status: 500 });
-    }
-
-    return NextResponse.json({ answer: analysis });
+    return runPaidAiAction(request, "ask_codebase", async () => {
+      const analysis = await callMistralAPI(
+        SYSTEM_PROMPTS.CODEBASE_ASSISTANT, prompt,
+        model || "mistral-large-latest", 2000,
+      );
+      if (!analysis) throw new Error("AI analysis failed");
+      return { answer: analysis };
+    });
   } catch (error) {
     console.error("Ask codebase error:", error);
     return NextResponse.json({ error: "Analysis failed" }, { status: 500 });

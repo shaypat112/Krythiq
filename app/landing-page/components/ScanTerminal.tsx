@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from "react";
-import { motion, AnimatePresence, useInView } from "framer-motion";
+import { motion, AnimatePresence, useInView, useReducedMotion } from "framer-motion";
 import { Terminal, RefreshCw } from "lucide-react";
 
 type Severity = "info" | "high" | "medium" | "low" | "success" | "error" | "muted";
@@ -11,6 +11,8 @@ type Line = {
   kind: "input" | "output";
   text: string;
   severity: Severity;
+  code?: boolean;
+  typing?: boolean;
 };
 
 const PROMPT = "guest@krythiq:~/project$";
@@ -39,10 +41,23 @@ const sleep = (ms: number) => new Promise<void>((resolve) => window.setTimeout(r
 let idCounter = 0;
 const nextId = () => (idCounter += 1);
 
+function SyntaxText({ text }: { text: string }) {
+  const tokens = text.split(/(\b(?:export|async|function|const|await|if|throw|new|return)\b|"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|\/\/.*|[{}()[\].?:;])/g);
+  return <>{tokens.map((token, index) => {
+    const className = /^(export|async|function|const|await|if|throw|new|return)$/.test(token)
+      ? "text-fuchsia-400"
+      : /^["']/.test(token) ? "text-emerald-400"
+        : /^\/\//.test(token) ? "text-slate-500"
+          : /^[{}()[\].?:;]$/.test(token) ? "text-cyan-300" : "text-slate-200";
+    return <span className={className} key={`${index}-${token}`}>{token}</span>;
+  })}</>;
+}
+
 export function ScanTerminal() {
   const [lines, setLines] = useState<Line[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [busy, setBusy] = useState(true);
+  const reducedMotion = useReducedMotion();
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
@@ -52,8 +67,16 @@ export function ScanTerminal() {
   const scannedRef = useRef(false);
   const historyRef = useRef<string[]>([]);
   const historyIndexRef = useRef(0);
+  const visibleRef = useRef(false);
+  const startedRef = useRef(false);
 
-  const inView = useInView(containerRef, { once: true, margin: "-100px" });
+  const inView = useInView(containerRef, { margin: "-100px" });
+
+  useEffect(() => { visibleRef.current = inView; }, [inView]);
+
+  const waitUntilVisible = useCallback(async () => {
+    while (!visibleRef.current && !cancelledRef.current) await sleep(120);
+  }, []);
 
   const setBusyBoth = (value: boolean) => {
     busyRef.current = value;
@@ -67,15 +90,27 @@ export function ScanTerminal() {
 
 
   const printLines = useCallback(
-    async (entries: { text: string; severity?: Severity; delay?: number }[]) => {
+    async (entries: { text: string; severity?: Severity; delay?: number; type?: boolean; code?: boolean }[]) => {
       for (const entry of entries) {
         if (cancelledRef.current) return;
-        await sleep(entry.delay ?? 400);
+        await waitUntilVisible();
+        await sleep(reducedMotion ? 0 : entry.delay ?? 400);
         if (cancelledRef.current) return;
-        push(entry.text, "output", entry.severity ?? "muted");
+        if (!entry.type || reducedMotion) {
+          setLines((prev) => [...prev, { id: nextId(), kind: "output", text: entry.text, severity: entry.severity ?? "muted", code: entry.code }]);
+          continue;
+        }
+        const id = nextId();
+        setLines((prev) => [...prev, { id, kind: "output", text: "", severity: entry.severity ?? "muted", code: entry.code, typing: true }]);
+        for (let index = 1; index <= entry.text.length; index += 1) {
+          if (cancelledRef.current) return;
+          await waitUntilVisible();
+          setLines((prev) => prev.map((line) => line.id === id ? { ...line, text: entry.text.slice(0, index), typing: index < entry.text.length } : line));
+          await sleep(12);
+        }
       }
     },
-    [push],
+    [reducedMotion, waitUntilVisible],
   );
 
   const runCommand = useCallback(
@@ -141,7 +176,12 @@ export function ScanTerminal() {
         }
         await printLines([
           { text: "Generating patch guidance for 3 findings…", severity: "info", delay: 400 },
-          { text: "Validating fixes in sandbox…", severity: "info", delay: 700 },
+          { text: "export async function authorize(request: Request) {", type: true, code: true, delay: 420 },
+          { text: "  const session = await verifySession(request);", type: true, code: true, delay: 90 },
+          { text: "  if (!session?.user) throw new Error(\"Unauthorized\");", type: true, code: true, delay: 90 },
+          { text: "  return session.user;", type: true, code: true, delay: 150 },
+          { text: "}", type: true, code: true, delay: 90 },
+          { text: "Validating generated fix in sandbox…", severity: "info", delay: 420 },
           { text: "✓ 3/3 fixes verified — ready for review", severity: "success", delay: 600 },
         ]);
         return;
@@ -161,15 +201,16 @@ export function ScanTerminal() {
     async (text: string) => {
       for (let i = 0; i <= text.length; i += 1) {
         if (cancelledRef.current) return;
+        await waitUntilVisible();
         setInputValue(text.slice(0, i));
-        await sleep(26 + Math.random() * 40);
+        await sleep(reducedMotion ? 0 : 26 + Math.random() * 40);
       }
       await sleep(260);
       if (cancelledRef.current) return;
       setInputValue("");
       await runCommand(text);
     },
-    [runCommand],
+    [reducedMotion, runCommand, waitUntilVisible],
   );
 
   const playIntro = useCallback(async () => {
@@ -189,16 +230,20 @@ export function ScanTerminal() {
     if (cancelledRef.current) return;
     await typeIntoInput("krythiq scan --sandbox");
     if (cancelledRef.current) return;
+    await sleep(reducedMotion ? 0 : 400);
+    await typeIntoInput("krythiq fix --generate");
+    if (cancelledRef.current) return;
 
     setBusyBoth(false);
     inputRef.current?.focus();
-  }, [push, typeIntoInput]);
+  }, [push, reducedMotion, typeIntoInput]);
 
   useEffect(() => {
-    if (!inView) return;
-    playIntro();
+    if (!inView || startedRef.current) return;
+    startedRef.current = true;
+    void playIntro();
     return () => {
-      cancelledRef.current = true;
+      visibleRef.current = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [inView]);
@@ -243,6 +288,7 @@ export function ScanTerminal() {
 
   const restart = () => {
     cancelledRef.current = true;
+    startedRef.current = true;
     window.setTimeout(() => playIntro(), 60);
   };
 
@@ -270,18 +316,19 @@ export function ScanTerminal() {
         </button>
       </div>
 
-      <div className="max-h-[280px] min-h-[220px] overflow-y-auto pr-1">
+      <div className="max-h-[300px] min-h-[260px] overflow-y-auto pr-1 text-xs sm:text-sm">
         <AnimatePresence initial={false}>
           {lines.map((line) => (
             <motion.div
               key={line.id}
-              initial={{ opacity: 0, y: 6 }}
+              initial={reducedMotion ? false : { opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.15 }}
               className={line.kind === "input" ? "pl-0" : "border-l-2 border-border pl-3"}
             >
               <p className={line.kind === "input" ? "text-foreground/80" : severityColor[line.severity]}>
-                {line.text}
+                {line.code ? <SyntaxText text={line.text} /> : line.text}
+                {line.typing ? <span aria-hidden="true" className="ml-0.5 inline-block h-[1em] w-1.5 animate-pulse bg-amber-400 motion-reduce:animate-none" /> : null}
               </p>
             </motion.div>
           ))}

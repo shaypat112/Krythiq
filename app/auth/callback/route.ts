@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { adminSupabaseFetch } from "@/app/lib/server/admin";
 
 function safeNextPath(value: string | null) {
   return value?.startsWith("/") && !value.startsWith("//")
@@ -18,8 +19,13 @@ export async function GET(request: NextRequest) {
   const tokenHash = request.nextUrl.searchParams.get("token_hash");
   const tokenType = request.nextUrl.searchParams.get("type");
   const next = safeNextPath(request.nextUrl.searchParams.get("next"));
+  const referralCode = /^[A-Za-z0-9_-]{20,80}$/.test(request.nextUrl.searchParams.get("ref") ?? "")
+    ? request.nextUrl.searchParams.get("ref")
+    : null;
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const anonKey =
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   const redirectUrl = new URL(next, request.url);
   const response = NextResponse.redirect(redirectUrl);
 
@@ -56,6 +62,13 @@ export async function GET(request: NextRequest) {
       response,
       new URL("/auth?verification=required", request.url),
     );
+  }
+
+  if (referralCode) {
+    await adminSupabaseFetch("rpc/claim_referral", {
+      method: "POST",
+      body: JSON.stringify({ target_user_id: data.user.id, referral_code: referralCode }),
+    }).catch(() => undefined);
   }
 
   return response;

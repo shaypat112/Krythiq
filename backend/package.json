@@ -42,7 +42,7 @@
     "chalk": "^5.3.0",
     "commander": "^12.1.0",
     "conf": "^13.1.0",
-    "glob": "^11.0.0",
+    "glob": "^13.0.6",
     "inquirer": "^14.0.2",
     "ora": "^8.0.1",
     "strip-ansi": "^7.1.0",
@@ -58,6 +58,7 @@
     "node": ">=18.0.0"
   },
   "overrides": {
+    "brace-expansion": "5.0.8",
     "esbuild": "^0.28.1"
   }
 }

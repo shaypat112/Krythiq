@@ -121,4 +121,29 @@ export async function sendScanCompletedEmail(options: {
   });
 }
 
+export async function sendReferralEmail(options: {
+  to: string;
+  inviterName: string;
+  referralUrl: string;
+  optOutUrl: string;
+  rewardAmount: number;
+}) {
+  const safeName = escapeHtml(options.inviterName);
+  const safeReferralUrl = escapeHtml(options.referralUrl);
+  const safeOptOutUrl = escapeHtml(options.optOutUrl);
+  return sendKrythiqEmail({
+    to: options.to,
+    subject: `${options.inviterName} invited you to Krythiq`,
+    text: `${options.inviterName} invited you to try Krythiq, an AI-assisted repository security workspace.\n\nCreate your account: ${options.referralUrl}\n\nAfter your first successful paid AI action, ${options.inviterName} earns ${options.rewardAmount} Tokens.\n\nStop referral emails: ${options.optOutUrl}`,
+    html: emailFrame(
+      "KRYTHIQ REFERRAL",
+      `${safeName} invited you`,
+      `<p style="color:#a1a1aa;line-height:1.7">Krythiq helps developers inspect repositories, understand security findings, and generate practical remediation guidance.</p>
+       <a href="${safeReferralUrl}" style="display:inline-block;margin-top:18px;background:#fafafa;color:#09090b;padding:12px 20px;border-radius:9px;text-decoration:none;font-weight:700">Create your Krythiq account</a>
+       <p style="margin-top:20px;color:#a1a1aa;font-size:13px;line-height:1.6">After you verify a new account and complete your first successful paid AI action, ${safeName} earns ${options.rewardAmount} Tokens. You are never required to make a purchase from this email.</p>
+       <p style="margin-top:24px;font-size:11px;color:#71717a">Didn’t expect this invitation? <a href="${safeOptOutUrl}" style="color:#a1a1aa">Stop referral emails</a>.</p>`,
+    ),
+  });
+}
+
 export { emailFrame, escapeHtml };

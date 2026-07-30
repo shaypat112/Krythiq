@@ -120,6 +120,8 @@ Create `.env.local` with the services needed for the part of the application you
 ```dotenv
 # Required by authenticated application features
 NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
+# Optional legacy fallback:
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 
 # Repository access and AI scan summaries
@@ -140,12 +142,24 @@ STRIPE_PRICE_TEAM=
 # Email notifications
 RESEND_API_KEY=
 RESEND_FROM_EMAIL=
+REFERRAL_SIGNING_SECRET=
 
 # Privileged server operations
 SUPABASE_SERVICE_ROLE_KEY=
 ```
 
-Never expose `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `SUPABASE_SERVICE_ROLE_KEY`, or provider API keys through a `NEXT_PUBLIC_` variable.
+Never expose `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `SUPABASE_SERVICE_ROLE_KEY`, `REFERRAL_SIGNING_SECRET`, or provider API keys through a `NEXT_PUBLIC_` variable.
+
+`REFERRAL_SIGNING_SECRET` must contain at least 32 random characters. It protects
+normalized referral-email hashes and signed opt-out links. Deploy
+`supabase/migrations/20260730050000_tokens_and_referrals.sql` and
+`supabase/migrations/20260730051000_scan_token_tiers.sql` before enabling
+Tokens, referrals, or paid scans. Repository scan tiers cost 30 Tokens for Low,
+50 Tokens for Mid, and 70 Tokens for High coverage. The qualifying
+referral action is the referred user’s first
+successfully completed paid AI action; failed operations are refunded and do not
+qualify. Token purchasing is intentionally not exposed until a payment product
+and fulfillment webhook are configured.
 
 `GITHUB_TOKEN`, Mistral, Stripe, Resend, and service-role credentials are feature-specific. The Supabase public URL and anon key are required for authentication and most dashboard workflows.
 

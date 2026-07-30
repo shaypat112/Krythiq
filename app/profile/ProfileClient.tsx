@@ -139,8 +139,21 @@ export default function ProfileClient({ initialTab = "scans" }: { initialTab?: T
     const accessToken = sessionData.session?.access_token;
     const providerToken = sessionData.session?.provider_token;
 
-    if (!accessToken || !providerToken) {
-      setError("GitHub is not connected. Sign in with GitHub first.");
+    if (!accessToken) {
+      setError("Sign in before connecting GitHub.");
+      return;
+    }
+    if (!providerToken) {
+      setError(null);
+      const hasGitHubIdentity = sessionData.session?.user.identities?.some((identity) => identity.provider === "github") === true;
+      const options = {
+        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent("/scan?view=repositories")}`,
+        scopes: "repo read:user user:email",
+      };
+      const result = hasGitHubIdentity
+        ? await supabase.auth.signInWithOAuth({ provider: "github", options })
+        : await supabase.auth.linkIdentity({ provider: "github", options });
+      if (result.error) setError(result.error.message);
       return;
     }
 
