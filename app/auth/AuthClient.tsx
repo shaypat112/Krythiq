@@ -37,7 +37,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BrandLogo } from "@/app/components/BrandLogo";
 
 type Mode = "sign-in" | "sign-up";
-type PendingAction = "password" | "github" | "resend" | null;
+type RecoveryMode = "forgot" | "reset" | null;
+type PendingAction = "password" | "github" | "magic-link" | "resend" | "reset-request" | "reset-update" | null;
 
 function safeNextPath(value: string | null) {
   return value?.startsWith("/") && !value.startsWith("//")
@@ -71,6 +72,9 @@ export default function AuthClient() {
   const supabase = useMemo(() => createClient(), []);
   const nextPath = safeNextPath(searchParams.get("next"));
   const [mode, setMode] = useState<Mode>("sign-in");
+  const [recoveryMode, setRecoveryMode] = useState<RecoveryMode>(
+    searchParams.get("mode") === "reset" ? "reset" : null,
+  );
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -85,6 +89,7 @@ export default function AuthClient() {
   const [verificationEmail, setVerificationEmail] = useState<string | null>(
     searchParams.get("verification") === "required" ? email || null : null,
   );
+  const [success, setSuccess] = useState<string | null>(null);
 
   const requirements = passwordRequirements(password);
 
@@ -92,7 +97,7 @@ export default function AuthClient() {
     let active = true;
     void supabase.auth.getUser().then(({ data }) => {
       if (!active || !data.user) return;
-      if (data.user.email_confirmed_at) {
+      if (data.user.email_confirmed_at && recoveryMode !== "reset") {
         router.replace(nextPath);
         router.refresh();
         return;
@@ -105,7 +110,7 @@ export default function AuthClient() {
     return () => {
       active = false;
     };
-  }, [nextPath, router, supabase]);
+  }, [nextPath, recoveryMode, router, supabase]);
 
   const validate = () => {
     if (!isValidEmail(email)) return "Enter a valid email address.";
@@ -132,29 +137,17 @@ export default function AuthClient() {
     const normalizedEmail = normalizeEmail(email);
 
     if (mode === "sign-up") {
-      const { data, error: signUpError } = await supabase.auth.signUp({
-        email: normalizedEmail,
-        password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}`,
-        },
+      const response = await fetch("/api/auth/email-link", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ kind: "signup", email: normalizedEmail, password }),
       });
-
-      if (signUpError) {
-        setError(friendlyAuthError(signUpError.message));
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setError(typeof result?.error === "string" ? result.error : "Unable to create your account.");
         setPending(null);
         return;
       }
-
-      if (data.user?.identities?.length === 0) {
-        setError("An account with this email already exists. Sign in or request another verification email.");
-        setPending(null);
-        return;
-      }
-
-      // Access is intentionally withheld until the verification link is used,
-      // even if a Supabase project is accidentally configured to auto-confirm.
-      if (data.session) await supabase.auth.signOut({ scope: "local" });
       setVerificationEmail(normalizedEmail);
       setPending(null);
       return;
@@ -198,6 +191,27 @@ export default function AuthClient() {
     }
   };
 
+  const loginWithMagicLink = async () => {
+    if (!isValidEmail(email)) {
+      setError("Enter your email address first.");
+      return;
+    }
+    setPending("magic-link");
+    setError(null);
+    const response = await fetch("/api/auth/email-link", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ kind: "magiclink", email: normalizeEmail(email) }),
+    });
+    const result = await response.json().catch(() => ({}));
+    setPending(null);
+    if (!response.ok) {
+      setError(typeof result?.error === "string" ? result.error : "Unable to send a sign-in link.");
+      return;
+    }
+    setSuccess(result.message ?? "Check your email for a secure sign-in link.");
+  };
+
   const resendVerification = async () => {
     const target = verificationEmail ?? normalizeEmail(email);
     if (!isValidEmail(target)) {
@@ -216,6 +230,119 @@ export default function AuthClient() {
     setPending(null);
     if (resendError) setError(friendlyAuthError(resendError.message));
   };
+
+  const requestPasswordReset = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!isValidEmail(email)) {
+      setError("Enter a valid email address.");
+      return;
+    }
+    setPending("reset-request");
+    setError(null);
+    setSuccess(null);
+    const response = await fetch("/api/auth/password-reset", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: normalizeEmail(email) }),
+    });
+    const result = await response.json().catch(() => ({}));
+    setPending(null);
+    if (!response.ok) {
+      setError(typeof result?.error === "string" ? result.error : "Unable to request a password reset.");
+      return;
+    }
+    setSuccess(result.message ?? "If an account exists for that email, a password reset link is on its way.");
+  };
+
+  const updatePassword = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!isStrongPassword(password)) {
+      setError("Create a stronger password using every requirement below.");
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError("The passwords do not match.");
+      return;
+    }
+    setPending("reset-update");
+    setError(null);
+    const { error: updateError } = await supabase.auth.updateUser({ password });
+    setPending(null);
+    if (updateError) {
+      setError(friendlyAuthError(updateError.message));
+      return;
+    }
+    await supabase.auth.signOut();
+    setRecoveryMode(null);
+    setPassword("");
+    setConfirmPassword("");
+    setSuccess("Password updated. Sign in with your new password.");
+    router.replace("/auth");
+  };
+
+  if (recoveryMode === "forgot") {
+    return (
+      <AuthFrame>
+        <Card className="w-full max-w-md shadow-xl">
+          <CardHeader className="text-center">
+            <span className="mx-auto grid h-12 w-12 place-items-center rounded-2xl border border-sky-400/25 bg-sky-400/10 text-sky-400"><Mail /></span>
+            <CardTitle className="mt-4 text-2xl">Reset your password</CardTitle>
+            <CardDescription>We’ll send a secure recovery link from notifications@krythiq.dev.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form className="space-y-4" onSubmit={requestPasswordReset} noValidate>
+              <div className="space-y-2">
+                <Label htmlFor="recovery-email">Email</Label>
+                <Input id="recovery-email" type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@company.com" required />
+              </div>
+              {error ? <AuthError message={error} /> : null}
+              {success ? <Alert><Mail /><AlertTitle>Check your email</AlertTitle><AlertDescription>{success}</AlertDescription></Alert> : null}
+              <Button type="submit" className="w-full" disabled={pending !== null}>
+                {pending === "reset-request" ? <Loader2 className="animate-spin" /> : <Mail />}
+                {pending === "reset-request" ? "Sending…" : "Send reset link"}
+              </Button>
+              <Button type="button" variant="ghost" className="w-full" onClick={() => { setRecoveryMode(null); setError(null); setSuccess(null); }}>Back to sign in</Button>
+            </form>
+          </CardContent>
+        </Card>
+      </AuthFrame>
+    );
+  }
+
+  if (recoveryMode === "reset") {
+    return (
+      <AuthFrame>
+        <Card className="w-full max-w-md shadow-xl">
+          <CardHeader className="text-center">
+            <span className="mx-auto grid h-12 w-12 place-items-center rounded-2xl border border-sky-400/25 bg-sky-400/10 text-sky-400"><LockKeyhole /></span>
+            <CardTitle className="mt-4 text-2xl">Choose a new password</CardTitle>
+            <CardDescription>Use a strong password you do not use anywhere else.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form className="space-y-4" onSubmit={updatePassword}>
+              <div className="space-y-2">
+                <Label htmlFor="new-password">New password</Label>
+                <Input id="new-password" type={showPassword ? "text" : "password"} autoComplete="new-password" value={password} onChange={(event) => setPassword(event.target.value)} required />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="new-password-confirmation">Confirm new password</Label>
+                <Input id="new-password-confirmation" type={showPassword ? "text" : "password"} autoComplete="new-password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} required />
+              </div>
+              <Button type="button" variant="ghost" size="sm" onClick={() => setShowPassword((visible) => !visible)}>{showPassword ? <EyeOff /> : <Eye />}{showPassword ? "Hide passwords" : "Show passwords"}</Button>
+              <ul className="grid gap-1.5 text-xs text-muted-foreground sm:grid-cols-2">
+                {requirements.map((requirement) => <li key={requirement.id} className="flex items-center gap-1.5"><Check className={`h-3.5 w-3.5 ${requirement.met ? "text-emerald-500" : "text-muted-foreground/50"}`} />{requirement.label}</li>)}
+              </ul>
+              {error ? <AuthError message={error} /> : null}
+              <Button type="submit" className="w-full" disabled={pending !== null}>
+                {pending === "reset-update" ? <Loader2 className="animate-spin" /> : <ShieldCheck />}
+                {pending === "reset-update" ? "Updating…" : "Update password"}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </AuthFrame>
+    );
+  }
 
   if (verificationEmail || searchParams.get("verification") === "required") {
     return (
@@ -285,7 +412,10 @@ export default function AuthClient() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="auth-password">Password</Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="auth-password">Password</Label>
+                    {mode === "sign-in" ? <button type="button" className="text-xs font-medium text-sky-400 hover:text-sky-300" onClick={() => { setRecoveryMode("forgot"); setError(null); setSuccess(null); }}>Forgot password?</button> : null}
+                  </div>
                   <div className="relative">
                     <LockKeyhole className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                     <Input id="auth-password" type={showPassword ? "text" : "password"} autoComplete={mode === "sign-up" ? "new-password" : "current-password"} value={password} onChange={(event) => setPassword(event.target.value)} className="px-9" required />
@@ -313,11 +443,18 @@ export default function AuthClient() {
                 ) : null}
 
                 {error ? <AuthError message={error} /> : null}
+                {success ? <Alert><Check /><AlertTitle>Success</AlertTitle><AlertDescription>{success}</AlertDescription></Alert> : null}
 
                 <Button type="submit" className="w-full" disabled={pending !== null}>
                   {pending === "password" ? <Loader2 className="animate-spin" /> : <ShieldCheck />}
                   {pending === "password" ? "Please wait…" : mode === "sign-up" ? "Create account" : "Sign in"}
                 </Button>
+                {mode === "sign-in" ? (
+                  <Button type="button" variant="outline" className="w-full" disabled={pending !== null} onClick={() => void loginWithMagicLink()}>
+                    {pending === "magic-link" ? <Loader2 className="animate-spin" /> : <Mail />}
+                    {pending === "magic-link" ? "Sending…" : "Email me a magic link"}
+                  </Button>
+                ) : null}
               </form>
             </TabsContent>
           </Tabs>

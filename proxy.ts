@@ -54,12 +54,13 @@ async function authenticatedPageResponse(request: NextRequest) {
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
   );
   const isAuthRoute = pathname === "/auth";
+  const isPasswordRecovery = isAuthRoute && request.nextUrl.searchParams.get("mode") === "reset";
   const isLandingRoute = pathname === "/" || pathname === "/landing-page";
   const needsOnboarding =
     Boolean(user && verified) &&
     user?.user_metadata?.onboarding_completed !== true;
 
-  if (user && verified && (isLandingRoute || isAuthRoute)) {
+  if (user && verified && (isLandingRoute || (isAuthRoute && !isPasswordRecovery))) {
     return copyResponseCookies(
       response,
       NextResponse.redirect(

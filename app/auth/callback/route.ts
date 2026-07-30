@@ -15,13 +15,15 @@ function redirectWithCookies(response: NextResponse, destination: URL) {
 
 export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get("code");
+  const tokenHash = request.nextUrl.searchParams.get("token_hash");
+  const tokenType = request.nextUrl.searchParams.get("type");
   const next = safeNextPath(request.nextUrl.searchParams.get("next"));
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   const redirectUrl = new URL(next, request.url);
   const response = NextResponse.redirect(redirectUrl);
 
-  if (!code || !url || !anonKey) {
+  if ((!code && !tokenHash) || !url || !anonKey) {
     return NextResponse.redirect(new URL("/auth?error=callback", request.url));
   }
 
@@ -34,7 +36,13 @@ export async function GET(request: NextRequest) {
     },
   });
 
-  const { error } = await supabase.auth.exchangeCodeForSession(code);
+  const supportedTokenTypes = ["signup", "magiclink", "recovery", "invite", "email_change"] as const;
+  const verifiedType = supportedTokenTypes.find((type) => type === tokenType);
+  const { error } = code
+    ? await supabase.auth.exchangeCodeForSession(code)
+    : verifiedType && tokenHash
+      ? await supabase.auth.verifyOtp({ token_hash: tokenHash, type: verifiedType })
+      : { error: new Error("Unsupported authentication callback.") };
   if (error) {
     return redirectWithCookies(
       response,

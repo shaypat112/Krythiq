@@ -8,7 +8,7 @@ export const notificationChannels = [
 ] as const;
 
 export const notificationEvents = [
-  { id: "scan.completed", label: "Scan completed", defaultChannels: ["in_app"] },
+  { id: "scan.completed", label: "Scan completed", defaultChannels: ["in_app", "email"] },
   { id: "vulnerability.critical", label: "Critical vulnerability detected", defaultChannels: ["in_app", "email", "webhook"] },
   { id: "dependency.vulnerable", label: "New dependency vulnerability", defaultChannels: ["in_app", "email"] },
   { id: "repository.connection_failed", label: "Repository connection failed", defaultChannels: ["in_app"] },

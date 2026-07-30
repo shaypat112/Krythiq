@@ -15,7 +15,7 @@ jobs:
   label-and-manage:
     runs-on: ubuntu-latest
 
-    steps:
+    ps:
       - name: Apply issue labels based on keywords
         uses: actions/github-script@v7
         with:

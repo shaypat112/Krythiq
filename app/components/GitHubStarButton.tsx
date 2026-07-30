@@ -27,7 +27,7 @@ export function GitHubStarButton() {
           <span className="github-star-shine absolute left-1/2 top-1/2 size-11 -translate-x-1/2 -translate-y-1/2 rounded-full opacity-0 blur-lg [background:linear-gradient(135deg,rgb(59,196,242),rgb(122,105,249),rgb(242,99,120),rgb(245,131,63))] dark:opacity-30" />
         </span>
         <span className="ml-1.5 bg-gradient-to-b from-neutral-950 to-neutral-950/50 bg-clip-text text-xs text-transparent transition-transform group-hover:scale-105 dark:from-white dark:to-white/50">
-          Star shaypat112/Krythiq on GitHub
+        shaypat112/Krythiq on GitHub
         </span>
       </span>
     </a>
