@@ -26,7 +26,6 @@ import { SiteFooter } from "./SiteFooter";
 const appLinks = [
   { href: "/scan", label: "Security workspace" },
   { href: "/documentation", label: "Docs" },
-  { href: "/partners", label: "Partners" },
   { href: "/settings", label: "Settings" },
 ];
 

@@ -5,6 +5,8 @@ import { createNotification } from "@/app/lib/server/notifications";
 import { purgeUserData } from "@/app/lib/server/retention";
 import { logActivity } from "@/app/lib/server/activity";
 import { generateScanIntelligence } from "@/app/lib/server/mistral-scan";
+import type { AiSettings, ScanScope } from "@/app/lib/ai-settings";
+import { generateGrokUiReview } from "@/app/lib/server/grok-ui-review";
 
 function summarizeFindings(findings: Finding[]) {
   const total = findings.length;
@@ -23,6 +25,8 @@ export async function handleGitHubScan(input: {
   teamId?: string | null;
   providerToken?: string;
   onProgress?: ScanProgress;
+  aiSettings: AiSettings;
+  scanScope: ScanScope;
 }) {
   const env = getSupabaseEnv();
   const accessToken = input.accessToken;
@@ -31,14 +35,29 @@ export async function handleGitHubScan(input: {
 
   const result = await runGitHubScanWithToken(input.repoUrl, input.options ?? {}, input.providerToken, input.onProgress);
   const { total, severity, avgScore } = summarizeFindings(result.findings);
-  input.onProgress?.("recommendations", "Generating bounded repository intelligence with Mistral.");
-  const intelligence = await generateScanIntelligence({
-    repoName: result.repoName,
-    profile: result.profile,
-    findings: result.findings,
-    model: input.options?.aiModel,
-    scanTier: input.options?.scanTier ?? "mid",
-  });
+  input.onProgress?.(
+    "recommendations",
+    input.aiSettings.aiUsageLevel === "minimal"
+      ? "Finalizing static findings without an AI request."
+      : "Generating the configured bounded AI review.",
+  );
+  const [intelligence, aiReview] = await Promise.all([
+    input.aiSettings.aiUsageLevel !== "minimal" && input.scanScope !== "frontend"
+      ? generateScanIntelligence({
+          repoName: result.repoName,
+          profile: result.profile,
+          findings: result.findings,
+          model: input.options?.aiModel,
+          scanTier: input.options?.scanTier ?? "mid",
+        })
+      : Promise.resolve(null),
+    generateGrokUiReview({
+      repoName: result.repoName,
+      scope: input.scanScope,
+      settings: input.aiSettings,
+      files: result.aiFiles,
+    }),
+  ]);
 
   const scanPayload: Record<string, unknown> = {
     repo: result.repoName,
@@ -46,7 +65,7 @@ export async function handleGitHubScan(input: {
     severity,
     issues: total,
     score: avgScore,
-    findings: { list: result.findings, profile: result.profile, systemDesign: result.systemDesign, intelligence, team_id: input.teamId ?? null },
+    findings: { list: result.findings, profile: result.profile, systemDesign: result.systemDesign, intelligence, aiReview, scanScope: input.scanScope, team_id: input.teamId ?? null },
   };
 
   if (userId && accessToken) scanPayload.user_id = userId;
@@ -65,7 +84,7 @@ export async function handleGitHubScan(input: {
       severity,
       issues: total,
       score: avgScore,
-      findings: { list: result.findings, profile: result.profile, systemDesign: result.systemDesign, intelligence, team_id: input.teamId ?? null },
+      findings: { list: result.findings, profile: result.profile, systemDesign: result.systemDesign, intelligence, aiReview, scanScope: input.scanScope, team_id: input.teamId ?? null },
     };
     scanInsertRes = await supabaseFetch(env, "scan_history", {
       method: "POST",
@@ -130,6 +149,8 @@ export async function handleGitHubScan(input: {
     profile: result.profile,
     systemDesign: result.systemDesign,
     intelligence,
+    aiReview,
+    scanScope: input.scanScope,
     scan: scanRows?.[0] ?? null,
   };
 }

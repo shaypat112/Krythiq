@@ -11,7 +11,6 @@ const footerLinks = [
   { href: "/privacy", label: "Privacy" },
   { href: "/terms", label: "Terms" },
   { href: "/documentation", label: "Documentation" },
-  { href: "/partners", label: "Partners" },
   { href: "https://github.com/shaypat112/Krythiq", label: "GitHub", external: true },
 ];
 

@@ -55,7 +55,7 @@ export function Hero() {
             <ArrowRight className="h-4 w-4" />
           </Link>
           <Link
-            href="/scan"
+            href="/documentation"
             className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-5 py-3 text-sm font-semibold text-foreground transition hover:bg-muted"
           >
             <Play className="h-3.5 w-3.5" />

@@ -128,16 +128,21 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=
 GITHUB_TOKEN=
 MISTRAL_API_KEY=
 MISTRAL_MODEL=mistral-large-latest
+XAI_API_KEY=
+GROK_MODEL=grok-4.5
 
 # Public application URL
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
 
 # Billing
-NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=
-STRIPE_SECRET_KEY=
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...
+STRIPE_SECRET_KEY=sk_test_...
 STRIPE_WEBHOOK_SECRET=
 STRIPE_PRICE_PRO=
 STRIPE_PRICE_TEAM=
+STRIPE_PRICE_PRO_YEARLY=
+STRIPE_PRICE_TEAM_YEARLY=
+TOKEN_ADMIN_GITHUB_LOGIN=shaypat112
 
 # Email notifications
 RESEND_API_KEY=
@@ -147,6 +152,10 @@ REFERRAL_SIGNING_SECRET=
 # Privileged server operations
 SUPABASE_SERVICE_ROLE_KEY=
 ```
+
+Billing is intentionally test-only. Live Stripe keys and live webhook events
+are rejected. Configure products and prices from the same Stripe test
+environment as the keys.
 
 Never expose `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `SUPABASE_SERVICE_ROLE_KEY`, `REFERRAL_SIGNING_SECRET`, or provider API keys through a `NEXT_PUBLIC_` variable.
 

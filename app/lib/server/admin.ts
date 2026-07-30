@@ -126,6 +126,24 @@ export function extractGitHubLogin(user: AuthUser | null | undefined) {
   return null;
 }
 
+export function extractVerifiedGitHubLogin(
+  user: AuthUser | null | undefined,
+) {
+  for (const identity of user?.identities ?? []) {
+    if (identity.provider !== "github") continue;
+    const identityData = identity.identity_data ?? {};
+    const identityCandidate =
+      identityData["user_name"] ??
+      identityData["preferred_username"] ??
+      identityData["username"] ??
+      identityData["login"];
+    if (typeof identityCandidate === "string" && identityCandidate.trim()) {
+      return identityCandidate.trim();
+    }
+  }
+  return null;
+}
+
 export async function isAdminAccess(accessToken: string, userId: string) {
   const [profile, authUser] = await Promise.all([
     loadProfileForUser(accessToken, userId),

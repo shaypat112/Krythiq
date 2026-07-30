@@ -2,12 +2,13 @@ import { NextResponse } from "next/server";
 import { handleGitHubScan } from "@/app/routes/scan";
 import {
   extractSelectedTeamId,
+  getSupabaseEnv,
   RequestAuthError,
   requireRequestAuth,
+  supabaseFetch,
 } from "@/app/lib/server/supabaseRest";
 import { logServerError, logServerInfo } from "@/app/lib/server/logger";
 import { deliverWebhooks } from "@/app/lib/server/webhooks";
-import { getSupabaseEnv } from "@/app/lib/server/supabaseRest";
 import { requireVerifiedRequestAuth } from "@/app/lib/server/requestAuth";
 import {
   completeTokenUsage,
@@ -16,6 +17,10 @@ import {
   reserveTokenUsage,
 } from "@/app/lib/server/tokenLedger";
 import { readScanTier, scanTierCatalog } from "@/app/lib/tokens";
+import {
+  normalizeAiSettings,
+  readScanScope,
+} from "@/app/lib/ai-settings";
 
 export const runtime = "nodejs";
 
@@ -50,15 +55,27 @@ export async function POST(request: Request) {
     if (!scanTier) {
       return NextResponse.json({ error: "Choose a valid scan tier.", code: "INVALID_SCAN_TIER" }, { status: 400 });
     }
-    const options = { ...(body?.options ?? {}), scanTier };
     const providerToken = typeof body?.providerToken === "string" ? body.providerToken : undefined;
-    const { accessToken } = requireRequestAuth(request);
+    const { accessToken, userId } = requireRequestAuth(request);
     accessTokenForFailure = accessToken;
     const selectedTeamId = extractSelectedTeamId(request);
 
     if (!repoUrl) {
       return NextResponse.json({ error: "Missing repoUrl." }, { status: 400 });
     }
+
+    const settingsResponse = await supabaseFetch(
+      getSupabaseEnv(),
+      `user_settings?user_id=eq.${userId}&select=data&limit=1`,
+      { accessToken },
+    );
+    const settingsRows = settingsResponse.ok
+      ? ((await settingsResponse.json()) as Array<{ data?: unknown }>)
+      : [];
+    const aiSettings = normalizeAiSettings(settingsRows[0]?.data);
+    const scanScope =
+      readScanScope(body?.options?.scanScope) ?? aiSettings.defaultScanScope;
+    const options = { ...(body?.options ?? {}), scanTier, scanScope };
 
     const verified = await requireVerifiedRequestAuth(request);
     const idempotencyKey = readIdempotencyKey(request);
@@ -91,6 +108,8 @@ export async function POST(request: Request) {
               accessToken,
               teamId: selectedTeamId,
               providerToken,
+              aiSettings,
+              scanScope,
               onProgress: (stage, detail) => send("progress", { stage, detail }),
             });
             const finalBalance = await completeTokenUsage(verified.userId, idempotencyKey, result as unknown as Record<string, unknown>);
@@ -115,7 +134,7 @@ export async function POST(request: Request) {
       });
     }
 
-    const result = await handleGitHubScan({ repoUrl, options, accessToken, teamId: selectedTeamId, providerToken });
+    const result = await handleGitHubScan({ repoUrl, options, accessToken, teamId: selectedTeamId, providerToken, aiSettings, scanScope });
     const finalBalance = await completeTokenUsage(verified.userId, idempotencyKey, result as unknown as Record<string, unknown>);
     logServerInfo("scan.completed", { findings: result.totalFindings });
 

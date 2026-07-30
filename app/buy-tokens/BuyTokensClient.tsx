@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Check, Coins, CreditCard, Loader2, ShieldCheck } from "lucide-react";
+import { Coins, Loader2 } from "lucide-react";
 import { buildAuthHeaders } from "@/app/lib/http";
 import { createClient } from "@/app/lib/supabase";
 import { formatTokens } from "@/app/lib/tokens";
@@ -13,6 +13,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { PricingTableThree } from "@/components/billingsdk/pricing-table-three";
+import type { Plan as PricingPlan } from "@/lib/billingsdk-config";
+import {
+  destroyStripeCheckout,
+  mountStripeCheckout,
+} from "@/app/lib/stripe-embedded-client";
 
 type Pack = {
   id: string;
@@ -24,25 +30,13 @@ type Pack = {
   currency?: string;
 };
 
-declare global {
-  interface Window {
-    Stripe?: (key: string) => {
-      initEmbeddedCheckout: (options: {
-        fetchClientSecret: () => Promise<string>;
-      }) => Promise<{
-        mount: (target: string) => void;
-        destroy: () => void;
-      }>;
-    };
-  }
-}
-
-function formatPrice(amount?: number, currency?: string) {
-  if (amount === undefined || !currency) return "Unavailable";
+function currencySymbol(code?: string) {
+  if (!code) return "$";
   return new Intl.NumberFormat("en-US", {
     style: "currency",
-    currency: currency.toUpperCase(),
-  }).format(amount / 100);
+    currency: code.toUpperCase(),
+    currencyDisplay: "narrowSymbol",
+  }).formatToParts(0).find((part) => part.type === "currency")?.value ?? "$";
 }
 
 function StripeCheckout({
@@ -57,38 +51,26 @@ function StripeCheckout({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    let checkout: { mount: (target: string) => void; destroy: () => void } | null = null;
-    const mount = async () => {
-      try {
-        if (!window.Stripe) {
-          await new Promise<void>((resolve, reject) => {
-            const existing = document.querySelector<HTMLScriptElement>(
-              'script[src="https://js.stripe.com/clover/stripe.js"]',
-            );
-            if (existing) {
-              existing.addEventListener("load", () => resolve(), { once: true });
-              existing.addEventListener("error", () => reject(new Error("Unable to load Stripe.")), { once: true });
-              return;
-            }
-            const script = document.createElement("script");
-            script.src = "https://js.stripe.com/clover/stripe.js";
-            script.async = true;
-            script.onload = () => resolve();
-            script.onerror = () => reject(new Error("Unable to load Stripe's secure payment form."));
-            document.head.appendChild(script);
-          });
+    const controller = new AbortController();
+    let checkout: Awaited<ReturnType<typeof mountStripeCheckout>> = null;
+    void mountStripeCheckout({
+      clientSecret,
+      publishableKey,
+      target: "#token-embedded-checkout",
+      signal: controller.signal,
+    })
+      .then((instance) => {
+        checkout = instance;
+      })
+      .catch((cause) => {
+        if (!controller.signal.aborted) {
+          setError(cause instanceof Error ? cause.message : "Unable to load checkout.");
         }
-        if (!window.Stripe) throw new Error("Stripe payment form is unavailable.");
-        checkout = await window.Stripe(publishableKey).initEmbeddedCheckout({
-          fetchClientSecret: async () => clientSecret,
-        });
-        checkout.mount("#token-embedded-checkout");
-      } catch (cause) {
-        setError(cause instanceof Error ? cause.message : "Unable to load checkout.");
-      }
+      });
+    return () => {
+      controller.abort();
+      void destroyStripeCheckout(checkout);
     };
-    void mount();
-    return () => checkout?.destroy();
   }, [clientSecret, publishableKey]);
 
   return (
@@ -96,8 +78,8 @@ function StripeCheckout({
       <CardHeader>
         <div className="flex items-start justify-between gap-4">
           <div>
-            <CardTitle>Secure token checkout</CardTitle>
-            <CardDescription>Stripe securely hosts all payment fields.</CardDescription>
+            <CardTitle>Stripe test token checkout</CardTitle>
+            <CardDescription>No real payment will be processed. Use card 4242 4242 4242 4242, any future expiry, and any CVC.</CardDescription>
           </div>
           <Button variant="ghost" onClick={onClose}>Close</Button>
         </div>
@@ -193,13 +175,42 @@ export function BuyTokensClient() {
     return <div role="status" className="flex min-h-80 items-center justify-center"><Loader2 className="animate-spin" /><span className="sr-only">Loading token packs</span></div>;
   }
 
+  const pricingPacks: PricingPlan[] = packs.map((pack, index) => ({
+    id: pack.id,
+    title: pack.name,
+    description: pack.description,
+    currency: currencySymbol(pack.currency),
+    monthlyPrice:
+      pack.unitAmount === undefined
+        ? "Unavailable"
+        : (pack.unitAmount / 100).toFixed(pack.unitAmount % 100 === 0 ? 0 : 2),
+    yearlyPrice:
+      pack.unitAmount === undefined
+        ? "Unavailable"
+        : (pack.unitAmount / 100).toFixed(pack.unitAmount % 100 === 0 ? 0 : 2),
+    buttonText:
+      loadingPack === pack.id
+        ? "Starting test checkout…"
+        : pack.available
+          ? "Choose test pack"
+          : "Unavailable",
+    badge: index === 1 ? "Popular" : undefined,
+    highlight: index === 1,
+    disabled: !pack.available || loadingPack !== null,
+    features: [
+      { name: formatTokens(pack.tokens), icon: "check" },
+      { name: "One-time test payment", icon: "check" },
+      { name: "Credited after signed webhook", icon: "check" },
+    ],
+  }));
+
   return (
     <div className="space-y-8">
       <header className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Token store</p>
+          <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Stripe test mode only</p>
           <h1 className="mt-3 text-3xl font-semibold">Buy Tokens</h1>
-          <p className="mt-2 max-w-2xl text-muted-foreground">Choose a one-time Token pack for repository scans and paid AI features.</p>
+          <p className="mt-2 max-w-2xl text-muted-foreground">Choose a test Token pack for repository scans and paid AI features. Live payments are disabled.</p>
         </div>
         <div className="flex items-center gap-3 rounded-xl border bg-card px-4 py-3">
           <Coins className="h-5 w-5 text-amber-500" />
@@ -212,32 +223,22 @@ export function BuyTokensClient() {
       {checkout ? (
         <StripeCheckout {...checkout} onClose={() => setCheckout(null)} />
       ) : (
-        <div className="grid gap-4 md:grid-cols-3">
-          {packs.map((pack, index) => (
-            <Card key={pack.id} className={index === 1 ? "border-primary/40 shadow-sm" : ""}>
-              <CardHeader>
-                <div className="flex items-center justify-between gap-3">
-                  <CardTitle>{pack.name}</CardTitle>
-                  {index === 1 ? <span className="rounded-full bg-primary/10 px-2 py-1 text-xs font-medium text-primary">Popular</span> : null}
-                </div>
-                <CardDescription>{pack.description}</CardDescription>
-                <p className="pt-4 text-3xl font-semibold">{formatTokens(pack.tokens)}</p>
-                <p className="text-lg font-medium">{formatPrice(pack.unitAmount, pack.currency)}</p>
-              </CardHeader>
-              <CardContent>
-                <ul className="mb-6 space-y-2 text-sm text-muted-foreground">
-                  <li className="flex gap-2"><Check className="mt-0.5 h-4 w-4 text-emerald-500" />One-time payment</li>
-                  <li className="flex gap-2"><Check className="mt-0.5 h-4 w-4 text-emerald-500" />Added after verified payment</li>
-                  <li className="flex gap-2"><ShieldCheck className="mt-0.5 h-4 w-4 text-emerald-500" />Secure Stripe checkout</li>
-                </ul>
-                <Button className="w-full" disabled={!pack.available || loadingPack !== null} onClick={() => void beginCheckout(pack.id)}>
-                  {loadingPack === pack.id ? <Loader2 className="animate-spin" /> : <CreditCard />}
-                  {pack.available ? "Buy securely" : "Unavailable"}
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        pricingPacks.length > 0 ? (
+          <PricingTableThree
+            plans={pricingPacks}
+            onPlanSelect={(packId) => void beginCheckout(packId)}
+            billingMode="one-time"
+            variant="small"
+            showFooter={false}
+            className="mt-2"
+          />
+        ) : (
+          <Card>
+            <CardContent className="p-6 text-sm text-muted-foreground">
+              No Stripe test Token packs are configured for this environment.
+            </CardContent>
+          </Card>
+        )
       )}
       <p className="text-center text-xs text-muted-foreground">Tokens are credited by a signed Stripe webhook after payment succeeds. They are not subscriptions and do not expire.</p>
     </div>

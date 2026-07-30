@@ -22,7 +22,7 @@ export async function POST(request: Request) {
     const pack = getConfiguredTokenPack(body.packId);
     const { secretKey, publishableKey } = getStripeConfig();
     if (!pack || !secretKey || !publishableKey) {
-      return NextResponse.json({ error: "This token pack is not configured." }, { status: 503 });
+      return NextResponse.json({ error: "This token pack is not configured in Stripe test mode." }, { status: 503 });
     }
 
     const price = await stripe.prices.retrieve(pack.priceId);

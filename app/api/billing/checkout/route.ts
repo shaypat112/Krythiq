@@ -22,23 +22,33 @@ export async function POST(request: Request) {
     const billingCycle = (body?.billingCycle as string) || "monthly";
     const { accessToken, userId } = requireRequestAuth(request);
 
-    const { secretKey, publishableKey, pricePro, priceTeam } = getStripeConfig();
+    const {
+      secretKey,
+      publishableKey,
+      pricePro,
+      priceTeam,
+      priceProYearly,
+      priceTeamYearly,
+    } = getStripeConfig();
     if (!secretKey || !publishableKey) {
       return NextResponse.json(
-        { error: "Stripe is not configured." },
-        { status: 500 },
+        { error: "Stripe test mode is not configured. Use sk_test_ and pk_test_ keys." },
+        { status: 503 },
       );
     }
 
     // Map plan IDs to Stripe price IDs
-    const priceMap: Record<string, string> = {
-      pro: pricePro,
-      team: priceTeam,
+    const priceMap: Record<string, { monthly: string; yearly: string }> = {
+      pro: { monthly: pricePro, yearly: priceProYearly },
+      team: { monthly: priceTeam, yearly: priceTeamYearly },
     };
 
-    const priceId = priceMap[planId];
+    if (billingCycle !== "monthly" && billingCycle !== "yearly") {
+      return NextResponse.json({ error: "Invalid billing cycle." }, { status: 400 });
+    }
+    const priceId = priceMap[planId]?.[billingCycle];
     if (!priceId) {
-      return NextResponse.json({ error: "Invalid plan ID or Stripe not configured" }, { status: 400 });
+      return NextResponse.json({ error: "Invalid plan ID or Stripe test price not configured." }, { status: 400 });
     }
 
     const env = getSupabaseEnv();

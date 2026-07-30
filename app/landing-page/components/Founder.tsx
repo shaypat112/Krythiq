@@ -1,7 +1,6 @@
 "use client";
 
 import { FadeIn } from "../shared/FadeIn";
-import { Eyebrow } from "../shared/Eyebrow";
 import { Tooltip } from "@/components/ui/tooltip-card";
 
 // NOTE: Swap the name, title, and initials below for your actual founder details.
@@ -14,8 +13,7 @@ export function Founder() {
     <section className="border-t border-border py-24">
       <div className="grid gap-10 lg:grid-cols-[0.35fr_0.65fr] lg:gap-16">
         <FadeIn>
-          <Eyebrow>Why we built this</Eyebrow>
-          <div className="mt-6 flex items-center gap-3">
+          <div className="flex items-center gap-3">
             <span className="flex h-12 w-12 items-center justify-center rounded-full bg-foreground font-mono text-sm font-semibold text-background">
               {FOUNDER_INITIALS}
             </span>

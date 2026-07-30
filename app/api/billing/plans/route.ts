@@ -10,13 +10,26 @@ type ProductMetadata = { plan_id?: string; features?: string };
 export async function GET(request: Request) {
   try {
     requireRequestAuth(request);
-    const { secretKey, pricePro, priceTeam } = getStripeConfig();
+    const {
+      secretKey,
+      pricePro,
+      priceTeam,
+      priceProYearly,
+      priceTeamYearly,
+    } = getStripeConfig();
     if (!secretKey || !pricePro || !priceTeam) {
       return NextResponse.json({ configured: false, plans: [] });
     }
 
-    const prices = await Promise.all([pricePro, priceTeam].map((id) => stripe.prices.retrieve(id, { expand: ["product"] })));
-    const plans = prices.map((price) => {
+    const planPrices = [
+      { monthlyId: pricePro, yearlyId: priceProYearly },
+      { monthlyId: priceTeam, yearlyId: priceTeamYearly },
+    ];
+    const plans = await Promise.all(planPrices.map(async ({ monthlyId, yearlyId }) => {
+      const [price, yearlyPrice] = await Promise.all([
+        stripe.prices.retrieve(monthlyId, { expand: ["product"] }),
+        yearlyId ? stripe.prices.retrieve(yearlyId) : Promise.resolve(null),
+      ]);
       const product = price.product as Stripe.Product;
       const metadata = product.metadata as ProductMetadata;
       let features: string[] = [];
@@ -29,9 +42,11 @@ export async function GET(request: Request) {
         amount: price.unit_amount ?? 0,
         currency: price.currency,
         interval: price.recurring?.interval ?? "month",
+        yearlyAmount: yearlyPrice?.unit_amount ?? null,
+        yearlyPriceId: yearlyPrice?.id ?? null,
         features,
       };
-    });
+    }));
     return NextResponse.json({ configured: true, plans });
   } catch (error) {
     if (error instanceof RequestAuthError) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

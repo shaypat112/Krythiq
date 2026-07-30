@@ -1,9 +1,9 @@
 
 import { Nav } from "./components/Nav";
 import { Hero } from "./components/Hero";
-import { Problem } from "./components/Problem";
 import { SolutionFlow } from "./components/SolutionFlow";
 import { ProductShowcase } from "./components/ProductShowcase";
+import { FounderPost } from "./components/FounderPost";
 import { Founder } from "./components/Founder";
 
 import { ProductVideoStory } from "@/app/components/ProductVideoStory";
@@ -23,9 +23,9 @@ export default function LandingPage() {
           title="See the thinking behind Krythiq."
           description="Watch the walkthrough, then connect a repository and turn the ideas into a real security workflow."
         />
-        <Problem />
         <SolutionFlow />
         <ProductShowcase />
+        <FounderPost />
         <Founder />
 
       </div>

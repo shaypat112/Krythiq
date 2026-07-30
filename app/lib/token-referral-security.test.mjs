@@ -7,6 +7,14 @@ const purchaseMigration = await readFile(
   new URL("../../supabase/migrations/20260730052000_token_purchases.sql", import.meta.url),
   "utf8",
 );
+const requestMigration = await readFile(
+  new URL("../../supabase/migrations/20260730053000_token_requests.sql", import.meta.url),
+  "utf8",
+);
+const requestRoute = await readFile(
+  new URL("../api/tokens/requests/route.ts", import.meta.url),
+  "utf8",
+);
 const referralRoute = await readFile(new URL("../api/referrals/route.ts", import.meta.url), "utf8");
 const tokenSource = await readFile(new URL("./tokens.ts", import.meta.url), "utf8");
 
@@ -75,4 +83,22 @@ test("Stripe token fulfillment is service-only, serialized, and idempotent", () 
     /revoke all on function public\.credit_token_purchase[\s\S]*from public, anon, authenticated/,
   );
   assert.doesNotMatch(purchaseMigration, /create policy .*insert/i);
+});
+
+test("test Token requests are capped, single-pending, and credited once", () => {
+  assert.match(requestMigration, /amount integer not null check \(amount between 1 and 500\)/);
+  assert.match(requestMigration, /unique index .*token_requests_one_pending_per_user[\s\S]*where status = 'pending'/);
+  assert.match(requestMigration, /where id = request_id[\s\S]*for update/);
+  assert.match(requestMigration, /'token-request:' \|\| reviewed_request\.id::text/);
+  assert.match(requestMigration, /on conflict \(idempotency_key\) do nothing/);
+  assert.match(
+    requestMigration,
+    /revoke all on function public\.review_token_request[\s\S]*from public, anon, authenticated/,
+  );
+});
+
+test("only the verified configured GitHub identity can review Token requests", () => {
+  assert.match(requestRoute, /extractVerifiedGitHubLogin\(authUser\).*tokenAdminLogin/s);
+  assert.match(requestRoute, /if \(!isAdmin\)[\s\S]*Admin access required/);
+  assert.doesNotMatch(requestRoute, /profile.*username.*isAdmin/i);
 });

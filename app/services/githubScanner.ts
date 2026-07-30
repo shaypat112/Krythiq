@@ -1,6 +1,7 @@
 import path from "path";
 import { scannerPolicy, securityRuleRegistry } from "@/app/lib/scanner/rules/registry";
 import { scanLevelConfig, type ScanTier } from "@/app/lib/scanner/scan-levels";
+import type { ScanScope } from "@/app/lib/ai-settings";
 
 export type Severity = "low" | "medium" | "high" | "critical";
 
@@ -13,6 +14,7 @@ export type ScanOptions = {
   format?: "text" | "json" | "markdown";
   ignore?: string[];
   scanTier?: ScanTier;
+  scanScope?: ScanScope;
 };
 
 export type Finding = {
@@ -96,6 +98,21 @@ function extractRepoName(repoUrl: string) {
 }
 
 type RepositoryFile = { path: string; content: string };
+
+const frontendFilePattern =
+  /\.(?:tsx|jsx|vue|svelte|astro|css|scss|sass|less|html)$/i;
+const backendPathPattern =
+  /(^|\/)(?:api|server|backend|database|db|prisma|supabase|routes?|controllers?|services?)(\/|$)/i;
+
+function shouldIncludeInScope(filePath: string, scope: ScanScope) {
+  if (scope === "all") return true;
+  const normalized = filePath.replaceAll("\\", "/");
+  const isFrontend =
+    frontendFilePattern.test(normalized) &&
+    !backendPathPattern.test(normalized) &&
+    !/(^|\/)(?:route|middleware|proxy)\.[jt]sx?$/i.test(normalized);
+  return scope === "frontend" ? isFrontend : !isFrontend;
+}
 
 function dependencyQueries(files: RepositoryFile[]) {
   const queries: Array<{ package: { name: string; ecosystem: string }; version: string; file: string }> = [];
@@ -508,12 +525,14 @@ export async function runGitHubScanWithToken(
         : "No supported manifest found at the repository root; continuing with source analysis.",
     );
     const ignore = new Set([...scannerPolicy.defaultIgnoreDirectories, ...(options.ignore ?? [])]);
+    const scanScope = options.scanScope ?? "all";
     const eligibleBlobs = tree.tree.filter((entry) => {
       const isManifest = manifests.includes(entry.path);
       const sizeLimit = isManifest ? Math.min(5 * 1024 * 1024, scannerPolicy.limits.maxScanBytes) : scannerPolicy.limits.maxFileBytes;
       return entry.type === "blob" &&
         (entry.size ?? sizeLimit + 1) <= sizeLimit &&
-        (shouldScanFile(entry.path, ignore) || isManifest);
+        (shouldScanFile(entry.path, ignore) || isManifest) &&
+        (isManifest || shouldIncludeInScope(entry.path, scanScope));
     });
     const blobs: typeof eligibleBlobs = [];
     let selectedBytes = 0;
@@ -534,8 +553,14 @@ export async function runGitHubScanWithToken(
       }));
       files.push(...loaded.filter((file): file is RepositoryFile => file !== null));
     }
-    const dependencyFindings = await scanKnownDependencies(files, onProgress);
-    const findings = [...dependencyFindings, ...await scanFiles(files, options, onProgress)]
+    const analysisFiles = files.filter((file) =>
+      shouldIncludeInScope(file.path, scanScope),
+    );
+    const dependencyFindings =
+      scanScope === "frontend"
+        ? []
+        : await scanKnownDependencies(files, onProgress);
+    const findings = [...dependencyFindings, ...await scanFiles(analysisFiles, options, onProgress)]
       .sort((a, b) => b.score - a.score);
     const profile = buildRepositoryProfile({ repository, tree: tree.tree, files, manifests, languageBytes });
     const systemDesign = buildSystemDesignAssessment(files, tree.tree, manifests);
@@ -547,6 +572,10 @@ export async function runGitHubScanWithToken(
       findings,
       profile,
       systemDesign,
+      aiFiles: analysisFiles.map((file) => ({
+        path: file.path,
+        content: file.content,
+      })),
     };
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);

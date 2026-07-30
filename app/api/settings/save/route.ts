@@ -7,6 +7,7 @@ import {
 } from "@/app/lib/server/supabaseRest";
 import { validatePublicHttpsUrl } from "@/app/lib/server/outboundRequests";
 import { apiPlanCatalog, normalizeApiLimits, planFromPriceId } from "@/app/lib/api-rate-limits";
+import { normalizeAiSettings } from "@/app/lib/ai-settings";
 
 export const runtime = "nodejs";
 
@@ -58,6 +59,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: `Requested limits exceed the ${apiPlanCatalog[apiPlan].name} plan.` }, { status: 400 });
     }
     const apiLimits = normalizeApiLimits(settings, apiPlan);
+    const aiSettings = normalizeAiSettings(settings);
 
     const profilePayload = {
       id: userId,
@@ -109,6 +111,7 @@ export async function POST(request: Request) {
       ...rest,
       retentionDays: 30,
       ...apiLimits,
+      ...aiSettings,
     };
 
     const settingsPayload = {

@@ -36,8 +36,16 @@ export const apiPlanCatalog: Record<ApiPlanId, {
 };
 
 export function planFromPriceId(priceId: string | null | undefined): ApiPlanId {
-  if (priceId && priceId === process.env.STRIPE_PRICE_TEAM) return "team";
-  if (priceId && priceId === process.env.STRIPE_PRICE_PRO) return "pro";
+  if (
+    priceId &&
+    (priceId === process.env.STRIPE_PRICE_TEAM ||
+      priceId === process.env.STRIPE_PRICE_TEAM_YEARLY)
+  ) return "team";
+  if (
+    priceId &&
+    (priceId === process.env.STRIPE_PRICE_PRO ||
+      priceId === process.env.STRIPE_PRICE_PRO_YEARLY)
+  ) return "pro";
   return "free";
 }
 

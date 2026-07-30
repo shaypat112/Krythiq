@@ -25,6 +25,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error instanceof Error ? `Webhook Error: ${error.message}` : "Webhook signature verification failed." }, { status: 400 });
   }
 
+  if (event.livemode) {
+    return NextResponse.json(
+      { error: "Live Stripe events are disabled while billing is in test mode." },
+      { status: 403 },
+    );
+  }
+
   const env = getSupabaseEnv();
   const adminHeaders = serviceRoleKey
     ? {

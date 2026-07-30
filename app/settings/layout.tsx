@@ -13,7 +13,7 @@ import {
   Users,
   Plug,
   BellRing,
-  Braces,
+  Sparkles,
   Mail,
   Coins,
 } from "lucide-react";
@@ -31,7 +31,7 @@ const NAV_SECTIONS = [
   { id: "email", label: "Email", icon: Mail },
   { id: "tokens", label: "Tokens", icon: Coins },
   { id: "notifications", label: "Notifications", icon: BellRing },
-  { id: "api", label: "API", icon: Braces },
+  { id: "ai", label: "AI", icon: Sparkles },
 ] as const;
 
 export type SectionId = (typeof NAV_SECTIONS)[number]["id"];

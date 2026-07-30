@@ -4,6 +4,11 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import { createClient } from "@/app/lib/supabase";
 import { buildAuthHeaders } from "@/app/lib/http";
 import { apiPlanCatalog, type ApiPlanId } from "@/app/lib/api-rate-limits";
+import {
+  defaultAiSettings,
+  type AiUsageLevel,
+  type ScanScope,
+} from "@/app/lib/ai-settings";
 import { toast } from "sonner";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -19,6 +24,11 @@ export type SettingsState = {
   retentionDays: number;
   apiRequestsPerMinute: number;
   expensiveRequestsPerMinute: number;
+  aiUsageLevel: AiUsageLevel;
+  defaultScanScope: ScanScope;
+  aiSuggestionsEnabled: boolean;
+  vibeDetectionEnabled: boolean;
+  maxAiSuggestions: number;
 };
 
 export type AdminState = {
@@ -38,6 +48,7 @@ const defaultSettings: SettingsState = {
   retentionDays: 30,
   apiRequestsPerMinute: apiPlanCatalog.free.limits.apiRequestsPerMinute,
   expensiveRequestsPerMinute: apiPlanCatalog.free.limits.expensiveRequestsPerMinute,
+  ...defaultAiSettings,
 };
 
 // ─── Context shape ─────────────────────────────────────────────────────────────
@@ -58,6 +69,7 @@ type SettingsContextValue = {
   accessToken: string | null;
   admin: AdminState;
   apiPlan: ApiPlanId;
+  aiProviderConfigured: boolean;
 };
 
 const SettingsContext = createContext<SettingsContextValue | null>(null);
@@ -85,6 +97,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     githubLogin: null,
   });
   const [apiPlan, setApiPlan] = useState<ApiPlanId>("free");
+  const [aiProviderConfigured, setAiProviderConfigured] = useState(false);
 
   const setStatus = useCallback((message: string | null) => {
     setStatusState(message);
@@ -139,6 +152,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
               : null,
         });
         setApiPlan(data?.apiPlan === "pro" || data?.apiPlan === "team" ? data.apiPlan : "free");
+        setAiProviderConfigured(Boolean(data?.aiProviderConfigured));
       }
 
       setLoading(false);
@@ -206,6 +220,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         accessToken,
         admin,
         apiPlan,
+        aiProviderConfigured,
       }}
     >
       {children}

@@ -8,6 +8,7 @@ import {
 } from "@/app/lib/server/supabaseRest";
 import { purgeUserData } from "@/app/lib/server/retention";
 import { normalizeApiLimits, planFromPriceId } from "@/app/lib/api-rate-limits";
+import { defaultAiSettings, normalizeAiSettings } from "@/app/lib/ai-settings";
 
 export const runtime = "nodejs";
 
@@ -27,6 +28,7 @@ const DEFAULT_SETTINGS = {
   webhookUrl: "",
   webhookEvents: ["scan.completed"],
   retentionDays: 30,
+  ...defaultAiSettings,
 };
 
 export async function POST(request: Request) {
@@ -99,6 +101,7 @@ export async function POST(request: Request) {
       ? planFromPriceId(billing?.price_id)
       : "free";
     const apiLimits = normalizeApiLimits(storedSettings, apiPlan);
+    const aiSettings = normalizeAiSettings(storedSettings);
 
     const settings = {
       ...DEFAULT_SETTINGS,
@@ -112,6 +115,7 @@ export async function POST(request: Request) {
       webhookEvents: webhook.events ?? storedSettings.webhookEvents ?? DEFAULT_SETTINGS.webhookEvents,
       retentionDays: 30,
       ...apiLimits,
+      ...aiSettings,
     };
 
     await purgeUserData({ env, accessToken, userId, days: 30 });
@@ -122,6 +126,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       settings,
       apiPlan,
+      aiProviderConfigured: Boolean(process.env.XAI_API_KEY?.trim()),
       admin: {
         isAdmin,
         profileUsername: adminConfig.profileUsername,

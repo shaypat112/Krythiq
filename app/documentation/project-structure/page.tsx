@@ -120,7 +120,6 @@ const repositoryTree: TreeViewElement[] = [
     name: "components",
     children: [
       { id: "components-ui", name: "ui", type: "folder" },
-      { id: "components-globe", name: "globe-demo.tsx", type: "file" },
       {
         id: "components-loader",
         name: "multi-step-loader-demo.tsx",

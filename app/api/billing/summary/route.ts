@@ -10,10 +10,10 @@ import { getStripeConfig, stripe } from "@/app/lib/stripe";
 export const runtime = "nodejs";
 
 function formatPlanName(priceId: string | null) {
-  const { pricePro, priceTeam } = getStripeConfig();
+  const { pricePro, priceTeam, priceProYearly, priceTeamYearly } = getStripeConfig();
   if (!priceId) return "No active plan";
-  if (priceId === priceTeam) return "Team";
-  if (priceId === pricePro) return "Pro";
+  if (priceId === priceTeam || priceId === priceTeamYearly) return "Team";
+  if (priceId === pricePro || priceId === priceProYearly) return "Pro";
   return "Custom";
 }
 

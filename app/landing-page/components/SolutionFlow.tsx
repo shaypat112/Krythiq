@@ -9,7 +9,6 @@ import {
   Rocket,
 } from "lucide-react";
 import { FadeIn } from "../shared/FadeIn";
-import { Eyebrow } from "../shared/Eyebrow";
 
 const steps = [
   { icon: GitBranch, title: "Connect your repository", detail: "GitHub or GitLab, read-only access, scoped to what Krythiq needs." },
@@ -24,8 +23,7 @@ export function SolutionFlow() {
   return (
     <section id="flow" className="border-t border-border py-24">
       <FadeIn className="max-w-xl">
-        <Eyebrow>The process</Eyebrow>
-        <h2 className="mt-4 text-3xl font-semibold tracking-tight sm:text-4xl">
+        <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">
           From repository to remediation, in one pass.
         </h2>
       </FadeIn>

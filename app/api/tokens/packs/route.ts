@@ -14,7 +14,7 @@ export async function GET(request: Request) {
     const { secretKey, publishableKey } = getStripeConfig();
 
     if (!secretKey || !publishableKey) {
-      return NextResponse.json({ error: "Token checkout is not configured." }, { status: 503 });
+      return NextResponse.json({ error: "Stripe test checkout is not configured." }, { status: 503 });
     }
 
     const packs = await Promise.all(
