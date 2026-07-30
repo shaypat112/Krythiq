@@ -29,7 +29,7 @@ export const scanLevelConfig = {
     ruleIds: ["EVAL", "CMD_INJECTION", "HARDCODED_SECRET", "TRACKED_ENV_FILE"],
   },
   mid: {
-    label: "Mid Scan",
+    label: "Medium Scan",
     cost: 50,
     action: "scan_mid",
     maxFiles: 250,

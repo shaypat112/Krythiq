@@ -58,10 +58,12 @@ type RepositoryProfile = {
 type ScanIntelligence = { summary: string; architecture: string; securityPosture: string; strengths: string[]; priorities: Array<{ title: string; reason: string; effort: "low" | "medium" | "high" }>; observations: string[] };
 type AiReview = {
   scope: ScanScope;
+  provider: "groq" | "xai";
   vibeCodedPercent: number | null;
   reasoning: string;
-  scores: { componentUsage: number; consistency: number; accessibility: number; designSystem: number };
-  suggestions: Array<{ title: string; reason: string; file: string | null; replacement: string | null }>;
+  summary: string;
+  scores: { componentUsage: number; consistency: number; accessibility: number; responsive: number; designSystem: number; overall: number };
+  suggestions: Array<{ title: string; reason: string; file: string | null; replacement: string | null; category: "components" | "a11y" | "responsive" | "consistency"; evidence: string | null }>;
 };
 type SystemDesignScenario = { id: "traffic-spike" | "data-growth" | "dependency-failure" | "multi-region" | "cost-pressure"; title: string; status: "ready" | "watch" | "risk" | "unknown"; confidence: "low" | "medium"; reflection: string; evidence: string[]; nextStep: string };
 type SystemDesignAssessment = { summary: string; disclaimer: string; scenarios: SystemDesignScenario[] };
@@ -78,6 +80,26 @@ const stages: { id: Stage; title: string; fallback: string }[] = [
 ];
 const severityRank: Record<Severity, number> = { critical: 4, high: 3, medium: 2, low: 1 };
 const attentionThresholds: Severity[] = ["critical", "high", "medium", "low"];
+const frontendTierChecks: Record<ScanTier, readonly string[]> = {
+  low: [
+    "Core UI files and component usage",
+    "Basic accessibility signals",
+    "Fast design-consistency summary",
+  ],
+  mid: [
+    "More frontend files and component relationships",
+    "Spacing, typography, and semantic color tokens",
+    "Accessibility and responsive-pattern checks",
+    "Evidence-backed shadcn/ui replacements",
+  ],
+  high: [
+    "Broad frontend file coverage",
+    "Deep component and design-system adherence",
+    "Accessibility and responsive edge cases",
+    "Detailed evidence and prioritized replacements",
+    "Higher-context vibe-coded estimate",
+  ],
+};
 
 function severityClass(severity: Severity) {
   return { critical: "border-rose-500/30 bg-rose-500/10 text-rose-300", high: "border-orange-500/30 bg-orange-500/10 text-orange-300", medium: "border-amber-500/30 bg-amber-500/10 text-amber-300", low: "border-sky-500/30 bg-sky-500/10 text-sky-300" }[severity];
@@ -348,32 +370,51 @@ export function ScanWorkspace() {
           </fieldset>
           <fieldset className="mb-5">
             <legend className="text-sm font-medium">Scan coverage</legend>
+            <div className="mt-2 max-w-xs">
+              <Combobox
+                items={Object.keys(scanTierCatalog)}
+                value={scanTier}
+                onValueChange={(value) => {
+                  if (value) setScanTier(value as ScanTier);
+                }}
+                disabled={phase === "scanning"}
+              >
+                <ComboboxInput
+                  className="h-9 w-full"
+                  aria-label="Scan coverage"
+                />
+                <ComboboxContent>
+                  <ComboboxEmpty>No coverage tier found.</ComboboxEmpty>
+                  <ComboboxList>
+                    {(Object.entries(scanTierCatalog) as Array<[ScanTier, (typeof scanTierCatalog)[ScanTier]]>).map(([tier, details]) => (
+                      <ComboboxItem key={tier} value={tier}>
+                        {details.label} · {details.cost} Tokens
+                      </ComboboxItem>
+                    ))}
+                  </ComboboxList>
+                </ComboboxContent>
+              </Combobox>
+            </div>
             <div className="mt-2 grid gap-2 sm:grid-cols-3">
               {(Object.entries(scanTierCatalog) as Array<[ScanTier, (typeof scanTierCatalog)[ScanTier]]>).map(([tier, details]) => (
-                <div key={tier} className="relative">
-                  <button
-                    type="button"
-                    disabled={phase === "scanning"}
-                    aria-pressed={scanTier === tier}
-                    onClick={() => setScanTier(tier)}
-                    className={`h-full w-full rounded-xl border p-3 pr-9 text-left transition disabled:cursor-not-allowed disabled:opacity-60 ${scanTier === tier ? "border-sky-500 bg-sky-500/10 ring-1 ring-sky-500/30" : "border-border bg-background/50 hover:border-foreground/30"}`}
-                  >
+                <Card key={tier} className={scanTier === tier ? "border-sky-500/50 bg-sky-500/5" : "bg-background/50"}>
+                  <CardContent className="relative h-full p-3 pr-9">
                     <span className="flex items-center justify-between gap-2 text-sm font-medium"><span>{details.label}</span><span>{details.cost} Tokens</span></span>
-                    <span className="mt-2 block text-xs leading-5 text-muted-foreground">{details.checks.slice(0, tier === "high" ? 4 : 3).map((check) => `✓ ${check}`).join(" · ")}</span>
-                  </button>
+                    <span className="mt-2 block text-xs leading-5 text-muted-foreground">{(analysisScope === "frontend" ? frontendTierChecks[tier] : details.checks).slice(0, tier === "high" ? 4 : 3).map((check) => `✓ ${check}`).join(" · ")}</span>
                   <span className="absolute right-3 top-3">
                     <HelpTooltip side="bottom">
                       <span className="block font-medium">{details.label} includes:</span>
-                      <span className="mt-1 block whitespace-pre-line">{details.checks.map((check) => `• ${check}`).join("\n")}</span>
+                      <span className="mt-1 block whitespace-pre-line">{(analysisScope === "frontend" ? frontendTierChecks[tier] : details.checks).map((check) => `• ${check}`).join("\n")}</span>
                     </HelpTooltip>
                   </span>
-                </div>
+                  </CardContent>
+                </Card>
               ))}
             </div>
             <div className="mt-3 rounded-xl border border-border bg-background/40 p-4">
               <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Included in {scanTierCatalog[scanTier].label}</p>
               <ul className="mt-2 grid gap-x-6 gap-y-1.5 text-xs leading-5 sm:grid-cols-2">
-                {scanTierCatalog[scanTier].checks.map((check) => <li key={check} className="flex gap-2"><CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-500" /><span>{check}</span></li>)}
+                {(analysisScope === "frontend" ? frontendTierChecks[scanTier] : scanTierCatalog[scanTier].checks).map((check) => <li key={check} className="flex gap-2"><CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-500" /><span>{check}</span></li>)}
               </ul>
             </div>
           </fieldset>
@@ -403,7 +444,12 @@ export function ScanWorkspace() {
         <Card id="ai-ui-review">
           <CardHeader>
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <CardTitle className="capitalize">Grok {result.aiReview.scope} review</CardTitle>
+              <div>
+                <CardTitle>Frontend scan</CardTitle>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {result.aiReview.provider === "groq" ? "Groq" : "xAI"} analysis · {scanTierCatalog[scanTier].label}
+                </p>
+              </div>
               {result.aiReview.vibeCodedPercent !== null ? (
                 <Badge variant="outline">
                   {result.aiReview.vibeCodedPercent}% vibe-coded estimate
@@ -411,39 +457,57 @@ export function ScanWorkspace() {
               ) : null}
             </div>
           </CardHeader>
-          <CardContent className="space-y-5">
-            <p className="text-sm leading-6 text-muted-foreground">
-              {result.aiReview.reasoning}
-            </p>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <Metric title="Component usage" value={`${result.aiReview.scores.componentUsage}/100`} detail="Established primitives" />
-              <Metric title="Consistency" value={`${result.aiReview.scores.consistency}/100`} detail="Patterns and styling" />
-              <Metric title="Accessibility" value={`${result.aiReview.scores.accessibility}/100`} detail="Semantic UI signals" />
-              <Metric title="Design system" value={`${result.aiReview.scores.designSystem}/100`} detail="Reusable foundations" />
-            </div>
-            {result.aiReview.suggestions.length > 0 ? (
-              <div>
-                <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  Suggested improvements
-                </p>
-                <AnimatedList
-                  delay={180}
-                  className="mt-2 items-stretch gap-2"
-                  aria-label="AI improvement suggestions"
-                >
+          <CardContent>
+            <Tabs defaultValue="overview">
+              <TabsList className="grid w-full grid-cols-4">
+                <TabsTrigger value="overview">Overview</TabsTrigger>
+                <TabsTrigger value="components">Components</TabsTrigger>
+                <TabsTrigger value="a11y">A11y</TabsTrigger>
+                <TabsTrigger value="suggestions">Suggestions</TabsTrigger>
+              </TabsList>
+              <TabsContent value="overview" className="space-y-5 pt-3">
+                <p className="text-sm leading-6 text-muted-foreground">{result.aiReview.summary}</p>
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  <Metric title="Overall UI quality" value={`${result.aiReview.scores.overall}/100`} detail="Frontend quality" />
+                  <Metric title="Consistency" value={`${result.aiReview.scores.consistency}/100`} detail="Spacing, type, and tokens" />
+                  <Metric title="Responsive" value={`${result.aiReview.scores.responsive}/100`} detail="Viewport patterns" />
+                  <Metric title="Component usage" value={`${result.aiReview.scores.componentUsage}/100`} detail="shadcn/ui adoption" />
+                  <Metric title="Accessibility" value={`${result.aiReview.scores.accessibility}/100`} detail="Semantic UI basics" />
+                  <Metric title="Design system" value={`${result.aiReview.scores.designSystem}/100`} detail="Reusable foundations" />
+                </div>
+                <Card className="bg-muted/20"><CardContent className="p-4"><p className="text-sm font-medium">Why this looks vibe-coded</p><p className="mt-1 text-xs leading-5 text-muted-foreground">{result.aiReview.reasoning}</p></CardContent></Card>
+              </TabsContent>
+              {(["components", "a11y"] as const).map((category) => (
+                <TabsContent key={category} value={category} className="pt-3">
+                  <div className="space-y-2">
+                    {result.aiReview!.suggestions.filter((suggestion) => suggestion.category === category).map((suggestion) => (
+                      <Card key={`${suggestion.file}:${suggestion.title}`}>
+                        <CardContent className="p-4">
+                          <div className="flex flex-wrap items-start justify-between gap-2"><p className="text-sm font-medium">{suggestion.title}</p>{suggestion.replacement ? <Badge variant="outline">{suggestion.replacement}</Badge> : null}</div>
+                          <p className="mt-1 text-xs leading-5 text-muted-foreground">{suggestion.reason}</p>
+                          {suggestion.evidence ? <p className="mt-2 rounded-md bg-muted/40 p-2 font-mono text-[11px] text-muted-foreground">{suggestion.evidence}</p> : null}
+                          {suggestion.file ? <p className="mt-2 font-mono text-[11px] text-muted-foreground">{suggestion.file}</p> : null}
+                        </CardContent>
+                      </Card>
+                    ))}
+                    {result.aiReview!.suggestions.every((suggestion) => suggestion.category !== category) ? <p className="py-8 text-center text-sm text-muted-foreground">No {category === "a11y" ? "accessibility" : "component"} issues were returned from the sampled files.</p> : null}
+                  </div>
+                </TabsContent>
+              ))}
+              <TabsContent value="suggestions" className="pt-3">
+                <AnimatedList delay={120} className="items-stretch gap-2" aria-label="Frontend improvement suggestions">
                   {result.aiReview.suggestions.map((suggestion) => (
-                    <div key={`${suggestion.file}:${suggestion.title}`} className="rounded-xl border border-border p-4">
-                      <div className="flex flex-wrap items-start justify-between gap-2">
-                        <p className="text-sm font-medium">{suggestion.title}</p>
-                        {suggestion.replacement ? <Badge variant="outline">{suggestion.replacement}</Badge> : null}
-                      </div>
-                      <p className="mt-1 text-xs leading-5 text-muted-foreground">{suggestion.reason}</p>
-                      {suggestion.file ? <p className="mt-2 font-mono text-[11px] text-muted-foreground">{suggestion.file}</p> : null}
-                    </div>
+                    <Card key={`${suggestion.file}:${suggestion.title}`}>
+                      <CardContent className="p-4">
+                        <div className="flex flex-wrap items-start justify-between gap-2"><div className="flex items-center gap-2"><Badge variant="subtle" className="capitalize">{suggestion.category}</Badge><p className="text-sm font-medium">{suggestion.title}</p></div>{suggestion.replacement ? <Badge variant="outline">{suggestion.replacement}</Badge> : null}</div>
+                        <p className="mt-2 text-xs leading-5 text-muted-foreground">{suggestion.reason}</p>
+                        {suggestion.file ? <p className="mt-2 font-mono text-[11px] text-muted-foreground">{suggestion.file}</p> : null}
+                      </CardContent>
+                    </Card>
                   ))}
                 </AnimatedList>
-              </div>
-            ) : null}
+              </TabsContent>
+            </Tabs>
           </CardContent>
         </Card>
       ) : result.scanScope === "frontend" ? (
@@ -452,8 +516,8 @@ export function ScanWorkspace() {
             <p className="text-sm font-medium">AI UI review unavailable</p>
             <p className="mt-1 text-xs text-muted-foreground">
               The token-charged static scan completed normally. Enable AI usage
-              in Settings and configure the server-only XAI_API_KEY to add the
-              Grok UI review.
+              in Settings and configure the server-only GROQ_API_KEY to add the
+              frontend UI review.
             </p>
           </CardContent>
         </Card>

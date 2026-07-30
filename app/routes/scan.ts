@@ -56,6 +56,7 @@ export async function handleGitHubScan(input: {
       scope: input.scanScope,
       settings: input.aiSettings,
       files: result.aiFiles,
+      scanTier: input.options?.scanTier ?? "mid",
     }),
   ]);
 

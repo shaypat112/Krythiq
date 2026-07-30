@@ -126,7 +126,9 @@ export async function POST(request: Request) {
     return NextResponse.json({
       settings,
       apiPlan,
-      aiProviderConfigured: Boolean(process.env.XAI_API_KEY?.trim()),
+      aiProviderConfigured: Boolean(
+        process.env.GROQ_API_KEY?.trim() || process.env.XAI_API_KEY?.trim(),
+      ),
       admin: {
         isAdmin,
         profileUsername: adminConfig.profileUsername,

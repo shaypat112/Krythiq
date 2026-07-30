@@ -246,9 +246,11 @@ export function AiSection() {
               <ShieldCheck className="h-4 w-4" /> Credential safety
             </p>
             <p className="mt-2">
-              Configure <code className="text-foreground">XAI_API_KEY</code> only
-              in the server deployment environment. The key is never saved in
-              these settings, sent to the browser, or included in scan results.
+              Configure <code className="text-foreground">GROQ_API_KEY</code>{" "}
+              only in the server deployment environment. The key is never saved
+              in these settings, sent to the browser, or included in scan
+              results. <code className="text-foreground">XAI_API_KEY</code> is
+              supported as a fallback.
             </p>
           </div>
           <Button onClick={() => void save()} disabled={saving}>
