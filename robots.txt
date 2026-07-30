@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://krythiq.dev/sitemap.xml
