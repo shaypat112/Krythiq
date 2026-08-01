@@ -288,11 +288,12 @@ export const StaticTweetCard = ({
 }) => (
   <article
     className={cn(
-      "relative flex h-fit w-full max-w-lg flex-col gap-4 overflow-hidden rounded-xl border bg-card p-5 text-card-foreground shadow-sm",
+      "relative flex h-fit w-full max-w-2xl flex-col gap-6 overflow-hidden rounded-3xl border border-border/80 bg-card/90 p-6 text-card-foreground shadow-[0_24px_80px_-42px_rgba(0,0,0,0.75)] backdrop-blur sm:p-8",
       className
     )}
     aria-label={`Post by ${author}`}
   >
+    <div aria-hidden className="absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-violet-400/80 to-transparent" />
     <header className="flex items-start justify-between tracking-normal">
       <div className="flex items-center gap-3">
         <Image
@@ -300,7 +301,7 @@ export const StaticTweetCard = ({
           alt=""
           height={48}
           width={48}
-          className="size-12 shrink-0 rounded-full border border-border/50 object-cover"
+          className="size-12 shrink-0 rounded-2xl border border-border/50 object-cover"
         />
         <div className="flex flex-col gap-0.5">
           <p className="flex items-center whitespace-nowrap font-medium">
@@ -311,10 +312,14 @@ export const StaticTweetCard = ({
       </div>
       <Twitter
         aria-hidden="true"
-        className="size-5 text-muted-foreground"
+        className="size-5 text-foreground/70"
       />
     </header>
-    <p className="text-[15px] leading-relaxed tracking-normal">{text}</p>
+    <p className="text-balance text-xl font-medium leading-8 tracking-[-0.02em] sm:text-2xl sm:leading-9">{text}</p>
+    <footer className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
+      <span className="size-1.5 rounded-full bg-emerald-500" />
+      Building in public
+    </footer>
   </article>
 )
 

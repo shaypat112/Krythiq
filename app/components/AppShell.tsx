@@ -177,6 +177,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const unreadCount = notifications.filter((item) => !item.read_at).length;
   const isMarketingRoute =
     pathname === "/" ||
+    pathname?.startsWith("/about") ||
     pathname?.startsWith("/landing-page") ||
     pathname?.startsWith("/auth");
   const isPublicRoute =

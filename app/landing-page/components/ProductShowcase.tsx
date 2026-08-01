@@ -12,7 +12,7 @@ export function ProductShowcase() {
       <FadeIn className="text-center">
 
         <h2 className="mx-auto mt-4 max-w-xl text-3xl font-semibold tracking-tight sm:text-4xl">
-          An AI security engineer that already knows your codebase.
+          The exact path from risky code to a fix.
         </h2>
       </FadeIn>
 

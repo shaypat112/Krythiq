@@ -12,10 +12,10 @@ import { FadeIn } from "../shared/FadeIn";
 
 const steps = [
   { icon: GitBranch, title: "Connect your repository", detail: "GitHub or GitLab, read-only access, scoped to what Krythiq needs." },
-  { icon: Network, title: "Krythiq maps the architecture", detail: "Builds a knowledge graph of services, data flow, and trust boundaries." },
-  { icon: Bug, title: "Vulnerabilities surface", detail: "AI-guided detection finds what pattern-matching scanners miss." },
+  { icon: Network, title: "See how the repo connects", detail: "Krythiq follows services, data flow, and trust boundaries across files." },
+  { icon: Bug, title: "Find the risky path", detail: "See the code that creates the issue and what an attacker can reach from it." },
   { icon: Route, title: "Attack paths get traced", detail: "See exactly how a finding chains into real, exploitable access." },
-  { icon: Wrench, title: "Fixes get generated", detail: "Production-ready patches, scoped to your code, not generic advice." },
+  { icon: Wrench, title: "Get the smallest safe fix", detail: "Review a patch written for your code instead of a page of generic advice." },
   { icon: Rocket, title: "Ship with a verified trail", detail: "Every fix is validated in sandbox before it reaches your reviewers." },
 ];
 
@@ -24,7 +24,7 @@ export function SolutionFlow() {
     <section id="flow" className="border-t border-border py-24">
       <FadeIn className="max-w-xl">
         <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">
-          From repository to remediation, in one pass.
+          From repo to fix, without the security theater.
         </h2>
       </FadeIn>
 

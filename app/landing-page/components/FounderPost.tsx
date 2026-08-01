@@ -4,25 +4,26 @@ import { FadeIn } from "../shared/FadeIn";
 export function FounderPost() {
   return (
     <section
-      className="border-t border-border py-24"
+      className="relative border-t border-border py-20 sm:py-24"
       aria-labelledby="founder-post-heading"
     >
-      <FadeIn className="mx-auto max-w-2xl text-center">
-        <h2
-          id="founder-post-heading"
-          className="text-3xl font-semibold tracking-tight sm:text-4xl"
-        >
-          Building Krythiq in public.
-        </h2>
-        <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-muted-foreground sm:text-base">
-          A note from the founder on why the product exists.
-        </p>
+      <div aria-hidden className="absolute inset-x-[18%] top-1/2 h-36 -translate-y-1/2 rounded-full bg-violet-500/10 blur-3xl" />
+      <FadeIn className="relative grid items-center gap-8 lg:grid-cols-[0.72fr_1.28fr] lg:gap-16">
+        <div>
+          <p className="font-mono text-xs uppercase tracking-[0.2em] text-violet-400">Founder log / 001</p>
+          <h2 id="founder-post-heading" className="mt-4 text-3xl font-semibold tracking-tight sm:text-4xl">
+            Built for the teams already moving too fast for old security tools.
+          </h2>
+          <p className="mt-4 max-w-lg text-sm leading-6 text-muted-foreground sm:text-base">
+            The product thesis, without the enterprise pitch.
+          </p>
+        </div>
         <StaticTweetCard
           author="Shivang Patel"
           subtitle="Founder, Krythiq"
           avatarUrl="/krythiq_logo.jpeg"
-          text="I’m building Krythiq for teams shipping AI-generated code faster than traditional review can keep up. It maps repository context, surfaces security risk, reviews frontend quality, and recommends established components before weak patterns reach production. Shipping fast shouldn’t mean shipping blind."
-          className="mx-auto mt-8 text-left"
+          text="Small teams can ship a week of code before lunch. Security review should run at that speed too: show me what can break, where it starts, and the smallest safe fix. That’s why I’m building Krythiq."
+          className="ml-auto text-left"
         />
       </FadeIn>
     </section>

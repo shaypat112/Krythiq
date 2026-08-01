@@ -8,6 +8,7 @@ import { BrandLogo } from "./BrandLogo";
 import { SocialButton } from "./SocialButton";
 
 const footerLinks = [
+  { href: "/about", label: "About" },
   { href: "/privacy", label: "Privacy" },
   { href: "/terms", label: "Terms" },
   { href: "/documentation", label: "Documentation" },

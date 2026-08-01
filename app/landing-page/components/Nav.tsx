@@ -6,8 +6,9 @@ import { BrandLogo } from "@/app/components/BrandLogo";
 import { ThemeToggle } from "./ThemeToggle";
 
 const links = [
-  { href: "#product", label: "Product" },
-  { href: "#flow", label: "How it works" },
+  { href: "/#product", label: "Product" },
+  { href: "/#flow", label: "How it works" },
+  { href: "/about", label: "About" },
 ];
 
 export function Nav() {
@@ -36,9 +37,9 @@ export function Nav() {
 
         <nav className="hidden items-center gap-8 font-mono text-[13px] text-muted-foreground md:flex">
           {links.map((link) => (
-            <a key={link.href} href={link.href} className="transition hover:text-foreground">
+            <Link key={link.href} href={link.href} className="transition hover:text-foreground">
               {link.label}
-            </a>
+            </Link>
           ))}
         </nav>
 
