@@ -9,7 +9,6 @@ import {
   CreditCard,
   Webhook,
   Database,
-  Palette,
   Users,
   Plug,
   BellRing,
@@ -23,7 +22,6 @@ import { SettingsProvider, useSettings } from "./profile/context";
 const NAV_SECTIONS = [
   { id: "account", label: "Account", icon: User },
   { id: "billing", label: "Billing", icon: CreditCard },
-  { id: "appearance", label: "Appearance", icon: Palette },
   { id: "webhooks", label: "Webhooks", icon: Webhook },
   { id: "retention", label: "Data", icon: Database },
   { id: "teams", label: "Teams", icon: Users },
@@ -156,7 +154,7 @@ function SettingsInner({ children }: { children: React.ReactNode }) {
         <MobileSettingsNav active={active} />
 
       <div className="bg-background px-4 py-8 sm:px-10 sm:py-10">
-        <div className="mx-auto max-w-2xl space-y-6">
+        <div className="mx-auto max-w-5xl space-y-6">
           {children}
         </div>
       </div>

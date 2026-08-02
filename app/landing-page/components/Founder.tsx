@@ -10,7 +10,12 @@ const FOUNDER_INITIALS = "SP";
 
 export function Founder() {
   return (
-    <section className="border-t border-border py-24">
+    <section className="border-t border-border py-24 sm:py-28" aria-labelledby="founder-heading">
+      <FadeIn>
+        <h2 id="founder-heading" className="mb-12 text-3xl font-semibold tracking-tight sm:text-4xl">
+          From the founder
+        </h2>
+      </FadeIn>
       <div className="grid gap-10 lg:grid-cols-[0.35fr_0.65fr] lg:gap-16">
         <FadeIn>
           <div className="flex items-center gap-3">

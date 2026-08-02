@@ -7,13 +7,16 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { cn } from "@/app/lib/utils";
 
 export function HelpTooltip({
   children,
   side = "top",
+  contentClassName,
 }: {
   children: React.ReactNode;
   side?: "top" | "right" | "bottom" | "left";
+  contentClassName?: string;
 }) {
   return (
     <Tooltip>
@@ -26,7 +29,7 @@ export function HelpTooltip({
           <CircleHelp className="h-3.5 w-3.5" />
         </button>
       </TooltipTrigger>
-      <TooltipContent side={side} className="max-w-64 leading-5">
+      <TooltipContent side={side} className={cn("max-w-64 leading-5", contentClassName)}>
         {children}
       </TooltipContent>
     </Tooltip>

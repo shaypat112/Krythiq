@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { buildAuthHeaders } from "@/app/lib/http";
 import { useSettings } from "./context";
-import { GhostButton, SectionCard } from "./primitives";
+import { GhostButton } from "./primitives";
+import { BentoGrid } from "@/components/ui/bento-grid";
 import { Skeleton } from "@/components/ui/skeleton";
 import { UsageTable } from "@/components/billingsdk/usage-table";
 import { PaymentFailure } from "@/components/billingsdk/payment-failure";
@@ -106,10 +107,11 @@ export function BillingSection() {
   };
 
   return (
-    <SectionCard
-      title="Billing"
-      description="Manage your subscription, checkout flow, and recent billing activity."
-    >
+    <div className="space-y-6">
+      <header>
+        <h1 className="text-2xl font-semibold">Billing</h1>
+        <p className="mt-2 text-sm text-muted-foreground">Manage your subscription, checkout flow, and recent billing activity.</p>
+      </header>
       {loading ? (
         <div className="space-y-3" aria-label="Loading billing overview"><Skeleton className="h-24" /><Skeleton className="h-24" /></div>
       ) : !summary?.configured ? (
@@ -135,23 +137,20 @@ export function BillingSection() {
             />
           ) : null}
 
-          <div className="grid gap-3 sm:grid-cols-3">
-            <div className="rounded-xl border bg-background p-4">
+          <BentoGrid className="auto-rows-auto grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-6">
+            <div className="rounded-2xl border border-border bg-[radial-gradient(circle_at_top_right,rgba(56,189,248,.1),transparent_42%),var(--card)] p-5 shadow-sm lg:col-span-2">
               <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Plan</p>
-              <p className="mt-2 font-semibold">{summary.subscription?.planName ?? "No plan"}</p>
+              <p className="mt-3 text-2xl font-semibold">{summary.subscription?.planName ?? "No plan"}</p>
             </div>
-            <div className="rounded-xl border bg-background p-4">
+            <div className="rounded-2xl border border-border bg-card p-5 shadow-sm lg:col-span-2">
               <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Status</p>
-              <p className="mt-2 font-semibold capitalize">{summary.subscription?.status?.replaceAll("_", " ") ?? "Inactive"}</p>
+              <p className="mt-3 text-2xl font-semibold capitalize">{summary.subscription?.status?.replaceAll("_", " ") ?? "Inactive"}</p>
             </div>
-            <div className="rounded-xl border bg-background p-4">
+            <div className="rounded-2xl border border-border bg-[radial-gradient(circle_at_top_right,rgba(251,191,36,.12),transparent_42%),var(--card)] p-5 shadow-sm sm:col-span-2 lg:col-span-2">
               <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Balance</p>
-              <p className="mt-2 font-semibold">{balance === null ? "—" : formatTokens(balance)}</p>
+              <p className="mt-3 text-2xl font-semibold">{balance === null ? "—" : formatTokens(balance)}</p>
             </div>
-          </div>
-
-          <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
-            <div className="rounded-2xl border border-border bg-background p-5">
+            <div className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:col-span-2 lg:col-span-4">
               <p className="text-sm font-semibold text-foreground">
                 Manage billing
               </p>
@@ -164,14 +163,16 @@ export function BillingSection() {
               </GhostButton>
             </div>
 
-            <div className="rounded-2xl border border-border bg-background p-5">
+            <div className="rounded-2xl border border-border bg-[radial-gradient(circle_at_top_right,rgba(139,92,246,.1),transparent_42%),var(--card)] p-5 shadow-sm sm:col-span-2 lg:col-span-2">
               <p className="text-sm font-semibold text-foreground">Purchase a plan</p>
               <p className="mt-1 text-sm text-muted-foreground">Open the secure in-app checkout to compare current Stripe prices and subscribe.</p>
               <GhostButton className="mt-4" onClick={() => { window.location.href = "/billing"; }}>View plans</GhostButton>
             </div>
-          </div>
+          </BentoGrid>
 
+          <BentoGrid className="auto-rows-auto grid-cols-1 gap-4 lg:grid-cols-5">
           <UsageTable
+            className="lg:col-span-3"
             usageHistory={toUsageItems(transactions)}
             title="Recent usage"
             description="Token activity recorded by the secure usage ledger."
@@ -179,7 +180,7 @@ export function BillingSection() {
           />
 
           <UsageBasedPricing
-            className="max-w-none"
+            className="max-w-none lg:col-span-2"
             min={100}
             max={5000}
             defaultValue={1000}
@@ -191,6 +192,7 @@ export function BillingSection() {
             subtitle="Plan a monthly token budget. This calculator does not start a charge."
             unitLabel="Tokens"
           />
+          </BentoGrid>
 
           {summary.invoices.length ? (
             <div className="rounded-2xl border bg-background p-5">
@@ -216,6 +218,6 @@ export function BillingSection() {
           ) : null}
         </div>
       )}
-    </SectionCard>
+    </div>
   );
 }

@@ -10,7 +10,6 @@ export type ScanOptions = {
   ci?: boolean;
   ai?: boolean;
   aiModel?: string;
-  failOn?: Severity;
   format?: "text" | "json" | "markdown";
   ignore?: string[];
   scanTier?: ScanTier;
@@ -521,7 +520,7 @@ export async function runGitHubScanWithToken(
     onProgress?.(
       "detecting",
       manifests.length > 0
-        ? `Found ${manifests.join(", ")}. Dependency advisories are not enabled in this scanner.`
+        ? `Found ${manifests.join(", ")}. Supported pinned dependencies will be checked against OSV.`
         : "No supported manifest found at the repository root; continuing with source analysis.",
     );
     const ignore = new Set([...scannerPolicy.defaultIgnoreDirectories, ...(options.ignore ?? [])]);

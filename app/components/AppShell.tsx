@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
@@ -16,12 +17,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Bell, ChevronDown, Coins, CreditCard } from "lucide-react";
+import { Bell, ChevronDown, Coins, CreditCard, Moon, SunMedium } from "lucide-react";
 import { formatTokens } from "@/app/lib/tokens";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { DesktopRequired } from "./mobile/DesktopRequired";
 import { BrandLogo } from "./BrandLogo";
 import { SiteFooter } from "./SiteFooter";
+import { Switch } from "@/components/ui/switch";
+import { useTheme } from "./theme-provider";
 
 const appLinks = [
   { href: "/scan", label: "Security workspace" },
@@ -57,6 +60,8 @@ function formatNotificationTitle(type: string) {
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+  const { theme, setTheme } = useTheme();
+  const isLight = theme === "light";
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [signingOut, setSigningOut] = useState(false);
@@ -177,7 +182,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const unreadCount = notifications.filter((item) => !item.read_at).length;
   const isMarketingRoute =
     pathname === "/" ||
-    pathname?.startsWith("/about") ||
     pathname?.startsWith("/landing-page") ||
     pathname?.startsWith("/auth");
   const isPublicRoute =
@@ -380,9 +384,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                       <DropdownMenuTrigger asChild>
                         <button aria-label="Open account menu" className="flex items-center gap-3 rounded-full border border-border bg-card px-2 py-1.5 text-sm text-foreground transition hover:bg-muted">
                       {avatarUrl ? (
-                        <img
+                        <Image
                           src={avatarUrl}
                           alt={displayName}
+                          width={28}
+                          height={28}
+                          unoptimized
                           className="h-7 w-7 rounded-full object-cover"
                         />
                       ) : (
@@ -411,6 +418,20 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                         Billing
                       </Link>
                     </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <label htmlFor="account-theme-switch" className="flex cursor-pointer items-center justify-between gap-4 rounded-md px-2 py-2 text-sm transition hover:bg-muted" onClick={(event) => event.stopPropagation()}>
+                      <span className="flex items-center gap-2">
+                        {isLight ? <SunMedium className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                        Theme
+                      </span>
+                      <Switch
+                        id="account-theme-switch"
+                        size="sm"
+                        checked={isLight}
+                        onCheckedChange={(checked) => setTheme(checked ? "light" : "dark")}
+                        aria-label="Switch between dark and light theme"
+                      />
+                    </label>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={signOut}>
                       Sign out

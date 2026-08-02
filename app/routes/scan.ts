@@ -49,6 +49,7 @@ export async function handleGitHubScan(input: {
           findings: result.findings,
           model: input.options?.aiModel,
           scanTier: input.options?.scanTier ?? "mid",
+          scanScope: input.scanScope,
         })
       : Promise.resolve(null),
     generateGrokUiReview({
@@ -66,7 +67,7 @@ export async function handleGitHubScan(input: {
     severity,
     issues: total,
     score: avgScore,
-    findings: { list: result.findings, profile: result.profile, systemDesign: result.systemDesign, intelligence, aiReview, scanScope: input.scanScope, team_id: input.teamId ?? null },
+    findings: { list: result.findings, all_findings: result.findings, report_selected_keys: result.findings.map((finding) => `${finding.file}:${finding.line}:${finding.type}`), profile: result.profile, systemDesign: result.systemDesign, intelligence, aiReview, scanScope: input.scanScope, team_id: input.teamId ?? null },
   };
 
   if (userId && accessToken) scanPayload.user_id = userId;
@@ -85,7 +86,7 @@ export async function handleGitHubScan(input: {
       severity,
       issues: total,
       score: avgScore,
-      findings: { list: result.findings, profile: result.profile, systemDesign: result.systemDesign, intelligence, aiReview, scanScope: input.scanScope, team_id: input.teamId ?? null },
+      findings: { list: result.findings, all_findings: result.findings, report_selected_keys: result.findings.map((finding) => `${finding.file}:${finding.line}:${finding.type}`), profile: result.profile, systemDesign: result.systemDesign, intelligence, aiReview, scanScope: input.scanScope, team_id: input.teamId ?? null },
     };
     scanInsertRes = await supabaseFetch(env, "scan_history", {
       method: "POST",

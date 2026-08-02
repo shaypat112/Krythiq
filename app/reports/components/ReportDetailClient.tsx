@@ -301,7 +301,7 @@ export function ReportDetailClient({ repo }: { repo: string }) {
       <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
         <Card className="border-border bg-card">
           <CardHeader>
-            <CardTitle>Top findings</CardTitle>
+            <CardTitle>Saved findings</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {findings.length === 0 ? (
@@ -309,7 +309,7 @@ export function ReportDetailClient({ repo }: { repo: string }) {
                 No structured findings were stored for this scan. The repo summary and history are still available.
               </p>
             ) : (
-              findings.slice(0, 8).map((finding, index) => (
+              findings.map((finding, index) => (
                 <div key={`${finding.title ?? finding.path ?? "finding"}-${index}`} className="rounded-2xl border border-border bg-background p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div>

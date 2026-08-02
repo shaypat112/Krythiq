@@ -8,7 +8,6 @@ import { ThemeToggle } from "./ThemeToggle";
 const links = [
   { href: "/#product", label: "Product" },
   { href: "/#flow", label: "How it works" },
-  { href: "/about", label: "About" },
 ];
 
 export function Nav() {
@@ -45,12 +44,6 @@ export function Nav() {
 
         <div className="flex items-center gap-3">
           <ThemeToggle />
-          <Link
-            href="/auth"
-            className="hidden rounded-full border border-border px-4 py-2 text-sm font-medium text-foreground transition hover:bg-muted sm:inline-flex"
-          >
-            Sign in
-          </Link>
           <Link
             href="/scan"
             className="inline-flex items-center gap-1.5 rounded-full bg-foreground px-4 py-2 text-sm font-semibold text-background transition hover:opacity-85"

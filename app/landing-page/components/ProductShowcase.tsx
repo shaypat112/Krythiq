@@ -2,8 +2,6 @@
 
 import { LaptopFrame } from "./LaptopFrame";
 import { ScanTerminal } from "./ScanTerminal";
-import { RiskGauge } from "./RiskGauge";
-import { AttackPathChain } from "./AttackPathChain";
 import { FadeIn } from "../shared/FadeIn";
 
 export function ProductShowcase() {
@@ -21,15 +19,6 @@ export function ProductShowcase() {
           <ScanTerminal />
         </LaptopFrame>
       </FadeIn>
-
-      <div className="mt-8 grid gap-4 lg:grid-cols-[0.8fr_1.2fr]">
-        <FadeIn delay={0.05}>
-          <RiskGauge score={82} />
-        </FadeIn>
-        <FadeIn delay={0.1}>
-          <AttackPathChain />
-        </FadeIn>
-      </div>
     </section>
   );
 }

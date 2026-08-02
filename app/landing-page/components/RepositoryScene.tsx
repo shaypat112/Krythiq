@@ -1,3 +1,6 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import {
   CheckCircle2,
   ChevronRight,
@@ -5,9 +8,10 @@ import {
   FolderGit2,
   Search,
   ShieldAlert,
-  Sparkles,
+  GitBranch,
 } from "lucide-react";
 import { BrandLogo } from "@/app/components/BrandLogo";
+import { Safari } from "@/components/ui/safari";
 
 const metrics = [
   { label: "Overall risk", value: "82/100", detail: "Needs attention" },
@@ -32,8 +36,28 @@ const findings = [
 ];
 
 export function RepositoryScene() {
+  const [repo, setRepo] = useState("github.com/krythiq/demo");
+  const [phase, setPhase] = useState<"idle" | "scanning" | "complete">("complete");
+  const [progress, setProgress] = useState(100);
+
+  useEffect(() => {
+    if (phase !== "scanning") return;
+    const steps = [31, 54, 76, 92, 100];
+    const timers = steps.map((value, index) => window.setTimeout(() => {
+      setProgress(value);
+      if (value === 100) setPhase("complete");
+    }, 420 * (index + 1)));
+    return () => timers.forEach(window.clearTimeout);
+  }, [phase]);
+
+  const startDemo = () => {
+    setProgress(12);
+    setPhase("scanning");
+  };
+
   return (
-    <div className="h-full min-h-[300px] overflow-hidden bg-[#090b10] text-white">
+    <Safari url="app.krythiq.com/scan" mode="simple" className="h-full bg-[#090b10]">
+    <div className="h-full overflow-hidden bg-[#090b10] text-white">
       <div className="flex h-9 items-center justify-between border-b border-white/8 bg-[#0d1017] px-3">
         <div className="flex items-center gap-2">
           <BrandLogo className="h-5 w-5 rounded-md" />
@@ -41,7 +65,7 @@ export function RepositoryScene() {
         </div>
         <div className="flex items-center gap-1.5 text-[8px] text-white/35">
           <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-          Scan complete
+          {phase === "scanning" ? `Scanning ${progress}%` : phase === "complete" ? "Scan complete" : "Ready to scan"}
         </div>
       </div>
 
@@ -62,30 +86,27 @@ export function RepositoryScene() {
             </span>
           </div>
 
-          <div className="mt-3 grid grid-cols-[1fr_78px_auto] gap-1.5">
+          <div className="mt-3 grid grid-cols-[1fr_auto] gap-1.5">
             <div>
               <p className="mb-1 text-[7px] font-medium text-white/65">GitHub repository</p>
-              <div className="flex h-7 items-center gap-1.5 rounded-md border border-white/10 bg-black/20 px-2 text-[7px] text-white/70">
+              <label className="flex h-7 items-center gap-1.5 rounded-md border border-white/10 bg-black/20 px-2 text-[7px] text-white/70 focus-within:border-sky-400/40">
                 <FolderGit2 className="h-2.5 w-2.5 text-white/35" />
-                github.com/krythiq/demo
-              </div>
-            </div>
-            <div>
-              <p className="mb-1 text-[7px] font-medium text-white/65">Threshold</p>
-              <div className="flex h-7 items-center justify-between rounded-md border border-white/10 bg-black/20 px-2 text-[7px] text-white/70">
-                High <ChevronRight className="h-2.5 w-2.5 rotate-90 text-white/30" />
-              </div>
+                <input value={repo} onChange={(event) => setRepo(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") startDemo(); }} aria-label="Demo GitHub repository" className="min-w-0 flex-1 bg-transparent outline-none" />
+              </label>
             </div>
             <div className="self-end">
-              <div className="flex h-7 items-center gap-1 rounded-md bg-white px-2.5 text-[7px] font-semibold text-black">
+              <button type="button" onClick={startDemo} disabled={phase === "scanning" || !repo.trim()} className="flex h-7 items-center gap-1 rounded-md bg-white px-2.5 text-[7px] font-semibold text-black transition hover:bg-sky-100 disabled:cursor-wait disabled:opacity-60">
                 <ShieldAlert className="h-2.5 w-2.5" />
-                Rescan
-              </div>
+                {phase === "scanning" ? "Scanning…" : phase === "complete" ? "Rescan" : "Scan repository"}
+              </button>
             </div>
+          </div>
+          <div className="mt-2 h-0.5 overflow-hidden rounded-full bg-white/5" aria-hidden={phase !== "scanning"}>
+            <div className="h-full rounded-full bg-gradient-to-r from-sky-400 to-emerald-400 transition-[width] duration-300" style={{ width: `${progress}%` }} />
           </div>
         </section>
 
-        <div className="mt-2.5 grid grid-cols-4 gap-1.5">
+        <div className={`mt-2.5 grid grid-cols-4 gap-1.5 transition duration-500 ${phase === "scanning" ? "translate-y-1 opacity-35" : "opacity-100"}`}>
           {metrics.map((metric) => (
             <div key={metric.label} className="rounded-lg border border-white/8 bg-[#0d1017] p-2">
               <p className="truncate text-[6px] text-white/35 sm:text-[7px]">{metric.label}</p>
@@ -95,23 +116,33 @@ export function RepositoryScene() {
           ))}
         </div>
 
-        <div className="mt-2.5 grid gap-2 sm:grid-cols-[.8fr_1.2fr]">
-          <section className="rounded-lg border border-violet-400/20 bg-[radial-gradient(circle_at_top_right,rgba(139,92,246,.12),transparent_45%),#0d1017] p-2.5">
+        <div className={`mt-2.5 grid gap-2 transition duration-500 sm:grid-cols-[.9fr_1.1fr] ${phase === "scanning" ? "translate-y-1 opacity-30" : "opacity-100"}`}>
+          <section className="relative overflow-hidden rounded-lg border border-cyan-400/15 bg-[radial-gradient(circle_at_50%_45%,rgba(34,211,238,.11),transparent_48%),#0d1017] p-2.5">
+            <div className="pointer-events-none absolute inset-0 opacity-20 [background-image:linear-gradient(rgba(255,255,255,.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.08)_1px,transparent_1px)] [background-size:18px_18px] [mask-image:linear-gradient(to_bottom,black,transparent)]" />
             <div className="flex items-center justify-between gap-2">
               <p className="flex items-center gap-1 text-[8px] font-medium text-white/80">
-                <Sparkles className="h-2.5 w-2.5 text-violet-300" />
-                Repository intelligence
+                <GitBranch className="h-2.5 w-2.5 text-cyan-300" />
+                Reachability map
               </p>
-              <span className="rounded border border-violet-400/20 bg-violet-400/10 px-1.5 py-0.5 text-[5px] text-violet-300">
-                AI analysis
+              <span className="flex items-center gap-1 text-[5px] text-emerald-300">
+                <span className="h-1 w-1 animate-pulse rounded-full bg-emerald-300" />
+                214 files mapped
               </span>
             </div>
-            <p className="mt-2 text-[6px] leading-[10px] text-white/35 sm:text-[7px] sm:leading-3">
-              Authentication and webhook paths contain the highest-impact reachable risks. Review trust-boundary checks first.
-            </p>
-            <div className="mt-2 grid grid-cols-2 gap-1">
-              <MiniStat label="Files scanned" value="214" />
-              <MiniStat label="Lines analyzed" value="38.4k" />
+            <div className="relative mt-1.5 h-[74px] [perspective:500px] sm:h-[88px]">
+              <svg viewBox="0 0 240 90" className="h-full w-full overflow-visible [transform:rotateX(7deg)]" role="img" aria-label="Repository dependency graph highlighting a reachable security risk">
+                <defs>
+                  <linearGradient id="safe-edge" x1="0" x2="1"><stop stopColor="#22d3ee" stopOpacity=".2"/><stop offset="1" stopColor="#22d3ee" stopOpacity=".7"/></linearGradient>
+                  <linearGradient id="risk-edge" x1="0" x2="1"><stop stopColor="#f59e0b"/><stop offset="1" stopColor="#fb7185"/></linearGradient>
+                  <filter id="node-glow"><feGaussianBlur stdDeviation="2.5" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+                </defs>
+                <g fill="none" stroke="url(#safe-edge)" strokeWidth="1">
+                  <path d="M18 47 62 21 105 42 148 17 190 35 224 16"/><path d="M18 47 62 67 105 42 148 69 190 35 224 63"/><path d="M62 21 62 67M148 17 148 69"/>
+                </g>
+                <path d="M18 47 62 21 105 42 148 69 190 35 224 63" fill="none" stroke="url(#risk-edge)" strokeWidth="1.7" strokeDasharray="4 4" className="animate-[dash_3s_linear_infinite]" />
+                {[[18,47],[62,21],[62,67],[105,42],[148,17],[148,69],[190,35],[224,16],[224,63]].map(([cx,cy], index) => <circle key={index} cx={cx} cy={cy} r={index === 8 ? 4.5 : 3} fill={index === 8 ? "#fb7185" : index === 5 ? "#f59e0b" : "#22d3ee"} opacity={index === 8 ? 1 : .8} filter={index === 8 ? "url(#node-glow)" : undefined}/>) }
+                <text x="9" y="60" fill="white" opacity=".45" fontSize="5">api</text><text x="137" y="81" fill="#fbbf24" fontSize="5">auth</text><text x="204" y="76" fill="#fda4af" fontSize="5">admin</text>
+              </svg>
             </div>
           </section>
 
@@ -147,14 +178,6 @@ export function RepositoryScene() {
         </div>
       </div>
     </div>
-  );
-}
-
-function MiniStat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-md border border-white/7 bg-black/15 p-1.5">
-      <p className="text-[5px] text-white/25">{label}</p>
-      <p className="mt-0.5 text-[8px] font-medium text-white/65">{value}</p>
-    </div>
+    </Safari>
   );
 }

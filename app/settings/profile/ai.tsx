@@ -14,7 +14,7 @@ import type { AiUsageLevel, ScanScope } from "@/app/lib/ai-settings";
 import { HelpTooltip } from "@/app/components/HelpTooltip";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { BentoGrid } from "@/components/ui/bento-grid";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/app/lib/utils";
 import { useSettings } from "./context";
@@ -137,13 +137,14 @@ export function AiSection() {
         </p>
       </header>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+      <BentoGrid className="auto-rows-auto grid-cols-1 gap-4 lg:grid-cols-6">
+      <section className="rounded-2xl border border-border bg-card p-5 shadow-sm lg:col-span-2">
+        <div className="pb-4">
+          <h2 className="flex items-center gap-2 font-semibold">
             <Gauge className="h-5 w-5" /> AI usage
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
+          </h2>
+        </div>
+        <div className="space-y-3">
           {usageOptions.map((option) => (
             <button
               key={option.value}
@@ -163,16 +164,16 @@ export function AiSection() {
               </span>
             </button>
           ))}
-        </CardContent>
-      </Card>
+        </div>
+      </section>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+      <section className="rounded-2xl border border-border bg-[radial-gradient(circle_at_top_right,rgba(56,189,248,.08),transparent_42%),var(--card)] p-5 shadow-sm lg:col-span-4">
+        <div className="pb-4">
+          <h2 className="flex items-center gap-2 font-semibold">
             <BrainCircuit className="h-5 w-5" /> Default scan focus
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-3 sm:grid-cols-3">
+          </h2>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-3">
           {scopeOptions.map((option) => (
             <button
               key={option.value}
@@ -192,16 +193,16 @@ export function AiSection() {
               </span>
             </button>
           ))}
-        </CardContent>
-      </Card>
+        </div>
+      </section>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+      <section className="rounded-2xl border border-border bg-[radial-gradient(circle_at_top_right,rgba(139,92,246,.1),transparent_38%),var(--card)] p-5 shadow-sm lg:col-span-6">
+        <div className="pb-4">
+          <h2 className="flex items-center gap-2 font-semibold">
             <Sparkles className="h-5 w-5" /> Review output
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
+          </h2>
+        </div>
+        <div className="space-y-4">
           <ToggleSetting
             checked={settings.vibeDetectionEnabled}
             onCheckedChange={(value) => update("vibeDetectionEnabled", value)}
@@ -257,8 +258,9 @@ export function AiSection() {
             <Save />
             {saving ? "Saving…" : "Save AI preferences"}
           </Button>
-        </CardContent>
-      </Card>
+        </div>
+      </section>
+      </BentoGrid>
     </div>
   );
 }

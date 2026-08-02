@@ -1,31 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Braces, FlaskConical, Play, ShieldCheck } from "lucide-react";
+import { ArrowRight, Play } from "lucide-react";
 import { FadeIn } from "../shared/FadeIn";
 import MacbookScrollDemo from "@/components/macbook-scroll-demo";
 import { RepositoryScene } from "./RepositoryScene";
 import { TypingAnimation } from "@/components/ui/typing-animation";
 import { useReducedMotion } from "motion/react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-
-const trustPoints = [
-  {
-    label: "Read only",
-    detail: "Krythiq reviews your repository without pushing code or changing files.",
-    icon: ShieldCheck,
-  },
-  {
-    label: "Repo aware",
-    detail: "Findings include the files, data flow, and surrounding code needed to judge the risk.",
-    icon: Braces,
-  },
-  {
-    label: "Tested fixes",
-    detail: "Suggested changes are checked in an isolated environment before you review them.",
-    icon: FlaskConical,
-  },
-];
 
 export function Hero() {
   const reducedMotion = useReducedMotion();
@@ -73,33 +55,20 @@ export function Hero() {
             Create account
             <ArrowRight className="h-4 w-4" />
           </Link>
-          <Link
-            href="/documentation"
-            className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-5 py-3 text-sm font-semibold text-foreground transition hover:bg-muted"
-          >
-            <Play className="h-3.5 w-3.5" />
-            Start scanning
-          </Link>
-        </div>
-
-        <div className="mt-5 flex items-center justify-center gap-2" aria-label="How Krythiq works">
-          {trustPoints.map((point) => (
-            <Tooltip key={point.label}>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  className="group inline-flex h-10 items-center gap-2 rounded-full border border-border/80 bg-card/60 px-3 text-xs font-medium text-muted-foreground transition hover:-translate-y-0.5 hover:border-foreground/30 hover:text-foreground"
-                  aria-label={`${point.label}: ${point.detail}`}
-                >
-                  <point.icon className="h-4 w-4 text-emerald-500" />
-                  <span className="hidden sm:inline">{point.label}</span>
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" sideOffset={8} className="max-w-64 text-center">
-                {point.detail}
-              </TooltipContent>
-            </Tooltip>
-          ))}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Link
+                href="/documentation/installation"
+                className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-5 py-3 text-sm font-semibold text-foreground transition hover:bg-muted"
+              >
+                <Play className="h-3.5 w-3.5" />
+                Start scanning
+              </Link>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" sideOffset={8} className="max-w-72 text-center">
+              Opens the free Krythiq CLI docs. Install the npm tool and scan a project directly from your terminal.
+            </TooltipContent>
+          </Tooltip>
         </div>
       </FadeIn>
 

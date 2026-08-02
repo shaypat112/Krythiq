@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { Card, CardContent } from "@/components/ui/card";
 export default function ProfileHeader({
   name,
@@ -17,9 +18,12 @@ export default function ProfileHeader({
       <CardContent className="p-6 flex flex-col gap-5 sm:flex-row sm:items-center">
         <div className="flex items-center gap-4">
           {avatarUrl ? (
-            <img
+            <Image
               src={avatarUrl}
               alt={name}
+              width={56}
+              height={56}
+              unoptimized
               className="h-14 w-14 rounded-full object-cover border border-zinc-800"
             />
           ) : (

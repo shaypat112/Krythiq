@@ -21,6 +21,7 @@ import {
   normalizeAiSettings,
   readScanScope,
 } from "@/app/lib/ai-settings";
+import { scanCheckpointsForScope } from "@/app/lib/scanner/checkpoints";
 
 export const runtime = "nodejs";
 
@@ -113,7 +114,7 @@ export async function POST(request: Request) {
               onProgress: (stage, detail) => send("progress", { stage, detail }),
             });
             const finalBalance = await completeTokenUsage(verified.userId, idempotencyKey, result as unknown as Record<string, unknown>);
-            send("complete", { ...result, scanTier, includedChecks: scanTierCatalog[scanTier].checks, tokenCharge: { cost: reservation.token_cost, balance: Number(finalBalance) } });
+            send("complete", { ...result, scanTier, includedChecks: scanCheckpointsForScope(scanScope), tokenCharge: { cost: reservation.token_cost, balance: Number(finalBalance) } });
             logServerInfo("scan.completed", { findings: result.totalFindings });
           } catch (error) {
             const refundedBalance = await refundTokenUsage(verified.userId, idempotencyKey, getErrorMessage(error)).catch(() => undefined);
@@ -138,7 +139,7 @@ export async function POST(request: Request) {
     const finalBalance = await completeTokenUsage(verified.userId, idempotencyKey, result as unknown as Record<string, unknown>);
     logServerInfo("scan.completed", { findings: result.totalFindings });
 
-    return NextResponse.json({ ...result, scanTier, includedChecks: scanTierCatalog[scanTier].checks, tokenCharge: { cost: reservation.token_cost, balance: Number(finalBalance) } });
+    return NextResponse.json({ ...result, scanTier, includedChecks: scanCheckpointsForScope(scanScope), tokenCharge: { cost: reservation.token_cost, balance: Number(finalBalance) } });
   } catch (error) {
     if (chargedUserId && chargeKey) {
       await refundTokenUsage(chargedUserId, chargeKey, getErrorMessage(error)).catch(() => undefined);

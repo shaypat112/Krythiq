@@ -4,7 +4,6 @@ import { useSearchParams } from "next/navigation";
 
 import { AccountSection } from "./profile/account";
 
-import { AppearanceSection } from "./profile/appearance";
 import { WebhooksSection } from "./profile/webhooks";
 import { BillingSection } from "./profile/billing";
 
@@ -21,7 +20,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 const SECTION_MAP = {
   account: AccountSection,
   billing: BillingSection,
-  appearance: AppearanceSection,
   webhooks: WebhooksSection,
 
   retention: RetentionSection,

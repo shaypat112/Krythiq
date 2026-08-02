@@ -22,6 +22,8 @@ import {
   ComboboxList,
 } from "@/components/ui/combobox";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { BentoGrid } from "@/components/ui/bento-grid";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AnimatedList } from "@/components/ui/animated-list";
 import MultiStepLoaderDemo from "@/components/multi-step-loader-demo";
@@ -32,12 +34,13 @@ import FileUpload from "@/components/kokonutui/file-upload";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ActionSearchBar, scanActionIcons, type ScanAction } from "./ActionSearchBar";
 import { TechnologyCloud } from "./TechnologyCloud";
-import { scanTierCatalog, type ScanTier } from "@/app/lib/tokens";
+import { readScanTier, scanTierCatalog, type ScanTier } from "@/app/lib/tokens";
 import { useRouter } from "next/navigation";
 import {
   readScanScope,
   type ScanScope,
 } from "@/app/lib/ai-settings";
+import { scanCheckpointsForScope } from "@/app/lib/scanner/checkpoints";
 
 type Severity = "low" | "medium" | "high" | "critical";
 type Finding = {
@@ -67,7 +70,7 @@ type AiReview = {
 };
 type SystemDesignScenario = { id: "traffic-spike" | "data-growth" | "dependency-failure" | "multi-region" | "cost-pressure"; title: string; status: "ready" | "watch" | "risk" | "unknown"; confidence: "low" | "medium"; reflection: string; evidence: string[]; nextStep: string };
 type SystemDesignAssessment = { summary: string; disclaimer: string; scenarios: SystemDesignScenario[] };
-type ScanResult = { sourceType?: "repository" | "file"; repoUrl: string; totalFindings: number; findings: Finding[]; profile: RepositoryProfile; systemDesign: SystemDesignAssessment; intelligence: ScanIntelligence | null; aiReview?: AiReview | null; scanScope?: ScanScope; scan?: { score?: number; created_at?: string } | null };
+type ScanResult = { sourceType?: "repository" | "file"; repoUrl: string; totalFindings: number; findings: Finding[]; profile: RepositoryProfile; systemDesign: SystemDesignAssessment; intelligence: ScanIntelligence | null; aiReview?: AiReview | null; scanScope?: ScanScope; scan?: { id?: string; score?: number; created_at?: string } | null };
 type Stage = "validating" | "cloning" | "detecting" | "dependencies" | "reading" | "analyzing" | "recommendations";
 const stages: { id: Stage; title: string; fallback: string }[] = [
   { id: "validating", title: "Validating repository", fallback: "Checking the GitHub URL and preparing isolation." },
@@ -79,28 +82,6 @@ const stages: { id: Stage; title: string; fallback: string }[] = [
   { id: "recommendations", title: "Generating recommendations", fallback: "Ranking findings and generating the configured bounded AI review." },
 ];
 const severityRank: Record<Severity, number> = { critical: 4, high: 3, medium: 2, low: 1 };
-const attentionThresholds: Severity[] = ["critical", "high", "medium", "low"];
-const frontendTierChecks: Record<ScanTier, readonly string[]> = {
-  low: [
-    "Core UI files and component usage",
-    "Basic accessibility signals",
-    "Fast design-consistency summary",
-  ],
-  mid: [
-    "More frontend files and component relationships",
-    "Spacing, typography, and semantic color tokens",
-    "Accessibility and responsive-pattern checks",
-    "Evidence-backed shadcn/ui replacements",
-  ],
-  high: [
-    "Broad frontend file coverage",
-    "Deep component and design-system adherence",
-    "Accessibility and responsive edge cases",
-    "Detailed evidence and prioritized replacements",
-    "Higher-context vibe-coded estimate",
-  ],
-};
-
 function severityClass(severity: Severity) {
   return { critical: "border-rose-500/30 bg-rose-500/10 text-rose-300", high: "border-orange-500/30 bg-orange-500/10 text-orange-300", medium: "border-amber-500/30 bg-amber-500/10 text-amber-300", low: "border-sky-500/30 bg-sky-500/10 text-sky-300" }[severity];
 }
@@ -132,7 +113,6 @@ export function ScanWorkspace() {
   const supabase = useMemo(() => createClient(), []);
   const { selectedTeamId } = useTeam();
   const [repoUrl, setRepoUrl] = useState("");
-  const [failOn, setFailOn] = useState<Severity>("high");
   const [scanTier, setScanTier] = useState<ScanTier>("mid");
   const [analysisScope, setAnalysisScope] = useState<ScanScope>("frontend");
   const [finalTokenBalance, setFinalTokenBalance] = useState<number | null>(null);
@@ -154,9 +134,32 @@ export function ScanWorkspace() {
   const [scanMode, setScanMode] = useState<"repository" | "file">("repository");
   const [githubStatus, setGithubStatus] = useState<"loading" | "connected" | "disconnected" | "expired">("loading");
   const [connectingGitHub, setConnectingGitHub] = useState(false);
+  const [reportSelection, setReportSelection] = useState<Set<string>>(new Set());
+  const [savingReportSelection, setSavingReportSelection] = useState(false);
 
   const findingKey = (finding: Finding) => `${finding.file}:${finding.line}:${finding.type}`;
   const notify = (message: string) => toast(message);
+
+  useEffect(() => {
+    const requestedTier = readScanTier(new URLSearchParams(window.location.search).get("tier"));
+    if (requestedTier) setScanTier(requestedTier);
+  }, []);
+
+  const saveReportSelection = async (next: Set<string>) => {
+    if (!result?.scan?.id) return;
+    setReportSelection(next);
+    setSavingReportSelection(true);
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+    if (!token) { setSavingReportSelection(false); return; }
+    const response = await fetch("/api/scans/report-selection", {
+      method: "PATCH",
+      headers: buildTeamAuthHeaders(token, selectedTeamId, { "Content-Type": "application/json" }),
+      body: JSON.stringify({ scanId: result.scan.id, selectedKeys: Array.from(next) }),
+    });
+    setSavingReportSelection(false);
+    if (!response.ok) notify("Could not update the saved report selection.");
+  };
 
   useEffect(() => {
     let active = true;
@@ -241,13 +244,13 @@ export function ScanWorkspace() {
     }
     setPhase("scanning"); setError(null); setResult(null); setActiveStage("validating"); setStageDetails({});
     setRepoUrl(normalizedUrl);
-    setReviewed(new Set()); setFalsePositive(new Set()); setIgnored(new Map());
+    setReviewed(new Set()); setFalsePositive(new Set()); setIgnored(new Map()); setReportSelection(new Set());
     const controller = new AbortController();
     setScanController(controller);
     try {
       const response = await fetch("/api/scan/github", {
         method: "POST", headers: buildTeamAuthHeaders(token, selectedTeamId, { "Content-Type": "application/json", Accept: "text/event-stream", "Idempotency-Key": `repo-scan:${crypto.randomUUID()}` }),
-        body: JSON.stringify({ repoUrl: normalizedUrl, providerToken: data.session?.provider_token ?? null, scanTier, options: { failOn, scanScope: analysisScope } }),
+        body: JSON.stringify({ repoUrl: normalizedUrl, providerToken: data.session?.provider_token ?? null, scanTier, options: { scanScope: analysisScope } }),
         signal: controller.signal,
       });
       if (response.status === 402) {
@@ -268,6 +271,7 @@ export function ScanWorkspace() {
           if (event === "complete") {
             const completed = payload as ScanResult & { tokenCharge?: { balance?: number } };
             setResult(completed);
+            setReportSelection(new Set(completed.findings.map(findingKey)));
             setFinalTokenBalance(typeof completed.tokenCharge?.balance === "number" ? completed.tokenCharge.balance : null);
             setPhase("done"); setActiveStage("recommendations"); window.dispatchEvent(new Event("tokens:updated"));
           }
@@ -320,7 +324,6 @@ export function ScanWorkspace() {
   const severityChart = (["critical", "high", "medium", "low"] as Severity[]).map((level) => ({ name: level, value: counts[level], color: { critical: "#fb7185", high: "#fb923c", medium: "#fbbf24", low: "#38bdf8" }[level] }));
   const activeStageIndex = activeStage ? stages.findIndex((stage) => stage.id === activeStage) : 0;
   const progress = phase === "done" ? 100 : Math.max(8, Math.round(((activeStageIndex + 0.5) / stages.length) * 100));
-  const reviewedCount = reviewed.size + falsePositive.size + ignored.size;
   const actions = useMemo<ScanAction[]>(() => result ? [
     { id: "intelligence", label: "Open repository intelligence", description: "Jump to the AI summary and priorities", icon: scanActionIcons.intelligence, run: () => document.getElementById("repository-intelligence")?.scrollIntoView({ behavior: "smooth" }) },
     { id: "cloud", label: "Explore technology cloud", description: "View languages, frameworks, and dependencies in 3D", icon: scanActionIcons.cloud, run: () => document.getElementById("technology-cloud")?.scrollIntoView({ behavior: "smooth" }) },
@@ -400,25 +403,19 @@ export function ScanWorkspace() {
                 <Card key={tier} className={scanTier === tier ? "border-sky-500/50 bg-sky-500/5" : "bg-background/50"}>
                   <CardContent className="relative h-full p-3 pr-9">
                     <span className="flex items-center justify-between gap-2 text-sm font-medium"><span>{details.label}</span><span>{details.cost} Tokens</span></span>
-                    <span className="mt-2 block text-xs leading-5 text-muted-foreground">{(analysisScope === "frontend" ? frontendTierChecks[tier] : details.checks).slice(0, tier === "high" ? 4 : 3).map((check) => `✓ ${check}`).join(" · ")}</span>
+                    <span className="mt-2 block text-xs leading-5 text-muted-foreground">{scanCheckpointsForScope(analysisScope).slice(0, tier === "high" ? 4 : 3).map((check) => `✓ ${check}`).join(" · ")}</span>
                   <span className="absolute right-3 top-3">
-                    <HelpTooltip side="bottom">
-                      <span className="block font-medium">{details.label} includes:</span>
-                      <span className="mt-1 block whitespace-pre-line">{(analysisScope === "frontend" ? frontendTierChecks[tier] : details.checks).map((check) => `• ${check}`).join("\n")}</span>
+                    <HelpTooltip side="bottom" contentClassName="max-h-[70vh] max-w-lg overflow-y-auto p-4">
+                      <span className="block font-medium">{details.label} checkpoints:</span>
+                      <span className="mt-2 block whitespace-pre-line">{scanCheckpointsForScope(analysisScope).map((check) => `• ${check}`).join("\n")}</span>
                     </HelpTooltip>
                   </span>
                   </CardContent>
                 </Card>
               ))}
             </div>
-            <div className="mt-3 rounded-xl border border-border bg-background/40 p-4">
-              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Included in {scanTierCatalog[scanTier].label}</p>
-              <ul className="mt-2 grid gap-x-6 gap-y-1.5 text-xs leading-5 sm:grid-cols-2">
-                {(analysisScope === "frontend" ? frontendTierChecks[scanTier] : scanTierCatalog[scanTier].checks).map((check) => <li key={check} className="flex gap-2"><CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-500" /><span>{check}</span></li>)}
-              </ul>
-            </div>
           </fieldset>
-          <div className="grid gap-3 lg:grid-cols-[1fr_150px_auto]"><div><label htmlFor="repo-url" className="mb-2 block text-sm font-medium">GitHub repository</label><div className="relative"><FolderGit2 className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" /><Input id="repo-url" value={repoUrl} onChange={(event) => setRepoUrl(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && phase !== "scanning") void startScan(); }} placeholder="owner/repository or GitHub URL" disabled={phase === "scanning"} className="h-9 pl-9" aria-describedby="repo-help" autoCapitalize="none" autoCorrect="off" spellCheck={false} /></div><p id="repo-help" className="mt-2 text-xs text-muted-foreground">Paste a public GitHub URL or owner/repository. Krythiq uses read-only API access and does not execute repository code.</p></div><div><div className="mb-2 flex items-center gap-1.5"><label htmlFor="fail-on" className="text-sm font-medium">Attention threshold</label><HelpTooltip side="bottom">Controls which severity should demand attention first. It does not hide lower-severity findings.</HelpTooltip></div><Combobox items={attentionThresholds} value={failOn} onValueChange={(value) => { if (value) setFailOn(value as Severity); }} disabled={phase === "scanning"}><ComboboxInput id="fail-on" className="h-9 w-full capitalize" aria-label="Attention threshold" /><ComboboxContent><ComboboxEmpty>No severity found.</ComboboxEmpty><ComboboxList>{attentionThresholds.map((threshold) => <ComboboxItem key={threshold} value={threshold} className="capitalize">{threshold}</ComboboxItem>)}</ComboboxList></ComboboxContent></Combobox></div>{phase === "scanning" ? <Button size="lg" variant="outline" onClick={() => scanController?.abort()} className="self-end"><CircleStop /> Cancel</Button> : <Button size="lg" onClick={startScan} className="self-end"><ShieldAlert /> {result ? "Rescan" : "Start scan"} · {scanTierCatalog[scanTier].cost} Tokens</Button>}</div>
+          <div className="grid gap-3 lg:grid-cols-[1fr_auto]"><div><label htmlFor="repo-url" className="mb-2 block text-sm font-medium">GitHub repository</label><div className="relative"><FolderGit2 className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" /><Input id="repo-url" value={repoUrl} onChange={(event) => setRepoUrl(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && phase !== "scanning") void startScan(); }} placeholder="owner/repository or GitHub URL" disabled={phase === "scanning"} className="h-9 pl-9" aria-describedby="repo-help" autoCapitalize="none" autoCorrect="off" spellCheck={false} /></div><p id="repo-help" className="mt-2 text-xs text-muted-foreground">Paste a public GitHub URL or owner/repository. Krythiq uses read-only API access and does not execute repository code.</p></div>{phase === "scanning" ? <Button size="lg" variant="outline" onClick={() => scanController?.abort()} className="self-end"><CircleStop /> Cancel</Button> : <Button size="lg" onClick={startScan} className="self-end"><ShieldAlert /> {result ? "Rescan" : "Start scan"} · {scanTierCatalog[scanTier].cost} Tokens</Button>}</div>
         </TabsContent>
         <TabsContent value="file" className="mt-5">
           <div className="grid gap-5 lg:grid-cols-[minmax(0,420px)_1fr] lg:items-center">
@@ -437,8 +434,8 @@ export function ScanWorkspace() {
 
     {result && <section className="space-y-6">
       <ActionSearchBar actions={actions} />
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4"><Metric title="Overall risk" value={`${score}/100`} detail={score >= 75 ? "Needs attention" : score >= 55 ? "Review recommended" : "Lower observed risk"} /><Metric title="Total findings" value={String(result.totalFindings)} detail="Static checks completed" /><Metric title="Code issues" value={String(categoryCount("code"))} detail="Risky-code rules" /><Metric title="Secret exposure" value={String(categoryCount("secrets"))} detail="Credential-pattern rules" /></div>
-      <Card><CardHeader><CardTitle>Repository overview</CardTitle></CardHeader><CardContent className="space-y-5"><p className="text-sm leading-6 text-muted-foreground">{result.profile.metadata.description ?? "No GitHub repository description is available."}</p><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5"><Coverage label="Source files scanned" value={result.profile.metrics.scannedFiles.toLocaleString()} detail={`${result.profile.metrics.repositoryFiles.toLocaleString()} files in repository tree`} /><Coverage label="Lines analyzed" value={result.profile.metrics.scannedLines.toLocaleString()} detail={formatBytes(result.profile.metrics.scannedBytes)} /><Coverage label="Directories" value={result.profile.metrics.directories.toLocaleString()} detail={`Default branch: ${result.profile.metadata.defaultBranch}`} /><Coverage label="GitHub activity" value={`${result.profile.metadata.stars} stars`} detail={`${result.profile.metadata.forks} forks · ${result.profile.metadata.openIssues} open issues`} /><Coverage label="Visibility" value={result.profile.metadata.visibility} detail={result.profile.metadata.pushedAt ? `Pushed ${new Date(result.profile.metadata.pushedAt).toLocaleDateString()}` : "Push date unavailable"} /></div>{result.profile.manifests.length > 0 && <div className="flex flex-wrap gap-2">{result.profile.manifests.map((manifest) => <Badge key={manifest} variant="outline">{manifest}</Badge>)}</div>}</CardContent></Card>
+      <BentoGrid className="auto-rows-[8rem] grid-cols-1 gap-4 md:grid-cols-4"><Metric className="md:col-span-2 md:row-span-2" title="Overall risk" value={`${score}/100`} detail={score >= 75 ? "Needs attention" : score >= 55 ? "Review recommended" : "Lower observed risk"} /><Metric className="md:col-span-2" title="Total findings" value={String(result.totalFindings)} detail="Static checks completed" /><Metric title="Code issues" value={String(categoryCount("code"))} detail="Risky-code rules" /><Metric title="Secret exposure" value={String(categoryCount("secrets"))} detail="Credential-pattern rules" /></BentoGrid>
+      <BentoGrid className="auto-rows-auto grid-cols-1 gap-3 md:grid-cols-6"><BentoPanel className="md:col-span-3 md:row-span-2"><h2 className="text-lg font-semibold">Repository overview</h2><p className="mt-3 text-sm leading-6 text-muted-foreground">{result.profile.metadata.description ?? "No GitHub repository description is available."}</p>{result.profile.manifests.length > 0 && <div className="mt-5 flex flex-wrap gap-2">{result.profile.manifests.map((manifest) => <Badge key={manifest} variant="outline">{manifest}</Badge>)}</div>}</BentoPanel><Coverage label="Source files scanned" value={result.profile.metrics.scannedFiles.toLocaleString()} detail={`${result.profile.metrics.repositoryFiles.toLocaleString()} files in repository tree`} /><Coverage label="Lines analyzed" value={result.profile.metrics.scannedLines.toLocaleString()} detail={formatBytes(result.profile.metrics.scannedBytes)} /><Coverage label="Directories" value={result.profile.metrics.directories.toLocaleString()} detail={`Default branch: ${result.profile.metadata.defaultBranch}`} /><Coverage label="GitHub activity" value={`${result.profile.metadata.stars} stars`} detail={`${result.profile.metadata.forks} forks · ${result.profile.metadata.openIssues} open issues`} /><Coverage className="md:col-span-2" label="Visibility" value={result.profile.metadata.visibility} detail={result.profile.metadata.pushedAt ? `Pushed ${new Date(result.profile.metadata.pushedAt).toLocaleDateString()}` : "Push date unavailable"} /></BentoGrid>
 
       {result.aiReview ? (
         <Card id="ai-ui-review">
@@ -467,14 +464,14 @@ export function ScanWorkspace() {
               </TabsList>
               <TabsContent value="overview" className="space-y-5 pt-3">
                 <p className="text-sm leading-6 text-muted-foreground">{result.aiReview.summary}</p>
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <BentoGrid className="auto-rows-auto grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   <Metric title="Overall UI quality" value={`${result.aiReview.scores.overall}/100`} detail="Frontend quality" />
                   <Metric title="Consistency" value={`${result.aiReview.scores.consistency}/100`} detail="Spacing, type, and tokens" />
                   <Metric title="Responsive" value={`${result.aiReview.scores.responsive}/100`} detail="Viewport patterns" />
                   <Metric title="Component usage" value={`${result.aiReview.scores.componentUsage}/100`} detail="shadcn/ui adoption" />
                   <Metric title="Accessibility" value={`${result.aiReview.scores.accessibility}/100`} detail="Semantic UI basics" />
                   <Metric title="Design system" value={`${result.aiReview.scores.designSystem}/100`} detail="Reusable foundations" />
-                </div>
+                </BentoGrid>
                 <Card className="bg-muted/20"><CardContent className="p-4"><p className="text-sm font-medium">Why this looks vibe-coded</p><p className="mt-1 text-xs leading-5 text-muted-foreground">{result.aiReview.reasoning}</p></CardContent></Card>
               </TabsContent>
               {(["components", "a11y"] as const).map((category) => (
@@ -527,23 +524,22 @@ export function ScanWorkspace() {
 
       <TechnologyCloud languages={result.profile.languages.map((language) => language.name)} technologies={result.profile.technologies ?? []} dependencies={result.profile.dependencies ?? []} />
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card><CardHeader><CardTitle>Language composition</CardTitle></CardHeader><CardContent className="h-72"><ResponsiveContainer width="100%" height="100%"><BarChart data={result.profile.languages.slice(0, 8)} layout="vertical" margin={{ left: 8, right: 16 }}><CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={false} /><XAxis type="number" tick={{ fontSize: 10, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} /><YAxis type="category" dataKey="name" width={80} tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} /><Tooltip formatter={(value, name) => [name === "percent" ? `${value}%` : value, name === "percent" ? "GitHub bytes" : name]} contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 8 }} /><Bar dataKey="percent" fill="#38bdf8" radius={[0, 5, 5, 0]} /></BarChart></ResponsiveContainer></CardContent></Card>
-        <Card><CardHeader><CardTitle>File type distribution</CardTitle></CardHeader><CardContent className="h-72"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={result.profile.fileTypes.slice(0, 8)} dataKey="lines" nameKey="name" innerRadius={54} outerRadius={88} paddingAngle={3}>{result.profile.fileTypes.slice(0, 8).map((entry, index) => <Cell key={entry.name} fill={["#38bdf8", "#a78bfa", "#34d399", "#fbbf24", "#fb7185", "#60a5fa", "#f97316", "#94a3b8"][index]} />)}</Pie><Tooltip formatter={(value, name) => [Number(value).toLocaleString(), `${name} lines`]} contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 8 }} /></PieChart></ResponsiveContainer></CardContent></Card>
-      </div>
-
-
-      <div className="grid gap-6 lg:grid-cols-2"><Card><CardHeader><CardTitle>Severity distribution</CardTitle></CardHeader><CardContent className="h-64"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={severityChart} dataKey="value" nameKey="name" innerRadius={48} outerRadius={76} paddingAngle={4}>{severityChart.map((entry) => <Cell key={entry.name} fill={entry.color} />)}</Pie><Tooltip formatter={(value, name) => [value, String(name).toUpperCase()]} contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 8 }} /></PieChart></ResponsiveContainer></CardContent></Card><Card><CardHeader><CardTitle>Largest analyzed files</CardTitle></CardHeader><CardContent className="space-y-2">{result.profile.largestFiles.slice(0, 6).map((file) => <div key={file.path} className="flex items-center justify-between gap-4 rounded-lg border border-border bg-muted/20 p-3"><div className="min-w-0"><p className="truncate text-sm font-medium">{file.path}</p><p className="mt-0.5 text-xs text-muted-foreground">{file.lines.toLocaleString()} lines</p></div><span className="shrink-0 font-mono text-xs text-muted-foreground">{formatBytes(file.bytes)}</span></div>)}</CardContent></Card></div>
-
-      <Card><CardHeader><CardTitle>Scan coverage</CardTitle></CardHeader><CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"><Coverage label="Source analysis" value="Assessed" detail={`${result.profile.metrics.scannedFiles.toLocaleString()} supported files`} /><Coverage label="Repository structure" value="Assessed" detail="Tree, languages, manifests, and file sizes" /><Coverage label="Dependency advisories" value="Not assessed" detail="No vulnerability registry comparison" /><Coverage label="Supply chain & licenses" value="Not assessed" detail="No SBOM or license engine" /></CardContent></Card>
+      <BentoGrid className="auto-rows-auto grid-cols-1 gap-4 lg:grid-cols-6">
+        <BentoPanel className="lg:col-span-4"><h2 className="text-base font-semibold">Language composition</h2><div className="mt-4 h-72"><ResponsiveContainer width="100%" height="100%"><BarChart data={result.profile.languages.slice(0, 8)} layout="vertical" margin={{ left: 8, right: 16 }}><CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={false} /><XAxis type="number" tick={{ fontSize: 10, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} /><YAxis type="category" dataKey="name" width={80} tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} /><Tooltip formatter={(value, name) => [name === "percent" ? `${value}%` : value, name === "percent" ? "GitHub bytes" : name]} contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 8 }} /><Bar dataKey="percent" fill="#38bdf8" radius={[0, 5, 5, 0]} /></BarChart></ResponsiveContainer></div></BentoPanel>
+        <BentoPanel className="lg:col-span-2"><h2 className="text-base font-semibold">File types</h2><div className="mt-4 h-72"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={result.profile.fileTypes.slice(0, 8)} dataKey="lines" nameKey="name" innerRadius={54} outerRadius={88} paddingAngle={3}>{result.profile.fileTypes.slice(0, 8).map((entry, index) => <Cell key={entry.name} fill={["#38bdf8", "#a78bfa", "#34d399", "#fbbf24", "#fb7185", "#60a5fa", "#f97316", "#94a3b8"][index]} />)}</Pie><Tooltip formatter={(value, name) => [Number(value).toLocaleString(), `${name} lines`]} contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 8 }} /></PieChart></ResponsiveContainer></div></BentoPanel>
+        <BentoPanel className="lg:col-span-2"><h2 className="text-base font-semibold">Severity distribution</h2><div className="mt-4 h-64"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={severityChart} dataKey="value" nameKey="name" innerRadius={48} outerRadius={76} paddingAngle={4}>{severityChart.map((entry) => <Cell key={entry.name} fill={entry.color} />)}</Pie><Tooltip formatter={(value, name) => [value, String(name).toUpperCase()]} contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 8 }} /></PieChart></ResponsiveContainer></div></BentoPanel>
+        <BentoPanel className="lg:col-span-4"><h2 className="text-base font-semibold">Largest analyzed files</h2><div className="mt-4 grid gap-2 sm:grid-cols-2">{result.profile.largestFiles.slice(0, 6).map((file) => <div key={file.path} className="flex items-center justify-between gap-4 rounded-lg border border-border bg-muted/20 p-3"><div className="min-w-0"><p className="truncate text-sm font-medium">{file.path}</p><p className="mt-0.5 text-xs text-muted-foreground">{file.lines.toLocaleString()} lines</p></div><span className="shrink-0 font-mono text-xs text-muted-foreground">{formatBytes(file.bytes)}</span></div>)}</div></BentoPanel>
+        <Coverage className="lg:col-span-2" label="Source analysis" value="Assessed" detail={`${result.profile.metrics.scannedFiles.toLocaleString()} supported files`} /><Coverage label="Repository structure" value="Assessed" detail="Tree, languages, manifests, and file sizes" /><Coverage label="Dependency advisories" value="Not assessed" detail="No vulnerability registry comparison" /><Coverage className="lg:col-span-2" label="Supply chain & licenses" value="Not assessed" detail="No SBOM or license engine" />
+      </BentoGrid>
       {result.sourceType !== "file" && result.scanScope !== "frontend" && <SystemDesignOverview result={result.systemDesign} docsHref="/documentation/system-design" />}
-      <div id="findings" className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between"><div><h2 className="text-xl font-semibold">Findings</h2><p className="mt-1 text-sm text-muted-foreground">{result.totalFindings === 0 ? "No high-confidence static findings were detected in the supported files." : `${reviewedCount} of ${result.totalFindings} findings triaged. Decisions are synced when you are signed in.`}</p></div><div className="flex flex-wrap gap-2"><Button variant="outline" size="sm" onClick={() => download("krythiq-findings.json", JSON.stringify(result, null, 2), "application/json")}><Download /> JSON</Button><Button variant="outline" size="sm" onClick={() => download("krythiq-findings.csv", ["severity,category,file,line,type,message", ...result.findings.map((f) => [f.severity, f.category ?? "code", f.file, f.line, f.type, f.message].map(csvCell).join(","))].join("\n"), "text/csv")}><Download /> CSV</Button></div></div>
-      <Card><CardContent className="p-4"><div className="grid gap-3 md:grid-cols-[1fr_160px_160px]"><div className="relative"><Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" /><Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search file, rule, or message" className="pl-9" /></div><select value={severity} onChange={(event) => setSeverity(event.target.value as "all" | Severity)} className="h-8 rounded-lg border border-input bg-background px-2 text-sm"><option value="all">All severities</option>{(["critical", "high", "medium", "low"] as Severity[]).map((level) => <option key={level} value={level}>{level} ({counts[level]})</option>)}</select><select value={sort} onChange={(event) => setSort(event.target.value as "severity" | "path")} className="h-8 rounded-lg border border-input bg-background px-2 text-sm"><option value="severity">Sort by severity</option><option value="path">Sort by path</option></select></div></CardContent></Card>
+      <div id="findings" className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between"><div><h2 className="text-xl font-semibold">Findings</h2><p className="mt-1 text-sm text-muted-foreground">{result.totalFindings === 0 ? "No high-confidence static findings were detected in the supported files." : result.scan?.id ? `${reportSelection.size} of ${result.totalFindings} findings saved to this report${savingReportSelection ? " · Saving…" : ""}` : `${result.totalFindings} findings detected.`}</p></div><div className="flex flex-wrap items-center gap-3">{result.scan?.id && result.totalFindings > 0 ? <label className="flex cursor-pointer items-center gap-2 text-sm"><Checkbox checked={reportSelection.size === result.totalFindings} onCheckedChange={(checked) => void saveReportSelection(checked ? new Set(result.findings.map(findingKey)) : new Set())} disabled={savingReportSelection} /><span>Save all to report</span></label> : null}<Button variant="outline" size="sm" onClick={() => download("krythiq-findings.json", JSON.stringify(result, null, 2), "application/json")}><Download /> JSON</Button><Button variant="outline" size="sm" onClick={() => download("krythiq-findings.csv", ["severity,category,file,line,type,message", ...result.findings.map((f) => [f.severity, f.category ?? "code", f.file, f.line, f.type, f.message].map(csvCell).join(","))].join("\n"), "text/csv")}><Download /> CSV</Button></div></div>
+      <BentoPanel><div className="grid gap-3 md:grid-cols-[1fr_160px_160px]"><div className="relative"><Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" /><Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search file, rule, or message" className="pl-9" /></div><select value={severity} onChange={(event) => setSeverity(event.target.value as "all" | Severity)} className="h-8 rounded-lg border border-input bg-background px-2 text-sm"><option value="all">All severities</option>{(["critical", "high", "medium", "low"] as Severity[]).map((level) => <option key={level} value={level}>{level} ({counts[level]})</option>)}</select><select value={sort} onChange={(event) => setSort(event.target.value as "severity" | "path")} className="h-8 rounded-lg border border-input bg-background px-2 text-sm"><option value="severity">Sort by severity</option><option value="path">Sort by path</option></select></div></BentoPanel>
       <div className="space-y-3">
         {findings.length === 0 ? <Card className={result.totalFindings === 0 ? "border-emerald-500/20 bg-emerald-500/5" : ""}><CardContent className="p-10 text-center">{result.totalFindings === 0 ? <CheckCircle2 className="mx-auto h-7 w-7 text-emerald-400" /> : <Filter className="mx-auto h-6 w-6 text-muted-foreground" />}<p className="mt-3 font-medium">{result.totalFindings === 0 ? "Static scan completed cleanly" : "No matching findings"}</p><p className="mx-auto mt-1 max-w-lg text-sm text-muted-foreground">{result.totalFindings === 0 ? "No supported rule matched. This is a useful signal, not a guarantee: runtime behavior, dependencies, and supply-chain risk were not assessed." : "Try clearing the search or choosing another severity."}</p></CardContent></Card> : findings.map((finding) => {
           const key = findingKey(finding); const isExpanded = expanded === key; const isIgnored = ignored.has(key);
           return <Card key={key} className={isIgnored ? "opacity-60" : ""}><CardContent className="p-4">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
+              {result.scan?.id ? <Checkbox checked={reportSelection.has(key)} onCheckedChange={(checked) => { const next = new Set(reportSelection); if (checked) next.add(key); else next.delete(key); void saveReportSelection(next); }} disabled={savingReportSelection} aria-label={`${reportSelection.has(key) ? "Remove" : "Add"} this finding ${reportSelection.has(key) ? "from" : "to"} the saved report`} className="mt-0.5" /> : null}
               <button className="flex min-w-0 flex-1 gap-3 text-left" onClick={() => setExpanded(isExpanded ? null : key)} aria-expanded={isExpanded}>
                 <span className="mt-0.5">{isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}</span>
                 <span className="min-w-0"><span className="flex flex-wrap items-center gap-2"><Badge className={severityClass(finding.severity)}>{finding.severity}</Badge><Badge variant="outline">{finding.category === "secrets" ? "Secret exposure" : "Code issue"}</Badge>{isIgnored && <Badge variant="outline">Ignored</Badge>}</span><span className="mt-2 block font-medium">{finding.message}</span><span className="mt-1 flex items-center gap-1 text-xs text-muted-foreground"><FileCode2 className="h-3.5 w-3.5" /> {finding.file}:{finding.line} · {finding.type}</span></span>
@@ -559,6 +555,7 @@ export function ScanWorkspace() {
   </main>;
 }
 
-function Metric({ title, value, detail }: { title: string; value: string; detail: string }) { return <Card><CardContent className="p-5"><p className="text-sm text-muted-foreground">{title}</p><p className="mt-2 text-3xl font-semibold">{value}</p><p className="mt-1 text-xs text-muted-foreground">{detail}</p></CardContent></Card>; }
-function Coverage({ label, value, detail }: { label: string; value: string; detail: string }) { return <div className="rounded-xl border border-border bg-muted/20 p-4"><p className="text-sm font-medium">{label}</p><p className="mt-3 text-sm text-muted-foreground">{value}</p><p className="mt-1 text-xs text-muted-foreground">{detail}</p></div>; }
+function Metric({ title, value, detail, className = "" }: { title: string; value: string; detail: string; className?: string }) { return <div className={`relative overflow-hidden rounded-2xl border border-border bg-[radial-gradient(circle_at_top_right,rgba(56,189,248,.08),transparent_42%),var(--card)] p-5 shadow-sm ${className}`}><div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-sky-400/40 to-transparent" /><p className="text-sm text-muted-foreground">{title}</p><p className="mt-2 text-3xl font-semibold tracking-tight">{value}</p><p className="mt-1 text-xs text-muted-foreground">{detail}</p></div>; }
+function BentoPanel({ children, className = "" }: { children: React.ReactNode; className?: string }) { return <div className={`relative overflow-hidden rounded-2xl border border-border bg-[radial-gradient(circle_at_top_right,rgba(139,92,246,.06),transparent_38%),var(--card)] p-5 shadow-sm ${className}`}><div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-violet-400/30 to-transparent" />{children}</div>; }
+function Coverage({ label, value, detail, className = "" }: { label: string; value: string; detail: string; className?: string }) { return <BentoPanel className={className}><p className="text-sm font-medium">{label}</p><p className="mt-3 text-sm text-muted-foreground">{value}</p><p className="mt-1 text-xs text-muted-foreground">{detail}</p></BentoPanel>; }
 function Detail({ label, value }: { label: string; value: string }) { return <div className="rounded-xl bg-muted/40 p-3"><p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{label}</p><p className="mt-1 whitespace-pre-wrap text-sm leading-6">{value}</p></div>; }
