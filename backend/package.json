@@ -1,7 +1,7 @@
 {
   "name": "krythiq",
   "version": "0.1.1",
-  "description": "AI-powered terminal trace analyzer, security scanner, and code quality tool",
+  "description": "CLI for Semgrep/npm-audit security scans, custom rules, and optional AI terminal trace analysis",
   "keywords": [
     "cli",
     "ai",
@@ -9,33 +9,43 @@
     "security",
     "stack-trace",
     "devtools",
-    "code-review",
-    "machine-learning"
+    "semgrep",
+    "npm-audit"
   ],
+  "author": "Krythiq",
   "homepage": "https://krythiq.dev",
   "repository": {
     "type": "git",
-    "url": "https://github.com/krythiq/krythiq"
+    "url": "git+https://github.com/shaypat112/Krythiq.git"
+  },
+  "bugs": {
+    "url": "https://github.com/shaypat112/Krythiq/issues"
   },
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
   "bin": {
-    "krythiq": "./dist/index.js"
+    "krythiq": "dist/index.js"
   },
   "files": [
     "dist",
-    "ai_service.py",
-    "requirements.txt",
-    "setup_python.sh"
+    "README.md",
+    "LICENSE"
   ],
   "scripts": {
     "build": "tsup src/index.ts --format esm --dts --clean",
     "dev": "tsup src/index.ts --format esm --watch",
     "lint": "eslint src --ext .ts",
     "typecheck": "tsc --noEmit",
-    "prepublishOnly": "npm run build",
-    "setup:python": "bash setup_python.sh"
+    "test": "npm run build && node --test test/*.test.mjs",
+    "prepublishOnly": "npm run typecheck && npm run lint && npm test"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.24.0",
@@ -55,7 +65,10 @@
     "typescript": "^5.4.0"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "overrides": {
     "brace-expansion": "5.0.8",

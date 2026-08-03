@@ -1,7 +1,10 @@
 import Conf from "conf";
 
-const store = new Conf<{ apiKey?: string }>({ projectName: "krythiq" });
-
 export async function getApiKey(): Promise<string | undefined> {
-  return process.env.ANTHROPIC_API_KEY ?? store.get("apiKey");
+  if (process.env.ANTHROPIC_API_KEY) return process.env.ANTHROPIC_API_KEY;
+  try {
+    return new Conf<{ apiKey?: string }>({ projectName: "krythiq" }).get("apiKey");
+  } catch {
+    return undefined;
+  }
 }

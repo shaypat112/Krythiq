@@ -16,6 +16,11 @@ const HEADER = chalk.dim("●") + " " + chalk.bold("krythiq");
 const DEFAULT_MODEL = "claude-sonnet-4-20250514";
 
 export async function runCommand(userCommand: string, options: RunOptions) {
+  if (!userCommand.trim()) {
+    console.error(chalk.red("\nError: command must not be empty.\n"));
+    process.exitCode = 1;
+    return;
+  }
   const { config, warnings, source } = await loadConfig();
   if (options.verbose && warnings.length) {
     for (const warning of warnings) {
@@ -63,14 +68,14 @@ export async function runCommand(userCommand: string, options: RunOptions) {
   }
 
   // Parse and spawn
-  const [cmd, ...args] = parseCommand(userCommand);
-  const child = spawn(cmd, args, {
+  const child = spawn(userCommand, [], {
     stdio: ["inherit", "pipe", "pipe"],
     shell: true,
     env: { ...process.env },
   });
 
   let stderrBuffer = "";
+  const pendingAnalyses = new Set<Promise<void>>();
 
   // Pipe stdout through
   child.stdout?.on("data", (data: Buffer) => {
@@ -78,30 +83,33 @@ export async function runCommand(userCommand: string, options: RunOptions) {
   });
 
   // Buffer stderr for trace detection
-  child.stderr?.on("data", async (data: Buffer) => {
+  child.stderr?.on("data", (data: Buffer) => {
     const raw = data.toString();
     process.stderr.write(data); // still show it
-    stderrBuffer += stripAnsi(raw);
 
     if (!aiEnabled) return;
+    stderrBuffer = (stderrBuffer + stripAnsi(raw)).slice(-64_000);
 
     // Look for a complete stack trace
     const traces = extractTraces(stderrBuffer);
     if (traces.length > 0) {
       stderrBuffer = ""; // clear so we don't re-analyze
-      for (const trace of traces) {
-        await analyzeTrace(trace, model, apiKey!);
-      }
+      const analysis = Promise.all(
+        traces.map((trace) => analyzeTrace(trace, model, apiKey!)),
+      ).then(() => undefined);
+      pendingAnalyses.add(analysis);
+      void analysis.finally(() => pendingAnalyses.delete(analysis));
     }
   });
 
-  child.on("exit", (code) => {
+  child.on("close", async (code) => {
+    await Promise.allSettled(pendingAnalyses);
     if (code !== 0) {
       console.log(
         `\n${HEADER} ${chalk.dim("process exited with code")} ${chalk.red(code ?? "null")}\n`
       );
     }
-    process.exit(code ?? 0);
+    process.exitCode = code ?? 0;
   });
 
   child.on("error", (err) => {
@@ -161,41 +169,11 @@ Confidence: <X>%`,
     }
 
     console.log(`\n${divider}\n`);
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
     console.log(
-      chalk.yellow(`  AI analysis unavailable: ${err.message}\n`)
+      chalk.yellow(`  AI analysis unavailable: ${message}\n`)
     );
     console.log(`${divider}\n`);
   }
-}
-
-function parseCommand(input: string): string[] {
-  // Handle quoted args properly
-  const parts: string[] = [];
-  let current = "";
-  let inQuote = false;
-  let quoteChar = "";
-
-  for (const char of input) {
-    if (inQuote) {
-      if (char === quoteChar) {
-        inQuote = false;
-      } else {
-        current += char;
-      }
-    } else if (char === '"' || char === "'") {
-      inQuote = true;
-      quoteChar = char;
-    } else if (char === " ") {
-      if (current) {
-        parts.push(current);
-        current = "";
-      }
-    } else {
-      current += char;
-    }
-  }
-
-  if (current) parts.push(current);
-  return parts;
 }

@@ -76,3 +76,24 @@ __pycache__/
 # local database and Supabase CLI state
 /db/
 /supabase/.temp/
+/supabase/migrations/
+
+# local editor and AI-assistant instructions
+/.idea/
+/AGENTS.md
+/CLAUDE.md
+/UNUSED.md
+
+# local deployment and provider state
+/.vercel/
+/.supabase/
+/.wrangler/
+/.netlify/
+/.firebase/
+
+# local secrets and credentials
+*.secret
+*.secrets
+*.credentials
+credentials.json
+service-account*.json

@@ -19,8 +19,7 @@ const PROMPT = "guest@krythiq:~/project$";
 
 const COMMANDS = [
   "krythiq init",
-  "krythiq scan --sandbox",
-  "krythiq fix --generate",
+  "krythiq scan --format json",
   "help",
   "clear",
   "whoami",
@@ -64,7 +63,6 @@ export function ScanTerminal() {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const cancelledRef = useRef(false);
   const busyRef = useRef(true);
-  const scannedRef = useRef(false);
   const historyRef = useRef<string[]>([]);
   const historyIndexRef = useRef(0);
   const visibleRef = useRef(false);
@@ -128,8 +126,7 @@ export function ScanTerminal() {
         await printLines([
           { text: "Available commands:", delay: 150 },
           { text: "  krythiq init            set up Krythiq in this repository", delay: 90 },
-          { text: "  krythiq scan --sandbox  run a full security scan", delay: 90 },
-          { text: "  krythiq fix --generate  generate patches for found issues", delay: 90 },
+          { text: "  krythiq scan            run available security engines", delay: 90 },
           { text: "  whoami                 show the current session", delay: 90 },
           { text: "  clear                  clear the terminal", delay: 90 },
         ]);
@@ -150,39 +147,18 @@ export function ScanTerminal() {
         await printLines([
           { text: "Initializing Krythiq in ~/project", severity: "info", delay: 300 },
           { text: "Detected framework: Next.js, TypeScript", severity: "info", delay: 500 },
-          { text: "Creating .krythiq/config.yml", severity: "info", delay: 450 },
-          { text: "✓ Ready — run `krythiq scan --sandbox` to analyze this repository", severity: "success", delay: 500 },
+          { text: "Creating krythiq.config.mjs", severity: "info", delay: 450 },
+          { text: "✓ Ready — run `krythiq scan` to analyze this repository", severity: "success", delay: 500 },
         ]);
         return;
       }
 
       if (normalized.startsWith("krythiq scan")) {
         await printLines([
-          { text: "Preparing isolated sandbox…", severity: "info", delay: 300 },
-          { text: "Tracing dependency graph across 214 files…", severity: "info", delay: 700 },
-          { text: "● HIGH — Privilege escalation via admin token fallback", severity: "high", delay: 650 },
-          { text: "● MEDIUM — Unsanitized SQL builder reachable from support tools", severity: "medium", delay: 500 },
-          { text: "● LOW — Webhook retry logic leaks internal error detail", severity: "low", delay: 500 },
-          { text: "3 findings ranked by exploitability. Run `krythiq fix --generate` to patch.", delay: 550 },
-        ]);
-        scannedRef.current = true;
-        return;
-      }
-
-      if (normalized.startsWith("krythiq fix")) {
-        if (!scannedRef.current) {
-          await printLines([{ text: "No findings yet — run `krythiq scan --sandbox` first.", severity: "error", delay: 250 }]);
-          return;
-        }
-        await printLines([
-          { text: "Generating patch guidance for 3 findings…", severity: "info", delay: 400 },
-          { text: "export async function authorize(request: Request) {", type: true, code: true, delay: 420 },
-          { text: "  const session = await verifySession(request);", type: true, code: true, delay: 90 },
-          { text: "  if (!session?.user) throw new Error(\"Unauthorized\");", type: true, code: true, delay: 90 },
-          { text: "  return session.user;", type: true, code: true, delay: 150 },
-          { text: "}", type: true, code: true, delay: 90 },
-          { text: "Validating generated fix in sandbox…", severity: "info", delay: 420 },
-          { text: "✓ 3/3 fixes verified — ready for review", severity: "success", delay: 600 },
+          { text: "Discovering source files…", severity: "info", delay: 300 },
+          { text: "Running custom rules, Semgrep, and npm audit when available…", severity: "info", delay: 700 },
+          { text: "● HIGH — CUSTOM_DANGEROUS_CALL src/example.ts:12", severity: "high", delay: 650 },
+          { text: "1 issue detected. Review the source before changing it.", delay: 550 },
         ]);
         return;
       }
@@ -217,26 +193,22 @@ export function ScanTerminal() {
     cancelledRef.current = false;
     setBusyBoth(true);
     setLines([]);
-    scannedRef.current = false;
     historyRef.current = [];
     historyIndexRef.current = 0;
 
-    push("Krythiq CLI v1.2.0 — type `help` to see available commands", "output", "muted");
+    push("Krythiq CLI v0.1.1 — type `help` to see available commands", "output", "muted");
     await sleep(500);
     if (cancelledRef.current) return;
     await typeIntoInput("krythiq init");
     if (cancelledRef.current) return;
     await sleep(450);
     if (cancelledRef.current) return;
-    await typeIntoInput("krythiq scan --sandbox");
-    if (cancelledRef.current) return;
-    await sleep(reducedMotion ? 0 : 400);
-    await typeIntoInput("krythiq fix --generate");
+    await typeIntoInput("krythiq scan --format json");
     if (cancelledRef.current) return;
 
     setBusyBoth(false);
     inputRef.current?.focus();
-  }, [push, reducedMotion, typeIntoInput]);
+  }, [push, typeIntoInput]);
 
   useEffect(() => {
     if (!inView || startedRef.current) return;
@@ -355,7 +327,7 @@ export function ScanTerminal() {
 
       {!busy && (
         <p className="mt-2 text-[10px] text-muted-foreground/70">
-          ↑ / ↓ history · Tab to autocomplete · try &quot;krythiq scan --sandbox&quot;
+          ↑ / ↓ history · Tab to autocomplete · try &quot;krythiq scan --format json&quot;
         </p>
       )}
     </div>

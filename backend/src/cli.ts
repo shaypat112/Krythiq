@@ -1,4 +1,4 @@
-import { Command } from "commander";
+import { Command, Option } from "commander";
 import chalk from "chalk";
 import { createRequire } from "module";
 import { runCommand } from "./commands/run.js";
@@ -45,15 +45,13 @@ export function runCli() {
   program
     .command("scan [path]")
     .description("scan a directory for security vulnerabilities (default: .)")
-    .option("--fix", "auto-apply safe patches where possible")
-    .option("--ci", "exit with code 1 if issues found (for CI pipelines)")
-    .option("--fail-on <severity>", "fail on: low | medium | high | critical", "high")
-    .option("--format <fmt>", "output format: text | json | markdown | sarif", "text")
+    .option("--ci", "exit with code 1 when findings meet the severity threshold")
+    .addOption(new Option("--fail-on <severity>", "minimum severity that fails CI").choices(["low", "medium", "high", "critical"]).default("high"))
+    .addOption(new Option("--format <fmt>", "output format").choices(["text", "json", "markdown", "sarif"]).default("text"))
     .option("--ignore <patterns...>", "glob patterns to ignore")
     .option("--rules <path>", "path to custom rules JSON (default: .krythiq/rules.json)")
-    .option("--watch", "daemon mode: rescan on file changes")
     .option("--publish", "publish scan summary to Supabase scan_history")
-    .option("--ai", "enable AI refactoring suggestions via Mistral")
+    .option("--ai", "enable a Mistral remediation summary")
     .option("--ai-model <model>", "Mistral model name", "mistral-large-latest")
     .action(scanCommand);
 

@@ -14,14 +14,12 @@ const execFileAsync = promisify(execFile);
 type Severity = "low" | "medium" | "high" | "critical";
 
 interface ScanOptions {
-  fix: boolean;
   ci: boolean;
   ai?: boolean;
   aiModel?: string;
   failOn: Severity;
   format: "text" | "json" | "markdown" | "sarif";
   ignore: string[];
-  watch?: boolean;
   publish?: boolean;
   rules?: string;
 }
@@ -79,7 +77,7 @@ export async function scanCommand(
   const { config, warnings } = await loadConfig();
   if (warnings.length) {
     for (const warning of warnings) {
-      console.log(chalk.yellow(`\n${warning}\n`));
+      console.error(chalk.yellow(warning));
     }
   }
 
@@ -90,12 +88,21 @@ export async function scanCommand(
     (await defaultRulesPath(process.cwd()));
   const rules = await loadRules(rulesPath);
   for (const warning of rules.warnings) {
-    console.log(chalk.yellow(`\n${warning}\n`));
+    console.error(chalk.yellow(warning));
   }
 
   const resolved = path.resolve(process.cwd(), scanPath);
 
-  console.log(`\n${chalk.bold("krythiq")} ${chalk.dim("scan")}\n`);
+  const stat = await fs.stat(resolved).catch(() => null);
+  if (!stat?.isDirectory()) {
+    console.error(chalk.red(`Error: scan path is not a directory: ${scanPath}`));
+    process.exitCode = 2;
+    return;
+  }
+
+  if (options.format === "text" || options.format === "markdown") {
+    console.log(`\n${chalk.bold("krythiq")} ${chalk.dim("scan")}\n`);
+  }
 
   const ignore = [
     "node_modules/**",
@@ -129,11 +136,10 @@ export async function scanCommand(
   const rulesFindings = await scanFiles(files, {
     ...options,
     aiModel,
-    fix: options.fix || scanConfig.autoFix || false,
     extraPatterns: rules.patterns,
   });
   const engineResult = await runSecurityEngines(resolved);
-  for (const warning of engineResult.warnings) console.log(chalk.yellow(`\n${warning}\n`));
+  for (const warning of engineResult.warnings) console.error(chalk.yellow(warning));
   const findings = [...rulesFindings, ...engineResult.findings];
 
   const deduped = dedupe(findings);
@@ -144,11 +150,11 @@ export async function scanCommand(
 
   outputResults(deduped, options, aiSummary ? JSON.stringify(aiSummary) : null);
 
-  if (options.ci) handleCI(deduped, options);
-
   if (publishEnabled) {
     await publishScanSummary(deduped);
   }
+
+  if (options.ci) handleCI(deduped, options);
 }
 
 async function discoverFiles(root: string, ignore: string[]) {
@@ -225,7 +231,7 @@ async function runSecurityEngines(root: string): Promise<{ findings: Finding[]; 
 
 async function runSemgrep(root: string): Promise<{ findings: Finding[]; warnings: string[] }> {
   try {
-    const { stdout } = await execFileAsync("semgrep", ["scan", "--config", "auto", "--json", "--quiet", root], { maxBuffer: 20 * 1024 * 1024 });
+    const { stdout } = await execFileAsync("semgrep", ["scan", "--config", "auto", "--json", "--quiet", root], { maxBuffer: 20 * 1024 * 1024, timeout: 120_000 });
     return parseSemgrep(stdout, root);
   } catch (error) {
     const output = typeof error === "object" && error && "stdout" in error ? String((error as { stdout?: unknown }).stdout ?? "") : "";
@@ -248,7 +254,7 @@ function parseSemgrep(output: string, root: string): { findings: Finding[]; warn
 async function runNpmAudit(root: string): Promise<{ findings: Finding[]; warnings: string[] }> {
   if (!(await exists(path.join(root, "package-lock.json")))) return { findings: [], warnings: [] };
   try {
-    const { stdout } = await execFileAsync("npm", ["audit", "--json", "--omit=dev"], { cwd: root, maxBuffer: 20 * 1024 * 1024 });
+    const { stdout } = await execFileAsync("npm", ["audit", "--json", "--omit=dev"], { cwd: root, maxBuffer: 20 * 1024 * 1024, timeout: 120_000 });
     return parseNpmAudit(stdout);
   } catch (error) {
     const output = typeof error === "object" && error && "stdout" in error ? String((error as { stdout?: unknown }).stdout ?? "") : "";
@@ -305,7 +311,10 @@ async function loadRules(rulesPath?: string) {
       }
       try {
         patterns.push({
-          pattern: new RegExp(rule.pattern, rule.flags),
+          pattern: new RegExp(
+            rule.pattern,
+            rule.flags?.includes("g") ? rule.flags : `${rule.flags ?? ""}g`,
+          ),
           severity: rule.severity,
           type: rule.type,
           message: rule.message,
@@ -530,11 +539,11 @@ async function publishScanSummary(
         Prefer: "return=representation",
       },
       body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(15_000),
     });
 
     if (!res.ok) {
-      const text = await res.text();
-      spinner.fail(`Publish failed: ${text}`);
+      spinner.fail(`Publish failed: HTTP ${res.status}`);
       return;
     }
 

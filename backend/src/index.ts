@@ -1,12 +1,18 @@
 #!/usr/bin/env node
-import { pathToFileURL } from "url";
+import fs from "fs";
+import { fileURLToPath } from "url";
 import { runCli } from "./cli.js";
 export { defineConfig } from "./config.js";
 
-const isMain =
-  process.argv[1] &&
-  pathToFileURL(process.argv[1]).href === import.meta.url;
+const isMain = (() => {
+  if (!process.argv[1]) return false;
+  try {
+    return fs.realpathSync(process.argv[1]) === fs.realpathSync(fileURLToPath(import.meta.url));
+  } catch {
+    return false;
+  }
+})();
 
 if (isMain) {
-  runCli();
+  void runCli();
 }

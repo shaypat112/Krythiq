@@ -13,11 +13,9 @@ import { cn } from "@/app/lib/utils";
 
 function CodeBlock({
   code,
-  language = "bash",
   label,
 }: {
   code: string;
-  language?: string;
   label?: string;
 }) {
   const [copied, setCopied] = useState(false);
@@ -112,7 +110,6 @@ function Step({
 const packageManagers = [
   { id: "npm", label: "npm", cmd: "npm install -g krythiq" },
   { id: "pnpm", label: "pnpm", cmd: "pnpm add -g krythiq" },
-  { id: "yarn", label: "yarn", cmd: "yarn global add krythiq" },
   { id: "bun", label: "bun", cmd: "bun add -g krythiq" },
 ];
 
@@ -132,8 +129,8 @@ export default function InstallationPage() {
           Installation
         </h1>
         <p className="text-zinc-400 text-base leading-relaxed max-w-xl">
-          Krythiq is a global CLI tool distributed via npm. Install it once and
-          use it across every project on your machine.
+          Krythiq is a global CLI published through npm. Install it once and use
+          it across projects on your machine.
         </p>
       </div>
 
@@ -142,8 +139,8 @@ export default function InstallationPage() {
         <h2 className="text-sm font-bold text-white">Prerequisites</h2>
         <ul className="space-y-2">
           {[
-            { label: "Node.js 18 or later", check: "node --version" },
-            { label: "npm, pnpm, yarn, or bun", check: "npm --version" },
+            { label: "Node.js 20 or later", check: "node --version" },
+            { label: "npm, pnpm, or bun", check: "npm --version" },
           ].map((req) => (
             <li key={req.label} className="flex items-center gap-3 text-sm">
               <CheckCircle2 size={14} className="text-zinc-300 shrink-0" />
@@ -188,7 +185,7 @@ export default function InstallationPage() {
           </p>
           <CodeBlock code="krythiq --version" />
           <div className="mt-3 rounded-lg border border-zinc-800 bg-zinc-950 px-4 py-3 font-mono text-sm text-zinc-500">
-            <span className="text-zinc-600">→ </span>krythiq v0.1.0
+            <span className="text-zinc-600">→ </span>0.1.1
           </div>
         </Step>
 
@@ -205,16 +202,6 @@ export default function InstallationPage() {
           </p>
         </Step>
 
-        <Step number={4} title="Setup Python AI Service (optional)">
-          <p className="text-sm text-zinc-500 mb-3">
-            For advanced AI code review with machine learning, install Python dependencies:
-          </p>
-          <CodeBlock code="cd backend && bash setup_python.sh" />
-          <p className="text-xs text-zinc-600 mt-2">
-            This installs scikit-learn and other ML libraries for real code analysis.
-          </p>
-        </Step>
-
         <div className="flex gap-5">
           <div className="flex flex-col items-center">
             <div className="w-8 h-8 rounded-full bg-zinc-800/60 border border-zinc-700/70 flex items-center justify-center">
@@ -222,7 +209,7 @@ export default function InstallationPage() {
             </div>
           </div>
           <div className="pb-2 flex-1">
-            <h3 className="text-white font-semibold mt-1">You're ready</h3>
+            <h3 className="text-white font-semibold mt-1">You&apos;re ready</h3>
             <p className="text-sm text-zinc-500 mt-1">
               Head to{" "}
               <a

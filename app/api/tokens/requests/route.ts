@@ -9,8 +9,7 @@ import { RequestAuthError } from "@/app/lib/server/supabaseRest";
 
 export const runtime = "nodejs";
 
-const tokenAdminLogin =
-  process.env.TOKEN_ADMIN_GITHUB_LOGIN?.trim() || "shaypat112";
+const tokenAdminLogin = process.env.TOKEN_ADMIN_GITHUB_LOGIN?.trim() || null;
 
 type TokenRequestRow = {
   id: string;
@@ -27,8 +26,9 @@ async function getAuthContext(request: Request) {
   return {
     ...auth,
     isAdmin:
+      Boolean(tokenAdminLogin) &&
       extractVerifiedGitHubLogin(authUser)?.toLowerCase() ===
-      tokenAdminLogin.toLowerCase(),
+        tokenAdminLogin?.toLowerCase(),
   };
 }
 

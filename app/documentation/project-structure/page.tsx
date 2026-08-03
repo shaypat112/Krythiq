@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Braces, Database, ScanSearch, TerminalSquare } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tree, type TreeViewElement } from "@/components/ui/file-tree";
 
@@ -137,7 +136,7 @@ const repositoryTree: TreeViewElement[] = [
   { id: "public", name: "public", type: "folder" },
   { id: "proxy", name: "proxy.ts", type: "file" },
   { id: "next-config", name: "next.config.ts", type: "file" },
-  { id: "krythiq-config", name: "krythiq.config.ts", type: "file" },
+  { id: "krythiq-config", name: "krythiq.config.mjs", type: "file" },
   { id: "package", name: "package.json", type: "file" },
 ];
 

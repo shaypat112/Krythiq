@@ -1,5 +1,7 @@
 # Krythiq
 
+Repository: <https://github.com/shaypat112/Krythiq>
+
 Krythiq is a code intelligence and application security platform for reviewing GitHub repositories. It combines fast static checks with optional AI-generated repository context, then presents findings, architecture notes, remediation priorities, and scan history in a team-oriented web dashboard.
 
 The repository also contains the publishable `krythiq` CLI, which scans local projects and analyzes terminal failures without requiring the web application.
@@ -144,7 +146,7 @@ STRIPE_PRICE_PRO=
 STRIPE_PRICE_TEAM=
 STRIPE_PRICE_PRO_YEARLY=
 STRIPE_PRICE_TEAM_YEARLY=
-TOKEN_ADMIN_GITHUB_LOGIN=shaypat112
+TOKEN_ADMIN_GITHUB_LOGIN=your-admin-github-login
 
 # Email notifications
 RESEND_API_KEY=
@@ -192,7 +194,7 @@ The CLI lives in `backend/` and has its own dependencies and release lifecycle:
 
 ```bash
 cd backend
-npm install
+npm ci
 npm run build
 node dist/index.js --help
 ```
@@ -203,10 +205,10 @@ Common workflows:
 krythiq init
 krythiq scan
 krythiq scan --ci --fail-on high --format sarif
-krythiq run "npm test"
+krythiq run "npm test" --no-ai
 ```
 
-The base local scan does not send source code to an AI provider. AI-assisted scan summaries require an explicit `--ai` option and Mistral credentials. Terminal trace analysis uses Anthropic unless it is disabled with `--no-ai`.
+The base local scan does not call an AI provider. Semgrep `--config auto` may use Semgrep's network services according to Semgrep's own behavior. AI-assisted scan summaries require an explicit `--ai` option and Mistral credentials; up to 50 findings and their captured snippets are sent. Terminal trace analysis sends recognized stderr stack traces to Anthropic unless disabled with `--no-ai`.
 
 See [`backend/README.md`](backend/README.md) for installation, configuration, custom rules, CI usage, publishing, and the full command reference.
 

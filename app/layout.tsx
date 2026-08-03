@@ -11,17 +11,30 @@ import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://krythiq.dev";
+const structuredData = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: "Krythiq",
+  url: siteUrl,
+  logo: `${siteUrl}/krythiq-favicon.png`,
+  sameAs: ["https://github.com/shaypat112/Krythiq"],
+};
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"),
+  metadataBase: new URL(siteUrl),
   title: "Krythiq — AI-Powered Code Intelligence & Security Platform",
   description:
     "Enterprise-grade code analysis, security scanning, and repository intelligence. Transform your development workflow with AI-powered insights.",
   icons: {
-    icon: "/krythiq_logo.jpeg",
-    shortcut: "/krythiq_logo.jpeg",
-    apple: "/krythiq_logo.jpeg",
+    icon: [
+      { url: "/krythiq-favicon.png", type: "image/png", sizes: "1254x1254" },
+      { url: "/krythiq_logo.jpeg", type: "image/jpeg", sizes: "1024x559" },
+    ],
+    shortcut: "/krythiq-favicon.png",
+    apple: "/krythiq-favicon.png",
   },
+  alternates: { canonical: "/" },
   openGraph: {
     title: "Krythiq — AI-Powered Code Intelligence & Security Platform",
     description:
@@ -31,7 +44,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Krythiq — AI-Powered Code Intelligence & Security Platform",
-    description: "Ship AI-generated code without shipping its vulnerabilities.",
+    description: "Repository security scans, findings, and remediation workflows.",
     images: ["/og.png"],
   },
 };
@@ -43,6 +56,12 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning className={cn(geist.variable)}>
+      <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData).replace(/</g, "\\u003c") }}
+        />
+      </head>
       <body className="bg-background text-foreground antialiased">
         <ThemeProvider defaultTheme="dark">
           <TooltipProvider delayDuration={350} skipDelayDuration={150}>

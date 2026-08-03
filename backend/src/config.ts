@@ -7,20 +7,13 @@ export interface KrythiqConfig {
   model?: string;
   traces?: {
     enabled?: boolean;
-    minConfidence?: number;
-    showFix?: boolean;
   };
   scan?: {
     ignore?: string[];
-    autoFix?: boolean;
     ai?: boolean;
     aiModel?: string;
     publish?: boolean;
     rules?: string;
-  };
-  slop?: {
-    enabled?: boolean;
-    checkImports?: boolean;
   };
 }
 
@@ -61,9 +54,10 @@ export async function loadConfig(cwd: string = process.cwd()): Promise<LoadedCon
   try {
     const config = await importConfig(found);
     return { config: config ?? {}, source: found, warnings };
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
     warnings.push(
-      `Failed to load ${path.relative(cwd, found)}: ${err?.message ?? String(err)}`
+      `Failed to load ${path.relative(cwd, found)}: ${message}`
     );
     return { config: {}, source: found, warnings };
   }

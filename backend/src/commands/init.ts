@@ -16,25 +16,15 @@ export default defineConfig({
   // Stack trace analysis settings
   traces: {
     enabled: true,
-    // Minimum confidence to display (0-100)
-    minConfidence: 70,
-    // Show fix suggestions
-    showFix: true,
   },
 
   // Security scanning settings
   scan: {
     // Glob patterns to ignore
     ignore: ["node_modules/**", ".next/**", "dist/**", "build/**"],
-    // Auto-fix safe issues
-    autoFix: false,
-  },
-
-  // Slop detection settings  
-  slop: {
-    enabled: true,
-    // Flag imports that don't exist in npm
-    checkImports: true,
+    // Opt in to Mistral summaries
+    ai: false,
+    aiModel: "mistral-large-latest",
   },
 });
 `;

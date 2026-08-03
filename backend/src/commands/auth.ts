@@ -7,9 +7,16 @@ interface AuthOptions {
   clear: boolean;
 }
 
-const store = new Conf<{ apiKey?: string }>({ projectName: "krythiq" });
-
 export async function authCommand(options: AuthOptions) {
+  let store: Conf<{ apiKey?: string }>;
+  try {
+    store = new Conf<{ apiKey?: string }>({ projectName: "krythiq" });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(chalk.red(`\nUnable to access the local credential store: ${message}\n`));
+    process.exitCode = 1;
+    return;
+  }
   if (options.clear) {
     store.delete("apiKey");
     console.log(`\n${chalk.green("✓")} Credentials cleared.\n`);
@@ -27,7 +34,7 @@ export async function authCommand(options: AuthOptions) {
 
   console.log(`\n${chalk.bold("krythiq")} ${chalk.dim("— Enable AI Logic ")}\n`);
   console.log(
-    chalk.dim("  Your key is stored locally and never accesed publicly.\n")
+    chalk.dim("  Your key is stored in your operating system's user configuration directory.\n")
   );
 
 
@@ -53,8 +60,10 @@ export async function authCommand(options: AuthOptions) {
     store.set("apiKey", apiKey);
     spinner.succeed("Key verified and saved");
     console.log(`\n  You're all set. Run ${chalk.cyan('krythiq run "npm start"')} to begin.\n`);
-  } catch (err: any) {
+  } catch (err: unknown) {
     spinner.fail("Key verification failed");
-    console.error(chalk.red(`  ${err.message}\n`));
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(chalk.red(`  ${message}\n`));
+    process.exitCode = 1;
   }
 }

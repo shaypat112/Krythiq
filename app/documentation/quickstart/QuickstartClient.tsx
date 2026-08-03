@@ -2,9 +2,7 @@
 
 import { useState } from "react";
 import {
-  Terminal,
   ArrowRight,
-  CheckCircle2,
   Copy,
   Check,
   Zap,
@@ -114,7 +112,7 @@ const steps = [
     cmd: "krythiq init",
     output: `→ Detecting project stack...
 ✓ Node.js / TypeScript detected
-✓ Created krythiq.config.ts
+✓ Created krythiq.config.mjs
 ✓ Added .krythiq/ to .gitignore
 
 Ready. Run: krythiq run "npm start"`,
@@ -124,10 +122,10 @@ Ready. Run: krythiq run "npm start"`,
     number: 2,
     title: "Wrap your start command",
     description:
-      "Replace your usual start command with krythiq run. It pipes your process output through the AI analyzer.",
-    cmd: `krythiq run "npm start"`,
+      "Wrap a trusted command. Use --no-ai to stream output without an Anthropic credential.",
+    cmd: `krythiq run "npm start" --no-ai`,
     output: `● krythiq watching - node v20.11.0
-● Intercepting stderr + uncaught exceptions
+● AI disabled
 
   > myapp@1.0.0 start
   > node index.js
@@ -154,7 +152,7 @@ Server listening on :3000`,
 
     router.get('/profile', authMiddleware, handler)
 
-  Confidence: 94%  |  Similar: 3 past occurrences
+  Confidence: 94%
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
     tip: null,
   },
@@ -164,17 +162,13 @@ Server listening on :3000`,
     description:
       "Scan your codebase for vulnerabilities at any time with a single command.",
     cmd: "krythiq scan",
-    output: `● Scanning 1,204 files...
+    output: `krythiq scan
 
-✓ No hardcoded secrets found
-✓ No SQL injection patterns
-⚠  XSS risk - src/pages/search.tsx:88
-   Unsanitized user input rendered via dangerouslySetInnerHTML
+✓ Found 214 files
+✓ Scanned 214 files
 
-2 low-severity warnings
-0 critical issues
-
-Run: krythiq scan --fix   to auto-patch`,
+Semgrep is unavailable; install Semgrep or provide .krythiq/rules.json for code-rule scanning.
+✓ No issues found`,
     tip: "Add krythiq scan to your CI pipeline with krythiq scan --ci --fail-on=high",
   },
 ];
@@ -286,7 +280,7 @@ export default function QuickStartPage() {
 
       {/* What's next */}
       <div className="space-y-3">
-        <h2 className="text-lg font-bold text-white">What's next</h2>
+        <h2 className="text-lg font-bold text-white">What&apos;s next</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {[
             {
@@ -295,17 +289,17 @@ export default function QuickStartPage() {
               desc: "Customize how Krythiq explains errors",
             },
             {
-              href: "/documentation/security",
+              href: "/documentation/ai-detection",
               title: "Security Scanning",
               desc: "Run deep vulnerability audits",
             },
             {
               href: "/documentation/config",
               title: "Configuration",
-              desc: "krythiq.config.ts reference",
+              desc: "krythiq.config.mjs reference",
             },
             {
-              href: "/documentation/cli-reference",
+              href: "/documentation/commands",
               title: "CLI Reference",
               desc: "Every command and flag",
             },

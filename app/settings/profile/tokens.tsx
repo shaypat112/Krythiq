@@ -32,7 +32,7 @@ type TokenRequest = {
 
 type RequestSummary = {
   isAdmin: boolean;
-  adminLogin: string;
+  adminLogin: string | null;
   ownRequests: TokenRequest[];
   pendingRequests: TokenRequest[];
 };
@@ -132,7 +132,9 @@ export function TokensSection() {
         <CardHeader>
           <CardTitle>Request test Tokens</CardTitle>
           <p className="text-sm text-muted-foreground">
-            Ask @{requests?.adminLogin ?? "shaypat112"} for up to 500 Tokens while billing is in test mode.
+            {requests?.adminLogin
+              ? `Ask @${requests.adminLogin} for up to 500 Tokens while billing is in test mode.`
+              : "Request up to 500 test Tokens. Reviews require TOKEN_ADMIN_GITHUB_LOGIN to be configured on the server."}
           </p>
         </CardHeader>
         <CardContent className="space-y-5">

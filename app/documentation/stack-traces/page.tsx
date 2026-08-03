@@ -40,7 +40,7 @@ export default function StackTraces() {
         </CardHeader>
         <CardDescription className="px-6 pb-6 space-y-4">
           <p className="text-sm text-muted-foreground">
-            When you run <code>krythiq run "your-command"</code>, krythiq:
+            When you run <code>krythiq run &quot;your-command&quot;</code>, krythiq:
           </p>
           <ol className="space-y-3 text-sm text-muted-foreground list-decimal list-inside">
             <li>Spawns your process and captures all stderr output</li>
@@ -64,7 +64,7 @@ export default function StackTraces() {
           </p>
           <CodeBlock code={`krythiq run "npm start"`} />
           <p className="text-sm text-muted-foreground">
-            When an error occurs, you'll see:
+            When an error occurs, you&apos;ll see:
           </p>
           <CodeBlock
             label="Example output"
@@ -134,18 +134,6 @@ TypeError: Cannot read properties of undefined (reading 'id')
                 backtrace module format
               </p>
             </div>
-            <div>
-              <p className="font-mono text-foreground">Java</p>
-              <p className="text-xs text-muted-foreground">
-                Exception traces supported
-              </p>
-            </div>
-            <div>
-              <p className="font-mono text-foreground">C / C++</p>
-              <p className="text-xs text-muted-foreground">
-                Stack traces with line info
-              </p>
-            </div>
           </div>
         </CardDescription>
       </Card>
@@ -172,7 +160,7 @@ TypeError: Cannot read properties of undefined (reading 'id')
                 <code>claude-sonnet-4-20250514</code>)
               </p>
               <CodeBlock
-                code={`krythiq run --model claude-opus-4-1 "npm start"`}
+                code={`krythiq run "npm start" --model your-anthropic-model`}
               />
             </div>
 
@@ -201,9 +189,7 @@ TypeError: Cannot read properties of undefined (reading 'id')
   model: "claude-sonnet-4-20250514",
   
   traces: {
-    enabled: true,        // Enable/disable trace analysis
-    minConfidence: 70,    // Only show explanations with 70%+ confidence
-    showFix: true,        // Include fix suggestions
+    enabled: true,
   },
 });`}
           />
@@ -251,11 +237,11 @@ TypeError: Cannot read properties of undefined (reading 'id')
         <CardDescription className="px-6 pb-6 space-y-4">
           <ul className="space-y-2 text-sm text-muted-foreground list-disc list-inside">
             <li>
-              <strong>Anthropic API Key:</strong> Run{" "}
-              <code>krythiq auth</code> to configure
+              <strong>Anthropic API Key (optional):</strong> Run{" "}
+              <code>krythiq auth</code> to enable AI analysis; commands still run without it
             </li>
             <li>
-              <strong>Node.js 18+:</strong> Krythiq itself requires Node 18 or
+              <strong>Node.js 20+:</strong> Krythiq itself requires Node 20 or
               later
             </li>
             <li>
@@ -287,9 +273,8 @@ TypeError: Cannot read properties of undefined (reading 'id')
                 Analysis taking too long?
               </h4>
               <p className="text-xs text-muted-foreground mt-1">
-                Use a faster model like{" "}
-                <code>claude-haiku-3.5</code> with{" "}
-                <code>--model claude-haiku-3.5</code>
+                Select a model available to your Anthropic account with{" "}
+                <code>--model</code>.
               </p>
             </div>
 
@@ -298,8 +283,7 @@ TypeError: Cannot read properties of undefined (reading 'id')
                 Running out of API quota?
               </h4>
               <p className="text-xs text-muted-foreground mt-1">
-                Use <code>krythiq run --no-ai</code> to disable AI features, or
-                run with <code>--verbose</code> to see API usage
+                Use <code>krythiq run --no-ai</code> to disable AI features.
               </p>
             </div>
           </div>
