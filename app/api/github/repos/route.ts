@@ -5,6 +5,7 @@ import {
   requireRequestAuth,
   supabaseFetch,
 } from "@/app/lib/server/supabaseRest";
+import { createNotification } from "@/app/lib/server/notifications";
 
 export const runtime = "nodejs";
 
@@ -105,6 +106,7 @@ export async function POST(request: Request) {
     }
 
     const stored = await insertRes.json();
+    await createNotification({ env, accessToken, userId, type: "repository.synced", data: { repository_count: stored.length, message: `${stored.length} GitHub ${stored.length === 1 ? "repository is" : "repositories are"} synchronized and ready to scan.` } }).catch(() => undefined);
     return NextResponse.json({ repos: stored });
   } catch (error) {
     if (error instanceof RequestAuthError) {

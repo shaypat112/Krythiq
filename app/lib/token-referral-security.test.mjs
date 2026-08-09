@@ -97,7 +97,8 @@ test("test Token requests are capped, single-pending, and credited once", () => 
   );
 });
 
-test("only the verified configured GitHub identity can review Token requests", () => {
+test("only the verified shaypat112 GitHub identity can review Token requests", () => {
+  assert.match(requestRoute, /const tokenAdminLogin = "shaypat112"/);
   assert.match(requestRoute, /extractVerifiedGitHubLogin\(authUser\).*tokenAdminLogin/s);
   assert.match(requestRoute, /if \(!isAdmin\)[\s\S]*Admin access required/);
   assert.doesNotMatch(requestRoute, /profile.*username.*isAdmin/i);

@@ -61,7 +61,7 @@ function AcceptInvitation() {
         </CardHeader>
         <CardContent>
           <p className="text-sm leading-6 text-muted-foreground">{message}</p>
-          {status !== "loading" ? <Button className="mt-5" onClick={() => router.replace(status === "success" ? "/scan?view=repositories" : "/settings?section=teams")}>{status === "success" ? "Open workspace" : "Go to teams"}</Button> : null}
+          {status !== "loading" ? <Button className="mt-5" onClick={() => router.replace(status === "success" ? "/settings?section=account" : "/settings?section=teams")}>{status === "success" ? "Open workspace" : "Go to teams"}</Button> : null}
         </CardContent>
       </Card>
     </div>

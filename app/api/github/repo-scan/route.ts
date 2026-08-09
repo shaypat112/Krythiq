@@ -143,6 +143,7 @@ async function executeScan(request: Request) {
     await deliverWebhooks(supabaseEnv, accessToken, {
       userId,
       event: "scan.completed",
+      teamId: selectedTeamId,
       payload: {
         scan_id: inserted?.[0]?.id ?? null,
         repo_url: repoFullName,

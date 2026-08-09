@@ -20,6 +20,7 @@ import { AlertCircle, Bell, CheckCircle2, Database, FolderGit2, ScanSearch, Shie
 import { buildAuthHeaders } from "@/app/lib/http";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { BentoGrid } from "@/components/ui/bento-grid";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -154,8 +155,8 @@ export function RetentionSection() {
   const hasScans = summary.totals.scans > 0;
 
   return (
-    <div className="space-y-6">
-      <SectionCard title="Your data" description="Security activity for your signed-in account only.">
+    <BentoGrid className="auto-rows-auto grid-cols-1 gap-4 lg:grid-cols-2">
+      <SectionCard className="lg:col-span-2" title="Your data" description="Security activity for your signed-in account only.">
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <Metric icon={ScanSearch} label="Total scans" value={summary.totals.scans} />
           <Metric icon={ShieldAlert} label="Findings" value={summary.totals.findings} />
@@ -166,7 +167,7 @@ export function RetentionSection() {
         </div>
       </SectionCard>
 
-      <SectionCard title="30-day activity" description="Scans and findings recorded each day.">
+      <SectionCard className="lg:col-span-2" title="30-day activity" description="Scans and findings recorded each day.">
         <div className="h-64" aria-label="Thirty-day scan activity chart">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={summary.activity} margin={{ top: 8, right: 8, left: -24, bottom: 0 }}>
@@ -185,7 +186,6 @@ export function RetentionSection() {
         </div>
       </SectionCard>
 
-      <div className="grid gap-6 lg:grid-cols-2">
         <SectionCard title="Risk distribution" description="Highest severity recorded per scan.">
           {hasScans ? <div className="h-56"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={summary.severity} dataKey="value" nameKey="name" innerRadius={48} outerRadius={78} paddingAngle={3}>{summary.severity.map((entry) => <Cell key={entry.name} fill={severityColors[entry.name]} />)}</Pie><Tooltip contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }} /></PieChart></ResponsiveContainer></div> : <EmptyState />}
           <div className="flex flex-wrap justify-center gap-3">{summary.severity.map((item) => <span key={item.name} className="flex items-center gap-1.5 text-xs capitalize text-muted-foreground"><span className="h-2 w-2 rounded-full" style={{ backgroundColor: severityColors[item.name] }} />{item.name} {item.value}</span>)}</div>
@@ -194,13 +194,11 @@ export function RetentionSection() {
         <SectionCard title="Most scanned repositories" description="Top repositories by scan count.">
           {summary.repositories.length ? <div className="h-64"><ResponsiveContainer width="100%" height="100%"><BarChart data={summary.repositories} layout="vertical" margin={{ top: 0, right: 8, left: 12, bottom: 0 }}><CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={false} /><XAxis type="number" allowDecimals={false} tick={{ fontSize: 10, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} /><YAxis type="category" dataKey="name" width={100} tickFormatter={(value) => value.length > 16 ? `…${value.slice(-15)}` : value} tick={{ fontSize: 10, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} /><Tooltip contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }} /><Bar dataKey="scans" fill="#0ea5e9" radius={[0, 4, 4, 0]} /></BarChart></ResponsiveContainer></div> : <EmptyState />}
         </SectionCard>
-      </div>
-
-      <SectionCard title="Recent scans" description="Your eight most recent repository scans.">
+      <SectionCard className="lg:col-span-2" title="Recent scans" description="Your eight most recent repository scans.">
         {summary.recentScans.length ? <div className="overflow-x-auto"><table className="w-full min-w-[560px] text-left text-sm"><thead className="border-b border-border text-xs uppercase tracking-wider text-muted-foreground"><tr><th className="pb-3 font-medium">Repository</th><th className="pb-3 font-medium">Severity</th><th className="pb-3 text-right font-medium">Findings</th><th className="pb-3 text-right font-medium">Score</th><th className="pb-3 text-right font-medium">Date</th></tr></thead><tbody>{summary.recentScans.map((scan, index) => <tr key={`${scan.repo}-${scan.created_at}-${index}`} className="border-b border-border/60 last:border-0"><td className="max-w-48 truncate py-3 font-medium">{scan.repo}</td><td className="py-3"><span className="capitalize" style={{ color: severityColors[scan.severity] }}>{scan.severity}</span></td><td className="py-3 text-right tabular-nums">{scan.issues}</td><td className="py-3 text-right tabular-nums">{scan.score}/100</td><td className="py-3 text-right text-muted-foreground">{new Date(scan.created_at).toLocaleDateString()}</td></tr>)}</tbody></table></div> : <EmptyState />}
       </SectionCard>
 
-      <SectionCard title="Data retention" description="Account data is automatically removed after 30 days.">
+      <SectionCard className="lg:col-span-2" title="Data retention" description="Account data is automatically removed after 30 days.">
         <div className="flex items-center justify-between rounded-lg border border-border bg-muted/30 px-4 py-3"><div><p className="text-sm font-medium">Retention window</p><p className="mt-0.5 text-xs text-muted-foreground">Applies to scan history and notifications.</p></div><span className="rounded-md border border-border bg-background px-2.5 py-1 font-mono text-xs">30 days</span></div>
         <div className="pt-2"><p className="mb-3 text-xs font-medium uppercase tracking-widest text-muted-foreground">Danger zone</p><div className="flex flex-wrap gap-2"><DangerButton disabled={clearing !== null} onClick={() => setConfirmation({ action: "clear", scope: "scan_history" })}>{clearing === "scan_history" ? "Clearing…" : "Clear scan history"}</DangerButton><DangerButton disabled={clearing !== null} onClick={() => setConfirmation({ action: "clear", scope: "notifications" })}>{clearing === "notifications" ? "Clearing…" : "Clear notifications"}</DangerButton><DangerButton disabled={clearing !== null} onClick={() => setConfirmation({ action: "clear", scope: "all" })}>{clearing === "all" ? "Clearing…" : "Clear all data"}</DangerButton></div>
           <div className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 p-4"><p className="text-sm font-semibold text-red-500">Delete account</p><p className="mt-1 text-xs text-red-500/80">Permanently removes your profile, notifications, scans, linked repositories, and sign-in access.</p><DangerButton onClick={() => setConfirmation({ action: "delete" })} className="mt-4 w-full bg-red-600 px-4 py-3 text-sm font-semibold text-white hover:bg-red-700 hover:text-white">Delete my account permanently</DangerButton></div>
@@ -250,7 +248,7 @@ export function RetentionSection() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </BentoGrid>
   );
 }
 

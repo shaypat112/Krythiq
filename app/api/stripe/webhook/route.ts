@@ -3,6 +3,7 @@ import Stripe from "stripe";
 import { stripe } from "@/app/lib/stripe";
 import { getSupabaseEnv } from "@/app/lib/server/supabaseRest";
 import { getConfiguredTokenPack, isTokenPackId } from "@/app/lib/token-packs";
+import { createNotification } from "@/app/lib/server/notifications";
 
 export const runtime = "nodejs";
 
@@ -61,6 +62,11 @@ export async function POST(request: Request) {
     return customer.deleted ? null : customer.metadata.user_id ?? null;
   };
 
+  const notifyBillingUpdate = async (userId: string | null, message: string) => {
+    if (!userId) return;
+    await createNotification({ env, accessToken: "", userId, type: "billing.updated", data: { message }, useServiceRole: true });
+  };
+
   const fulfillTokenPurchase = async (session: Stripe.Checkout.Session) => {
     if (session.payment_status !== "paid") return;
     if (!adminHeaders) throw new Error("Supabase service role is not configured.");
@@ -101,6 +107,7 @@ export async function POST(request: Request) {
       }),
     });
     if (!response.ok) throw new Error("Unable to credit token purchase.");
+    await notifyBillingUpdate(userId, `${pack.tokens.toLocaleString()} purchased Tokens were added to your account.`);
   };
 
   try {
@@ -124,6 +131,7 @@ export async function POST(request: Request) {
           price_id: priceId,
           updated_at: new Date().toISOString(),
         });
+        await notifyBillingUpdate(userId, "Your Krythiq subscription is active.");
         break;
       }
       case "checkout.session.async_payment_succeeded": {
@@ -158,6 +166,7 @@ export async function POST(request: Request) {
           current_period_end: periodEnd,
           updated_at: new Date().toISOString(),
         });
+        await notifyBillingUpdate(userId, `Your Krythiq subscription status changed to ${status}.`);
         break;
       }
       default:

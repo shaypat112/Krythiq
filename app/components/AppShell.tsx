@@ -17,7 +17,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Bell, ChevronDown, Coins, CreditCard, Moon, SunMedium } from "lucide-react";
+import { Bell, ChevronDown, Coins, CreditCard, Github, Moon, SunMedium } from "lucide-react";
 import { formatTokens } from "@/app/lib/tokens";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { DesktopRequired } from "./mobile/DesktopRequired";
@@ -31,6 +31,14 @@ const appLinks = [
   { href: "/documentation", label: "Docs" },
   { href: "/settings", label: "Settings" },
 ];
+
+type NotificationItem = {
+  id: string;
+  type: string;
+  data: Record<string, unknown>;
+  read_at: string | null;
+  created_at: string;
+};
 
 function getDisplayName(user: User) {
   const meta = user.user_metadata ?? {};
@@ -52,6 +60,18 @@ function formatNotificationTitle(type: string) {
       return "Review created";
     case "repository.published":
       return "Repository published";
+    case "token.requested":
+      return "Token request submitted";
+    case "token.refund_requested":
+      return "Token refund requested";
+    case "token.approved":
+      return "Token request approved";
+    case "token.rejected":
+      return "Token request rejected";
+    case "team.joined":
+      return "Team joined";
+    case "repository.synced":
+      return "Repositories synchronized";
     default:
       return type.replace(".", " ");
   }
@@ -65,17 +85,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [signingOut, setSigningOut] = useState(false);
-  const [notifications, setNotifications] = useState<
-    Array<{
-      id: string;
-      type: string;
-      data: Record<string, unknown>;
-      read_at: string | null;
-      created_at: string;
-    }>
-  >([]);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [notifLoading, setNotifLoading] = useState(false);
   const [tokenBalance, setTokenBalance] = useState<number | null>(null);
+  const [githubReady, setGithubReady] = useState(false);
 
   const supabase = useMemo(() => createClient(), []);
 
@@ -83,9 +96,17 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     let mounted = true;
 
     const init = async () => {
-      const { data } = await supabase.auth.getUser();
+      const [{ data }, { data: sessionData }] = await Promise.all([
+        supabase.auth.getUser(),
+        supabase.auth.getSession(),
+      ]);
       if (mounted) {
         setUser(data.user ?? null);
+        const session = sessionData.session;
+        const hasGitHubIdentity =
+          session?.user.app_metadata?.provider === "github" ||
+          session?.user.identities?.some((identity) => identity.provider === "github") === true;
+        setGithubReady(Boolean(hasGitHubIdentity && session?.provider_token));
         setLoading(false);
       }
     };
@@ -95,6 +116,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     const { data: listener } = supabase.auth.onAuthStateChange(
       (_event, session) => {
         setUser(session?.user ?? null);
+        const hasGitHubIdentity =
+          session?.user.app_metadata?.provider === "github" ||
+          session?.user.identities?.some((identity) => identity.provider === "github") === true;
+        setGithubReady(Boolean(hasGitHubIdentity && session?.provider_token));
         setLoading(false);
       },
     );
@@ -131,12 +156,40 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       setNotifLoading(false);
     };
 
-    loadNotifications();
+    void loadNotifications();
+
+    if (!user) return () => { mounted = false; };
+
+    const channel = supabase
+      .channel(`notifications:${user.id}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` },
+        (payload) => {
+          if (!mounted) return;
+          if (payload.eventType === "INSERT") {
+            const item = payload.new as NotificationItem;
+            setNotifications((current) => [item, ...current.filter((existing) => existing.id !== item.id)].slice(0, 10));
+          } else if (payload.eventType === "UPDATE") {
+            const item = payload.new as NotificationItem;
+            setNotifications((current) => current.map((existing) => existing.id === item.id ? item : existing));
+          } else if (payload.eventType === "DELETE") {
+            const deletedId = String(payload.old?.id ?? "");
+            setNotifications((current) => current.filter((item) => item.id !== deletedId));
+          }
+        },
+      )
+      .subscribe();
+
+    const refresh = () => void loadNotifications();
+    window.addEventListener("notifications:updated", refresh);
 
     return () => {
       mounted = false;
+      window.removeEventListener("notifications:updated", refresh);
+      void supabase.removeChannel(channel);
     };
-  }, [user, supabase]);
+  }, [user, supabase]); // notifications are intentionally updated inside the realtime callback
 
   useEffect(() => {
     let mounted = true;
@@ -304,6 +357,31 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
 	            {!loading && user ? (
 	              <div className="flex items-center gap-3">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Link
+                        href="/settings?section=integrations"
+                        className={`inline-flex h-9 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition hover:brightness-110 ${
+                          githubReady
+                            ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                            : "border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-400"
+                        }`}
+                        aria-label={githubReady ? "GitHub connected and ready to scan" : "GitHub not connected"}
+                      >
+                        <Github className="h-4 w-4" />
+                        <span className="hidden sm:inline">{githubReady ? "GitHub ready" : "GitHub offline"}</span>
+                        <span
+                          aria-hidden="true"
+                          className={`h-1.5 w-1.5 rounded-full ${githubReady ? "bg-emerald-500" : "bg-red-500"}`}
+                        />
+                      </Link>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">
+                      {githubReady
+                        ? "GitHub connected — repositories are ready to scan."
+                        : "GitHub not connected — connect or reconnect to sync repositories."}
+                    </TooltipContent>
+                  </Tooltip>
                   <Link
                     href="/settings?section=tokens"
                     className="inline-flex h-9 items-center gap-1.5 rounded-full border border-border bg-card px-3 text-xs font-medium transition hover:bg-muted"

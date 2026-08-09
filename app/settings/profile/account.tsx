@@ -3,6 +3,7 @@
 import { useSettings } from "./context";
 import { SectionCard, FieldGroup, StyledInput, GhostButton } from "./primitives";
 import { Loader2, Save, X } from "lucide-react";
+import { RepositoryConnections } from "./repositories";
 
 export function AccountSection() {
   const { settings, update, save, saving, setStatus } = useSettings();
@@ -20,7 +21,7 @@ export function AccountSection() {
   };
 
   return (
-    <SectionCard
+    <div className="space-y-6"><SectionCard
       title="Account"
       description="Your personal profile information."
     >
@@ -69,6 +70,6 @@ export function AccountSection() {
           </GhostButton>
         </div>
       </div>
-    </SectionCard>
+    </SectionCard><RepositoryConnections /></div>
   );
 }

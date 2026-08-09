@@ -283,7 +283,12 @@ export default function FileUpload({
 
       const fileType = file.type.toLowerCase();
       if (
-        !acceptedFileTypes.some((type) => fileType.match(type.toLowerCase()))
+        !acceptedFileTypes.some((type) => {
+          const accepted = type.toLowerCase();
+          return accepted.startsWith(".")
+            ? file.name.toLowerCase().endsWith(accepted)
+            : Boolean(fileType.match(accepted));
+        })
       ) {
         return {
           message: `File type must be ${acceptedFileTypes.join(", ")}`,
@@ -492,7 +497,7 @@ export default function FileUpload({
                       <p className="text-gray-500 text-xs dark:text-gray-400">
                         {acceptedFileTypes?.length
                           ? `${acceptedFileTypes
-                              .map((t) => t.split("/")[1])
+                              .map((type) => type.startsWith(".") ? type.slice(1) : type.split("/")[1] ?? type)
                               .join(", ")
                               .toUpperCase()}`
                           : "SVG, PNG, JPG or GIF"}{" "}

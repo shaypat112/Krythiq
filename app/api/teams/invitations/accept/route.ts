@@ -1,10 +1,11 @@
 import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 import { getSupabaseEnv, RequestAuthError, requireRequestAuth, supabaseFetch } from "@/app/lib/server/supabaseRest";
+import { createNotification } from "@/app/lib/server/notifications";
 
 export async function POST(request: Request) {
   try {
-    const { accessToken } = requireRequestAuth(request);
+    const { accessToken, userId } = requireRequestAuth(request);
     const body = await request.json().catch(() => ({}));
     const token = typeof body?.token === "string" ? body.token : "";
     if (token.length < 32) return NextResponse.json({ error: "Invalid invitation link." }, { status: 400 });
@@ -24,6 +25,7 @@ export async function POST(request: Request) {
       );
     }
     const accepted = (await result.json())?.[0];
+    await createNotification({ env: getSupabaseEnv(), accessToken, userId, teamId: accepted?.team_id ?? null, type: "team.joined", data: { team_name: accepted?.team_name, message: `You joined ${accepted?.team_name ?? "the team"}.` } }).catch(() => undefined);
     return NextResponse.json({ ok: true, team: { id: accepted?.team_id, name: accepted?.team_name } });
   } catch (error) {
     if (error instanceof RequestAuthError) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

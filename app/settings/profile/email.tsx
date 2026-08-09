@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { ReferralSection } from "./referrals";
 
@@ -135,6 +136,8 @@ export function EmailSection() {
   };
 
   if (loading) return <div className="space-y-4"><Skeleton className="h-36" /><Skeleton className="h-96" /></div>;
+  const enabledEmailEvents = events.filter((event) => preferences.get(event.id)).length;
+  const allEmailUpdates = events.length > 0 && enabledEmailEvents === events.length;
 
   return (
     <div className="space-y-6">
@@ -180,6 +183,18 @@ export function EmailSection() {
           <p className="text-sm text-muted-foreground">{deliveryAvailable ? `Messages are sent to ${currentEmail}.` : "Email delivery is not configured for this deployment yet."}</p>
         </CardHeader>
         <CardContent className="space-y-1">
+          <label className="mb-3 flex cursor-pointer items-start gap-3 rounded-xl border border-border bg-muted/20 p-4">
+            <Checkbox
+              checked={allEmailUpdates ? true : enabledEmailEvents > 0 ? "indeterminate" : false}
+              disabled={!deliveryAvailable}
+              onCheckedChange={(checked) => {
+                const enabled = checked === true;
+                setPreferences(new Map(events.map((event) => [event.id, enabled])));
+              }}
+              aria-label="Email me notification updates"
+            />
+            <span><span className="block text-sm font-medium">Email me notification updates</span><span className="mt-1 block text-xs leading-5 text-muted-foreground">Turn email delivery on or off for every product notification below. You can still customize individual events.</span></span>
+          </label>
           {events.map((event) => {
             const enabled = Boolean(preferences.get(event.id));
             return (

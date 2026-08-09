@@ -1,6 +1,7 @@
 import { supabaseFetch, type SupabaseEnv } from "./supabaseRest";
 import { createHmac } from "node:crypto";
 import { fetchWithTimeout, validatePublicHttpsUrl } from "./outboundRequests";
+import { notificationEvents } from "@/app/lib/notifications/catalog";
 
 const RETRY_MINUTES = 5;
 
@@ -28,9 +29,16 @@ export async function deliverWebhooks(
     userId: string;
     event: string;
     payload: Record<string, unknown>;
+    teamId?: string | null;
   },
 ) {
   if (!accessToken) return;
+
+  const teamFilter = options.teamId ? `team_id=eq.${encodeURIComponent(options.teamId)}` : "team_id=is.null";
+  const preferenceRes = await supabaseFetch(env, `notification_preferences?user_id=eq.${options.userId}&${teamFilter}&channel=eq.webhook&event=eq.${encodeURIComponent(options.event)}&select=enabled&limit=1`, { accessToken });
+  const storedPreference = preferenceRes.ok ? (await preferenceRes.json() as Array<{ enabled: boolean }>)[0]?.enabled : undefined;
+  const webhookDefault = (notificationEvents.find((event) => event.id === options.event)?.defaultChannels as readonly string[] | undefined)?.includes("webhook") ?? true;
+  if (!(storedPreference ?? webhookDefault)) return;
 
   const endpointsRes = await supabaseFetch(
     env,

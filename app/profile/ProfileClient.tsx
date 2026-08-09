@@ -147,7 +147,7 @@ export default function ProfileClient({ initialTab = "scans" }: { initialTab?: T
       setError(null);
       const hasGitHubIdentity = sessionData.session?.user.identities?.some((identity) => identity.provider === "github") === true;
       const options = {
-        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent("/scan?view=repositories")}`,
+        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent("/settings?section=account")}`,
         scopes: "repo read:user user:email",
       };
       const result = hasGitHubIdentity

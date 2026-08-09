@@ -18,6 +18,7 @@ import {
 } from "@/app/lib/server/tokenLedger";
 import { readScanTier, scanTierCatalog } from "@/app/lib/tokens";
 import {
+  defaultAiSettings,
   normalizeAiSettings,
   readScanScope,
 } from "@/app/lib/ai-settings";
@@ -73,7 +74,11 @@ export async function POST(request: Request) {
     const settingsRows = settingsResponse.ok
       ? ((await settingsResponse.json()) as Array<{ data?: unknown }>)
       : [];
-    const aiSettings = normalizeAiSettings(settingsRows[0]?.data);
+    const storedAiSettings = normalizeAiSettings(settingsRows[0]?.data);
+    const aiSettings = {
+      ...defaultAiSettings,
+      defaultScanScope: storedAiSettings.defaultScanScope,
+    };
     const scanScope =
       readScanScope(body?.options?.scanScope) ?? aiSettings.defaultScanScope;
     const options = { ...(body?.options ?? {}), scanTier, scanScope };

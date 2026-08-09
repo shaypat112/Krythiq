@@ -120,13 +120,15 @@ export function SectionCard({
   title,
   description,
   children,
+  className,
 }: {
   title: string;
   description?: string;
   children: React.ReactNode;
+  className?: string;
 }) {
   return (
-    <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+    <div className={cn("overflow-hidden rounded-xl border border-border bg-card shadow-sm", className)}>
       <div className="border-b border-border px-6 py-4">
         <h3 className="text-sm font-semibold text-foreground">{title}</h3>
         {description && (

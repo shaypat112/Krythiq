@@ -6,15 +6,19 @@ import {
 } from "@/app/lib/server/admin";
 import { requireVerifiedRequestAuth } from "@/app/lib/server/requestAuth";
 import { RequestAuthError } from "@/app/lib/server/supabaseRest";
+import { getSupabaseEnv } from "@/app/lib/server/supabaseRest";
+import { createNotification } from "@/app/lib/server/notifications";
 
 export const runtime = "nodejs";
 
-const tokenAdminLogin = process.env.TOKEN_ADMIN_GITHUB_LOGIN?.trim() || null;
+const tokenAdminLogin = "shaypat112";
 
 type TokenRequestRow = {
   id: string;
   user_id: string;
   amount: number;
+  request_type: "test_tokens" | "refund";
+  reason: string | null;
   status: "pending" | "approved" | "rejected";
   reviewed_at: string | null;
   created_at: string;
@@ -26,9 +30,8 @@ async function getAuthContext(request: Request) {
   return {
     ...auth,
     isAdmin:
-      Boolean(tokenAdminLogin) &&
       extractVerifiedGitHubLogin(authUser)?.toLowerCase() ===
-        tokenAdminLogin?.toLowerCase(),
+        tokenAdminLogin.toLowerCase(),
   };
 }
 
@@ -40,12 +43,12 @@ async function jsonRows(response: Response) {
 export async function GET(request: Request) {
   try {
     const { userId, isAdmin } = await getAuthContext(request);
-    const ownPath = `token_requests?user_id=eq.${userId}&select=id,user_id,amount,status,reviewed_at,created_at&order=created_at.desc&limit=20`;
+    const ownPath = `token_requests?user_id=eq.${userId}&select=id,user_id,amount,request_type,reason,status,reviewed_at,created_at&order=created_at.desc&limit=20`;
     const [ownRequests, pendingRequests] = await Promise.all([
       adminSupabaseFetch(ownPath).then(jsonRows),
       isAdmin
         ? adminSupabaseFetch(
-            "token_requests?status=eq.pending&select=id,user_id,amount,status,reviewed_at,created_at&order=created_at.asc&limit=100",
+            "token_requests?status=eq.pending&select=id,user_id,amount,request_type,reason,status,reviewed_at,created_at&order=created_at.asc&limit=100",
           ).then(jsonRows)
         : Promise.resolve([]),
     ]);
@@ -87,12 +90,20 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const { userId } = await getAuthContext(request);
+    const { userId, accessToken } = await getAuthContext(request);
     const body = await request.json().catch(() => ({}));
     const amount = Number(body.amount);
+    const requestType = body.requestType === "refund" ? "refund" : "test_tokens";
+    const reason = typeof body.reason === "string" ? body.reason.trim() : "";
     if (!Number.isInteger(amount) || amount < 1 || amount > 500) {
       return NextResponse.json(
         { error: "Request an amount between 1 and 500 Tokens." },
+        { status: 400 },
+      );
+    }
+    if (requestType === "refund" && (reason.length < 10 || reason.length > 1000)) {
+      return NextResponse.json(
+        { error: "Explain the refund request in 10 to 1,000 characters." },
         { status: 400 },
       );
     }
@@ -100,7 +111,12 @@ export async function POST(request: Request) {
     const response = await adminSupabaseFetch("token_requests", {
       method: "POST",
       headers: { Prefer: "return=representation" },
-      body: JSON.stringify({ user_id: userId, amount }),
+      body: JSON.stringify({
+        user_id: userId,
+        amount,
+        request_type: requestType,
+        reason: requestType === "refund" ? reason : null,
+      }),
     });
     if (response.status === 409) {
       return NextResponse.json(
@@ -109,6 +125,11 @@ export async function POST(request: Request) {
       );
     }
     const rows = await jsonRows(response);
+    await createNotification({
+      env: getSupabaseEnv(), accessToken, userId,
+      type: requestType === "refund" ? "token.refund_requested" : "token.requested",
+      data: { amount, request_type: requestType, message: requestType === "refund" ? `Your refund request for ${amount} Tokens was submitted for review.` : `Your request for ${amount} Tokens was submitted for review.` },
+    }).catch(() => undefined);
     return NextResponse.json({ request: rows[0] }, { status: 201 });
   } catch (error) {
     if (error instanceof RequestAuthError) {
@@ -138,6 +159,12 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: "Invalid review request." }, { status: 400 });
     }
 
+    const lookup = await adminSupabaseFetch(`token_requests?id=eq.${requestId}&select=id,user_id,amount,request_type,status&limit=1`);
+    const pendingRequest = lookup.ok ? (await lookup.json() as TokenRequestRow[])[0] : null;
+    if (!pendingRequest || pendingRequest.status !== "pending") {
+      return NextResponse.json({ error: "This Token request is no longer pending." }, { status: 409 });
+    }
+
     const response = await adminSupabaseFetch("rpc/review_token_request", {
       method: "POST",
       body: JSON.stringify({
@@ -151,6 +178,12 @@ export async function PATCH(request: Request) {
       const status = message.includes("already reviewed") ? 409 : 400;
       return NextResponse.json({ error: "This Token request could not be reviewed." }, { status });
     }
+    await createNotification({
+      env: getSupabaseEnv(), accessToken: "", userId: pendingRequest.user_id,
+      type: decision === "approved" ? "token.approved" : "token.rejected",
+      data: { amount: pendingRequest.amount, request_type: pendingRequest.request_type, message: decision === "approved" ? `Your ${pendingRequest.request_type === "refund" ? "refund" : "Token"} request for ${pendingRequest.amount} Tokens was approved.` : `Your ${pendingRequest.request_type === "refund" ? "refund" : "Token"} request for ${pendingRequest.amount} Tokens was not approved.` },
+      useServiceRole: true,
+    }).catch(() => undefined);
     return NextResponse.json({ request: await response.json() });
   } catch (error) {
     if (error instanceof RequestAuthError) {

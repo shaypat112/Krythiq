@@ -110,6 +110,7 @@ export async function handleGitHubScan(input: {
     await deliverWebhooks(env, accessToken, {
       userId,
       event: "scan.completed",
+      teamId: input.teamId,
       payload: {
         scan_id: scanRows?.[0]?.id ?? null,
         repo_url: result.repoUrl,
@@ -135,6 +136,12 @@ export async function handleGitHubScan(input: {
         score: avgScore,
       },
     });
+    if (severity === "critical") {
+      await createNotification({ env, accessToken, userId, type: "vulnerability.critical", teamId: input.teamId, data: { repo_name: result.repoName, issues: total, severity, message: `${result.repoName} has critical findings requiring attention.` } });
+    }
+    if (aiReview || intelligence) {
+      await createNotification({ env, accessToken, userId, type: "scan.summary_ready", teamId: input.teamId, data: { repo_name: result.repoName, message: `The AI analysis for ${result.repoName} is ready.` } });
+    }
 
     await purgeUserData({
       env,

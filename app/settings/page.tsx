@@ -12,7 +12,6 @@ import { TeamsSection } from "./profile/teams";
 import { IntegrationsSection } from "./profile/integrations";
 import { NotificationsSection } from "./profile/notifications";
 import { EmailSection } from "./profile/email";
-import { AiSection } from "./profile/ai";
 import { TokensSection } from "./profile/tokens";
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -28,7 +27,6 @@ const SECTION_MAP = {
   email: EmailSection,
   tokens: TokensSection,
   notifications: NotificationsSection,
-  ai: AiSection,
 } satisfies Record<string, React.ComponentType>;
 
 type SectionKey = keyof typeof SECTION_MAP;

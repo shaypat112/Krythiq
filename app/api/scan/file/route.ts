@@ -2,7 +2,8 @@ import path from "path";
 import { NextResponse } from "next/server";
 
 import { securityRuleRegistry } from "@/app/lib/scanner/rules/registry";
-import { RequestAuthError, requireRequestAuth } from "@/app/lib/server/supabaseRest";
+import { RequestAuthError } from "@/app/lib/server/supabaseRest";
+import { requireVerifiedRequestAuth } from "@/app/lib/server/requestAuth";
 
 export const runtime = "nodejs";
 
@@ -16,7 +17,7 @@ const LANGUAGE_BY_EXTENSION: Record<string, string> = {
 
 export async function POST(request: Request) {
   try {
-    requireRequestAuth(request);
+    await requireVerifiedRequestAuth(request);
     const formData = await request.formData();
     const file = formData.get("file");
     if (!(file instanceof File)) return NextResponse.json({ error: "Choose a file to scan." }, { status: 400 });
@@ -26,6 +27,7 @@ export async function POST(request: Request) {
     }
     const content = await file.text();
     if (content.includes("\u0000")) return NextResponse.json({ error: "Binary files are not supported." }, { status: 400 });
+    if (!content.trim()) return NextResponse.json({ error: "This file is empty. Choose a file that contains code or configuration." }, { status: 400 });
 
     const lines = content.split("\n");
     const findings = securityRuleRegistry.rules.flatMap((rule) =>
@@ -63,6 +65,7 @@ export async function POST(request: Request) {
       },
       systemDesign: { summary: "System-design scenarios require a repository scan.", disclaimer: "A single-file scan cannot establish repository architecture or production capacity.", scenarios: [] },
       intelligence: null,
+      scanScope: "frontend",
       scan: null,
     });
   } catch (error) {

@@ -121,6 +121,23 @@ export async function sendScanCompletedEmail(options: {
   });
 }
 
+export async function sendNotificationEmail(options: {
+  to: string;
+  title: string;
+  message: string;
+  actionUrl?: string;
+}) {
+  const action = options.actionUrl
+    ? `<a href="${escapeHtml(options.actionUrl)}" style="display:inline-block;margin-top:16px;border-radius:9px;background:#fafafa;padding:11px 18px;color:#09090b;font-weight:700;text-decoration:none">Open Krythiq</a>`
+    : "";
+  return sendKrythiqEmail({
+    to: options.to,
+    subject: options.title,
+    text: `${options.message}${options.actionUrl ? `\n\nOpen Krythiq: ${options.actionUrl}` : ""}`,
+    html: emailFrame("ACCOUNT UPDATE", options.title, `<p style="color:#d4d4d8;line-height:1.6">${escapeHtml(options.message)}</p>${action}`),
+  });
+}
+
 export async function sendReferralEmail(options: {
   to: string;
   inviterName: string;

@@ -127,7 +127,7 @@ export async function POST(request: Request) {
       settings,
       apiPlan,
       aiProviderConfigured: Boolean(
-        process.env.GROQ_API_KEY?.trim() || process.env.XAI_API_KEY?.trim(),
+        process.env.GROQ_API_KEY?.trim(),
       ),
       admin: {
         isAdmin,

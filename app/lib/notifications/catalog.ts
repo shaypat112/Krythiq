@@ -16,6 +16,14 @@ export const notificationEvents = [
   { id: "scan.summary_ready", label: "AI scan summary ready", defaultChannels: ["in_app"] },
   { id: "report.weekly", label: "Weekly security report", defaultChannels: ["email"] },
   { id: "deployment.failed", label: "Failed deployment", defaultChannels: ["in_app"] },
+  { id: "token.requested", label: "Token request submitted", defaultChannels: ["in_app"] },
+  { id: "token.approved", label: "Token request approved", defaultChannels: ["in_app", "email"] },
+  { id: "token.rejected", label: "Token request rejected", defaultChannels: ["in_app", "email"] },
+  { id: "token.refund_requested", label: "Token refund requested", defaultChannels: ["in_app"] },
+  { id: "team.invited", label: "Team invitation received", defaultChannels: ["in_app", "email"] },
+  { id: "team.joined", label: "Team invitation accepted", defaultChannels: ["in_app"] },
+  { id: "repository.synced", label: "Repositories synchronized", defaultChannels: ["in_app"] },
+  { id: "billing.updated", label: "Billing or subscription updated", defaultChannels: ["in_app", "email"] },
 ] as const;
 
 export type NotificationChannelId = (typeof notificationChannels)[number]["id"];

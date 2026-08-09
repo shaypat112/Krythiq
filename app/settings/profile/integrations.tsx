@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { BentoGrid } from "@/components/ui/bento-grid";
 
 const categoryLabels: Record<string, string> = {
   source: "Source control",
@@ -105,13 +106,13 @@ export function IntegrationsSection() {
       {categories.map((category) => (
         <section key={category} aria-labelledby={`category-${category}`}>
           <h2 id={`category-${category}`} className="mb-3 text-sm font-semibold">{categoryLabels[category] ?? category}</h2>
-          <div className="grid gap-3">
+          <BentoGrid className="auto-rows-auto grid-cols-1 gap-3 lg:grid-cols-2">
             {providers.filter((provider) => provider.category === category).map((provider) => {
               const storedConnection = connections.find((connection) => connection.providerId === provider.id);
               const connected = provider.id === "github" ? githubStatus === "connected" : Boolean(storedConnection);
               const status = provider.id === "github" ? githubStatus : storedConnection?.status ?? (connected ? "connected" : "disconnected");
               return (
-                <Card key={provider.id}>
+                <Card key={provider.id} className="h-full">
                   <CardHeader className="pb-3">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                       <div className="flex gap-3"><span className="rounded-lg bg-muted p-2"><Plug className="h-4 w-4" /></span><div><CardTitle className="text-base">{provider.name}</CardTitle><p className="mt-1 text-sm text-muted-foreground">{provider.description}</p></div></div>
@@ -136,7 +137,7 @@ export function IntegrationsSection() {
                 </Card>
               );
             })}
-          </div>
+          </BentoGrid>
         </section>
       ))}
     </div>

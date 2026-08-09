@@ -36,6 +36,7 @@ import { ActionSearchBar, scanActionIcons, type ScanAction } from "./ActionSearc
 import { TechnologyCloud } from "./TechnologyCloud";
 import { readScanTier, scanTierCatalog, type ScanTier } from "@/app/lib/tokens";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   readScanScope,
   type ScanScope,
@@ -66,11 +67,11 @@ type AiReview = {
   reasoning: string;
   summary: string;
   scores: { componentUsage: number; consistency: number; accessibility: number; responsive: number; designSystem: number; overall: number };
-  suggestions: Array<{ title: string; reason: string; file: string | null; replacement: string | null; category: "components" | "a11y" | "responsive" | "consistency"; evidence: string | null }>;
+  suggestions: Array<{ title: string; reason: string; file: string | null; replacement: string | null; category: "components" | "a11y" | "responsive" | "consistency"; evidence: string | null; line?: number | null; currentCode?: string | null; replacementCode?: string | null }>;
 };
 type SystemDesignScenario = { id: "traffic-spike" | "data-growth" | "dependency-failure" | "multi-region" | "cost-pressure"; title: string; status: "ready" | "watch" | "risk" | "unknown"; confidence: "low" | "medium"; reflection: string; evidence: string[]; nextStep: string };
 type SystemDesignAssessment = { summary: string; disclaimer: string; scenarios: SystemDesignScenario[] };
-type ScanResult = { sourceType?: "repository" | "file"; repoUrl: string; totalFindings: number; findings: Finding[]; profile: RepositoryProfile; systemDesign: SystemDesignAssessment; intelligence: ScanIntelligence | null; aiReview?: AiReview | null; scanScope?: ScanScope; scan?: { id?: string; score?: number; created_at?: string } | null };
+type ScanResult = { sourceType?: "repository" | "file"; repoUrl: string; totalFindings: number; findings: Finding[]; profile: RepositoryProfile; systemDesign: SystemDesignAssessment; intelligence: ScanIntelligence | null; aiReview?: AiReview | null; scanScope?: ScanScope; scan?: { id?: string; repo?: string; score?: number; created_at?: string } | null };
 type Stage = "validating" | "cloning" | "detecting" | "dependencies" | "reading" | "analyzing" | "recommendations";
 const stages: { id: Stage; title: string; fallback: string }[] = [
   { id: "validating", title: "Validating repository", fallback: "Checking the GitHub URL and preparing isolation." },
@@ -290,7 +291,7 @@ export function ScanWorkspace() {
   };
 
   const scanFile = async (file: File) => {
-    setPhase("scanning"); setError(null); setResult(null); setActiveStage("reading");
+    setPhase("scanning"); setError(null); setResult(null); setFinalTokenBalance(null); setActiveStage("reading");
     try {
       const { data } = await supabase.auth.getSession();
       const token = data.session?.access_token;
@@ -324,9 +325,11 @@ export function ScanWorkspace() {
   const severityChart = (["critical", "high", "medium", "low"] as Severity[]).map((level) => ({ name: level, value: counts[level], color: { critical: "#fb7185", high: "#fb923c", medium: "#fbbf24", low: "#38bdf8" }[level] }));
   const activeStageIndex = activeStage ? stages.findIndex((stage) => stage.id === activeStage) : 0;
   const progress = phase === "done" ? 100 : Math.max(8, Math.round(((activeStageIndex + 0.5) / stages.length) * 100));
+  const reportRepo = result?.scan?.repo ?? result?.repoUrl.replace(/^https:\/\/github\.com\//, "").replace(/\/$/, "") ?? "repository";
+  const suggestionHref = (index: number) => `/reports/${encodeURIComponent(reportRepo)}/ai-fixes/${index}`;
   const actions = useMemo<ScanAction[]>(() => result ? [
-    { id: "intelligence", label: "Open repository intelligence", description: "Jump to the AI summary and priorities", icon: scanActionIcons.intelligence, run: () => document.getElementById("repository-intelligence")?.scrollIntoView({ behavior: "smooth" }) },
-    { id: "cloud", label: "Explore technology cloud", description: "View languages, frameworks, and dependencies in 3D", icon: scanActionIcons.cloud, run: () => document.getElementById("technology-cloud")?.scrollIntoView({ behavior: "smooth" }) },
+    ...(result.sourceType === "file" ? [] : [{ id: "intelligence", label: "Open repository summary", description: "Jump to the AI summary and priorities", icon: scanActionIcons.intelligence, run: () => document.getElementById("repository-intelligence")?.scrollIntoView({ behavior: "smooth" }) }]),
+    { id: "cloud", label: result.sourceType === "file" ? "Open file details" : "Explore technologies", description: result.sourceType === "file" ? "View the detected language and file details" : "View languages, frameworks, and dependencies", icon: scanActionIcons.cloud, run: () => document.getElementById("technology-cloud")?.scrollIntoView({ behavior: "smooth" }) },
     { id: "high", label: "Show high-priority findings", description: "Filter findings to critical or high severity", icon: scanActionIcons.filter, run: () => { setSeverity(counts.critical ? "critical" : "high"); document.getElementById("findings")?.scrollIntoView({ behavior: "smooth" }); } },
     { id: "export", label: "Export JSON report", description: "Download the complete result for CI or review", icon: scanActionIcons.export, run: () => download("krythiq-scan.json", JSON.stringify(result, null, 2), "application/json") },
     { id: "reset", label: "Start another scan", description: "Clear this result and return to the scan input", icon: scanActionIcons.reset, run: () => { setResult(null); setPhase("idle"); window.scrollTo({ top: 0, behavior: "smooth" }); } },
@@ -419,8 +422,8 @@ export function ScanWorkspace() {
         </TabsContent>
         <TabsContent value="file" className="mt-5">
           <div className="grid gap-5 lg:grid-cols-[minmax(0,420px)_1fr] lg:items-center">
-            <FileUpload uploadDelay={450} maxFileSize={1024 * 1024} acceptedFileTypes={[]} validateFile={(file) => /\.(?:tsx?|jsx?|py|go|rs|java|cs|php|rb|sh|ya?ml|json|txt)$/i.test(file.name) ? null : { code: "UNSUPPORTED_FILE", message: "Choose a supported source, config, or manifest file." }} onUploadSuccess={(file) => void scanFile(file)} onUploadError={(uploadError) => setError(uploadError.message)} />
-            <div className="rounded-2xl border border-border bg-background/45 p-5"><p className="font-medium">Private, focused file review</p><p className="mt-2 text-sm leading-6 text-muted-foreground">Upload one source or manifest file up to 1 MB. Krythiq checks supported risky-code and credential patterns and returns line-level remediation guidance.</p></div>
+            <FileUpload uploadDelay={450} maxFileSize={1024 * 1024} acceptedFileTypes={[".ts", ".tsx", ".js", ".jsx", ".py", ".go", ".rs", ".java", ".cs", ".php", ".rb", ".sh", ".yml", ".yaml", ".json", ".txt"]} validateFile={(file) => /\.(?:tsx?|jsx?|py|go|rs|java|cs|php|rb|sh|ya?ml|json|txt)$/i.test(file.name) ? null : { code: "UNSUPPORTED_FILE", message: "Choose a supported source, config, or manifest file." }} onUploadSuccess={(file) => void scanFile(file)} onUploadError={(uploadError) => setError(uploadError.message)} />
+            <div className="rounded-2xl border border-border bg-background/45 p-5"><p className="font-medium">Private, focused file review</p><p className="mt-2 text-sm leading-6 text-muted-foreground">Upload one code, configuration, or manifest file up to 1 MB. The scan is free, runs only for this request, and points to the exact lines that need attention.</p></div>
           </div>
         </TabsContent>
       </Tabs>
@@ -435,55 +438,85 @@ export function ScanWorkspace() {
     {result && <section className="space-y-6">
       <ActionSearchBar actions={actions} />
       <BentoGrid className="auto-rows-[8rem] grid-cols-1 gap-4 md:grid-cols-4"><Metric className="md:col-span-2 md:row-span-2" title="Overall risk" value={`${score}/100`} detail={score >= 75 ? "Needs attention" : score >= 55 ? "Review recommended" : "Lower observed risk"} /><Metric className="md:col-span-2" title="Total findings" value={String(result.totalFindings)} detail="Static checks completed" /><Metric title="Code issues" value={String(categoryCount("code"))} detail="Risky-code rules" /><Metric title="Secret exposure" value={String(categoryCount("secrets"))} detail="Credential-pattern rules" /></BentoGrid>
-      <BentoGrid className="auto-rows-auto grid-cols-1 gap-3 md:grid-cols-6"><BentoPanel className="md:col-span-3 md:row-span-2"><h2 className="text-lg font-semibold">Repository overview</h2><p className="mt-3 text-sm leading-6 text-muted-foreground">{result.profile.metadata.description ?? "No GitHub repository description is available."}</p>{result.profile.manifests.length > 0 && <div className="mt-5 flex flex-wrap gap-2">{result.profile.manifests.map((manifest) => <Badge key={manifest} variant="outline">{manifest}</Badge>)}</div>}</BentoPanel><Coverage label="Source files scanned" value={result.profile.metrics.scannedFiles.toLocaleString()} detail={`${result.profile.metrics.repositoryFiles.toLocaleString()} files in repository tree`} /><Coverage label="Lines analyzed" value={result.profile.metrics.scannedLines.toLocaleString()} detail={formatBytes(result.profile.metrics.scannedBytes)} /><Coverage label="Directories" value={result.profile.metrics.directories.toLocaleString()} detail={`Default branch: ${result.profile.metadata.defaultBranch}`} /><Coverage label="GitHub activity" value={`${result.profile.metadata.stars} stars`} detail={`${result.profile.metadata.forks} forks · ${result.profile.metadata.openIssues} open issues`} /><Coverage className="md:col-span-2" label="Visibility" value={result.profile.metadata.visibility} detail={result.profile.metadata.pushedAt ? `Pushed ${new Date(result.profile.metadata.pushedAt).toLocaleDateString()}` : "Push date unavailable"} /></BentoGrid>
+      <BentoGrid className="auto-rows-auto grid-cols-1 gap-3 md:grid-cols-6"><BentoPanel className="md:col-span-3 md:row-span-2"><h2 className="text-lg font-semibold">{result.sourceType === "file" ? "File overview" : "Repository overview"}</h2><p className="mt-3 text-sm leading-6 text-muted-foreground">{result.profile.metadata.description ?? "No description is available."}</p>{result.profile.manifests.length > 0 && <div className="mt-5 flex flex-wrap gap-2">{result.profile.manifests.map((manifest) => <Badge key={manifest} variant="outline">{manifest}</Badge>)}</div>}</BentoPanel><Coverage label={result.sourceType === "file" ? "File scanned" : "Source files scanned"} value={result.profile.metrics.scannedFiles.toLocaleString()} detail={result.sourceType === "file" ? result.repoUrl : `${result.profile.metrics.repositoryFiles.toLocaleString()} files in repository tree`} /><Coverage label="Lines analyzed" value={result.profile.metrics.scannedLines.toLocaleString()} detail={formatBytes(result.profile.metrics.scannedBytes)} />{result.sourceType === "file" ? <Coverage className="md:col-span-2" label="Detected language" value={result.profile.languages[0]?.name ?? "Text"} detail="Processed only for this request" /> : <><Coverage label="Directories" value={result.profile.metrics.directories.toLocaleString()} detail={`Default branch: ${result.profile.metadata.defaultBranch}`} /><Coverage label="GitHub activity" value={`${result.profile.metadata.stars} stars`} detail={`${result.profile.metadata.forks} forks · ${result.profile.metadata.openIssues} open issues`} /><Coverage className="md:col-span-2" label="Visibility" value={result.profile.metadata.visibility} detail={result.profile.metadata.pushedAt ? `Pushed ${new Date(result.profile.metadata.pushedAt).toLocaleDateString()}` : "Push date unavailable"} /></>}</BentoGrid>
 
       {result.aiReview ? (
-        <Card id="ai-ui-review">
+        <div id="ai-ui-review" className="space-y-4">
+          <BentoGrid className="auto-rows-auto grid-cols-1 gap-3 md:grid-cols-6">
+            <BentoPanel className="border-fuchsia-500/25 bg-[radial-gradient(circle_at_top_right,rgba(217,70,239,.10),transparent_38%),var(--card)] md:col-span-3 md:row-span-2">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-wider text-fuchsia-500">AI code quality check</p>
+                  <h2 className="mt-2 text-lg font-semibold">{result.aiReview.scope === "backend" ? "Backend quality and security" : result.aiReview.scope === "all" ? "Full-stack quality review" : "Design quality, not authorship"}</h2>
+                </div>
+                {result.aiReview.vibeCodedPercent !== null ? <Badge variant="outline">{result.aiReview.vibeCodedPercent}% needs review</Badge> : null}
+              </div>
+              <p className="mt-3 text-sm leading-6 text-muted-foreground">{result.aiReview.scope === "backend" ? "Checks sampled server files for authentication boundaries, validation, data access, error leakage, dependencies, performance, and maintainability." : result.aiReview.scope === "all" ? "Checks sampled frontend and backend files for UI quality, security boundaries, cross-stack consistency, accessibility, validation, and maintainability." : "Checks sampled frontend files for gratuitous gradients, glow-heavy surfaces, repeated rounded cards, weak hierarchy, inconsistent spacing, custom controls, and other brittle UI patterns."}</p>
+              <p className="mt-4 text-xs leading-5 text-muted-foreground">This score is a guide based on the code that was scanned. It does not claim who or what wrote it.</p>
+            </BentoPanel>
+            {result.aiReview.suggestions.map((suggestion, index) => ({ suggestion, index })).filter(({ suggestion }) => suggestion.replacement).slice(0, 3).map(({ suggestion, index }) => (
+              <Link key={`alternative:${suggestion.file}:${suggestion.title}`} href={suggestionHref(index)} className="group md:col-span-3">
+              <BentoPanel className="h-full transition group-hover:border-fuchsia-500/40 group-hover:bg-muted/20">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <p className="text-sm font-medium">{suggestion.title}</p>
+                  <Badge variant="outline" className="text-emerald-500">{suggestion.replacement}</Badge>
+                </div>
+                <p className="mt-2 text-xs leading-5 text-muted-foreground">{suggestion.reason}</p>
+                {suggestion.file ? <p className="mt-3 truncate text-xs text-muted-foreground" title={suggestion.file}>Open {suggestion.file}{suggestion.line ? ` at line ${suggestion.line}` : ""} →</p> : <p className="mt-3 text-xs text-fuchsia-500">See exactly what to change →</p>}
+              </BentoPanel>
+              </Link>
+            ))}
+            {result.aiReview.suggestions.every((suggestion) => !suggestion.replacement) ? (
+              <BentoPanel className="md:col-span-3"><p className="text-sm font-medium">No component swap recommended</p><p className="mt-2 text-xs leading-5 text-muted-foreground">The sampled files did not contain enough evidence for a responsible open-source alternative.</p></BentoPanel>
+            ) : null}
+          </BentoGrid>
+        <Card>
           <CardHeader>
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <CardTitle>Frontend scan</CardTitle>
+                <CardTitle>{result.aiReview.scope === "backend" ? "Backend AI scan" : result.aiReview.scope === "all" ? "Full-stack AI scan" : "Frontend AI scan"}</CardTitle>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  {result.aiReview.provider === "groq" ? "Groq" : "xAI"} analysis · {scanTierCatalog[scanTier].label}
+                  Groq analysis · {scanTierCatalog[scanTier].label}
                 </p>
               </div>
               {result.aiReview.vibeCodedPercent !== null ? (
                 <Badge variant="outline">
-                  {result.aiReview.vibeCodedPercent}% vibe-coded estimate
+                  {result.aiReview.vibeCodedPercent}% AI-pattern estimate
                 </Badge>
               ) : null}
             </div>
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="overview">
-              <TabsList className="grid w-full grid-cols-4">
+              <TabsList className={`grid w-full ${result.aiReview.scope === "backend" ? "grid-cols-2" : "grid-cols-4"}`}>
                 <TabsTrigger value="overview">Overview</TabsTrigger>
-                <TabsTrigger value="components">Components</TabsTrigger>
-                <TabsTrigger value="a11y">A11y</TabsTrigger>
+                {result.aiReview.scope !== "backend" ? <TabsTrigger value="components">Components</TabsTrigger> : null}
+                {result.aiReview.scope !== "backend" ? <TabsTrigger value="a11y">Accessibility</TabsTrigger> : null}
                 <TabsTrigger value="suggestions">Suggestions</TabsTrigger>
               </TabsList>
               <TabsContent value="overview" className="space-y-5 pt-3">
                 <p className="text-sm leading-6 text-muted-foreground">{result.aiReview.summary}</p>
                 <BentoGrid className="auto-rows-auto grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  <Metric title="Overall UI quality" value={`${result.aiReview.scores.overall}/100`} detail="Frontend quality" />
-                  <Metric title="Consistency" value={`${result.aiReview.scores.consistency}/100`} detail="Spacing, type, and tokens" />
-                  <Metric title="Responsive" value={`${result.aiReview.scores.responsive}/100`} detail="Viewport patterns" />
-                  <Metric title="Component usage" value={`${result.aiReview.scores.componentUsage}/100`} detail="shadcn/ui adoption" />
-                  <Metric title="Accessibility" value={`${result.aiReview.scores.accessibility}/100`} detail="Semantic UI basics" />
-                  <Metric title="Design system" value={`${result.aiReview.scores.designSystem}/100`} detail="Reusable foundations" />
+                  <Metric title={result.aiReview.scope === "backend" ? "Overall code quality" : "Overall UI quality"} value={`${result.aiReview.scores.overall}/100`} detail={result.aiReview.scope === "backend" ? "Server-side quality" : "Frontend quality"} />
+                  <Metric title="Consistency" value={`${result.aiReview.scores.consistency}/100`} detail={result.aiReview.scope === "backend" ? "Patterns and maintainability" : "Spacing, type, and tokens"} />
+                  <Metric title={result.aiReview.scope === "backend" ? "Performance" : "Responsive"} value={`${result.aiReview.scores.responsive}/100`} detail={result.aiReview.scope === "backend" ? "Runtime and data access" : "Viewport patterns"} />
+                  <Metric title={result.aiReview.scope === "backend" ? "Architecture" : "Component usage"} value={`${result.aiReview.scores.componentUsage}/100`} detail={result.aiReview.scope === "backend" ? "Boundaries and reuse" : "Open-source component adoption"} />
+                  <Metric title={result.aiReview.scope === "backend" ? "Validation" : "Accessibility"} value={`${result.aiReview.scores.accessibility}/100`} detail={result.aiReview.scope === "backend" ? "Inputs and authorization" : "Semantic UI basics"} />
+                  <Metric title={result.aiReview.scope === "backend" ? "Security foundations" : "Design system"} value={`${result.aiReview.scores.designSystem}/100`} detail={result.aiReview.scope === "backend" ? "Secure reusable primitives" : "Reusable foundations"} />
                 </BentoGrid>
-                <Card className="bg-muted/20"><CardContent className="p-4"><p className="text-sm font-medium">Why this looks vibe-coded</p><p className="mt-1 text-xs leading-5 text-muted-foreground">{result.aiReview.reasoning}</p></CardContent></Card>
+                <Card className="bg-muted/20"><CardContent className="p-4"><p className="text-sm font-medium">{result.aiReview.scope === "backend" ? "Why these changes matter" : "Why this may feel AI-generated"}</p><p className="mt-1 text-xs leading-5 text-muted-foreground">{result.aiReview.reasoning}</p></CardContent></Card>
               </TabsContent>
               {(["components", "a11y"] as const).map((category) => (
                 <TabsContent key={category} value={category} className="pt-3">
                   <div className="space-y-2">
-                    {result.aiReview!.suggestions.filter((suggestion) => suggestion.category === category).map((suggestion) => (
-                      <Card key={`${suggestion.file}:${suggestion.title}`}>
+                    {result.aiReview!.suggestions.map((suggestion, index) => ({ suggestion, index })).filter(({ suggestion }) => suggestion.category === category).map(({ suggestion, index }) => (
+                      <Card key={`${suggestion.file}:${suggestion.title}`} className="transition hover:border-fuchsia-500/30">
                         <CardContent className="p-4">
                           <div className="flex flex-wrap items-start justify-between gap-2"><p className="text-sm font-medium">{suggestion.title}</p>{suggestion.replacement ? <Badge variant="outline">{suggestion.replacement}</Badge> : null}</div>
                           <p className="mt-1 text-xs leading-5 text-muted-foreground">{suggestion.reason}</p>
                           {suggestion.evidence ? <p className="mt-2 rounded-md bg-muted/40 p-2 font-mono text-[11px] text-muted-foreground">{suggestion.evidence}</p> : null}
                           {suggestion.file ? <p className="mt-2 font-mono text-[11px] text-muted-foreground">{suggestion.file}</p> : null}
+                          <Button asChild variant="link" size="sm" className="mt-2 h-auto px-0"><Link href={suggestionHref(index)}>Show me what to replace <ChevronRight /></Link></Button>
                         </CardContent>
                       </Card>
                     ))}
@@ -493,12 +526,13 @@ export function ScanWorkspace() {
               ))}
               <TabsContent value="suggestions" className="pt-3">
                 <AnimatedList delay={120} className="items-stretch gap-2" aria-label="Frontend improvement suggestions">
-                  {result.aiReview.suggestions.map((suggestion) => (
+                  {result.aiReview.suggestions.map((suggestion, index) => (
                     <Card key={`${suggestion.file}:${suggestion.title}`}>
                       <CardContent className="p-4">
                         <div className="flex flex-wrap items-start justify-between gap-2"><div className="flex items-center gap-2"><Badge variant="subtle" className="capitalize">{suggestion.category}</Badge><p className="text-sm font-medium">{suggestion.title}</p></div>{suggestion.replacement ? <Badge variant="outline">{suggestion.replacement}</Badge> : null}</div>
                         <p className="mt-2 text-xs leading-5 text-muted-foreground">{suggestion.reason}</p>
                         {suggestion.file ? <p className="mt-2 font-mono text-[11px] text-muted-foreground">{suggestion.file}</p> : null}
+                        <Button asChild variant="link" size="sm" className="mt-2 h-auto px-0"><Link href={suggestionHref(index)}>Open exact fix <ChevronRight /></Link></Button>
                       </CardContent>
                     </Card>
                   ))}
@@ -507,7 +541,8 @@ export function ScanWorkspace() {
             </Tabs>
           </CardContent>
         </Card>
-      ) : result.scanScope === "frontend" ? (
+        </div>
+      ) : result.sourceType !== "file" && result.scanScope === "frontend" ? (
         <Card>
           <CardContent className="p-5">
             <p className="text-sm font-medium">AI UI review unavailable</p>

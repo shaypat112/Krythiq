@@ -94,6 +94,13 @@ export async function fetchAuthUser(accessToken: string) {
   return (await res.json()) as AuthUser;
 }
 
+export async function fetchAuthUserById(userId: string) {
+  const { env, headers } = getServiceRoleHeaders();
+  const res = await fetch(`${env.url}/auth/v1/admin/users/${encodeURIComponent(userId)}`, { headers });
+  if (!res.ok) throw new Error(await res.text());
+  return (await res.json()) as AuthUser;
+}
+
 export function extractGitHubLogin(user: AuthUser | null | undefined) {
   const meta = user?.user_metadata ?? {};
   const directCandidates = [
