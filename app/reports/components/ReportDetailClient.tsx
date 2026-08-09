@@ -152,7 +152,7 @@ export function ReportDetailClient({ repo }: { repo: string }) {
     return (
       <div className="mx-auto max-w-4xl space-y-6">
         <Button asChild variant="ghost" className="px-0">
-          <Link href="/scan?view=history">
+          <Link href="/scan/history">
             <ArrowLeft className="h-4 w-4" />
             Back to scan history
           </Link>
@@ -190,7 +190,7 @@ export function ReportDetailClient({ repo }: { repo: string }) {
   return (
     <div className="mx-auto max-w-6xl space-y-8">
       <Button asChild variant="ghost" className="px-0">
-        <Link href="/scan?view=history">
+        <Link href="/scan/history">
           <ArrowLeft className="h-4 w-4" />
           Back to scan history
         </Link>

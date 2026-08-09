@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ScanHub } from "./scan-hub";
+import { ScanWorkspace } from "./scan-workspace";
 
 export const metadata: Metadata = {
   title: "Security workspace - Krythiq",
@@ -9,5 +9,5 @@ export const metadata: Metadata = {
 };
 
 export default function ScanPage() {
-  return <Suspense fallback={<div className="space-y-4"><Skeleton className="h-12 w-72" /><Skeleton className="h-80" /></div>}><ScanHub /></Suspense>;
+  return <Suspense fallback={<div className="space-y-4"><Skeleton className="h-12 w-72" /><Skeleton className="h-80" /></div>}><ScanWorkspace /></Suspense>;
 }
