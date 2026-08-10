@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { LinkedInScanShare } from "@/app/components/LinkedInScanShare";
 import {
   Card,
   CardContent,
@@ -46,6 +47,7 @@ export default function ScanTable({ scans }: { scans: ScanRow[] }) {
                 <TableHead>Severity</TableHead>
                 <TableHead>Issues</TableHead>
                 <TableHead>Score</TableHead>
+                <TableHead><span className="sr-only">Share</span></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -69,6 +71,7 @@ export default function ScanTable({ scans }: { scans: ScanRow[] }) {
                   </TableCell>
                   <TableCell>{scan.issues}</TableCell>
                   <TableCell>{scan.score}</TableCell>
+                  <TableCell className="text-right"><LinkedInScanShare repository={scan.repo} severity={scan.severity} issues={scan.issues} score={scan.score} compact /></TableCell>
                 </TableRow>
               ))}
             </TableBody>

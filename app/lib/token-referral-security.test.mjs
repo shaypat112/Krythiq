@@ -17,11 +17,41 @@ const requestRoute = await readFile(
 );
 const referralRoute = await readFile(new URL("../api/referrals/route.ts", import.meta.url), "utf8");
 const tokenSource = await readFile(new URL("./tokens.ts", import.meta.url), "utf8");
+const workflowMigration = await readFile(
+  new URL("../../supabase/migrations/20260810120000_launch_workflow.sql", import.meta.url),
+  "utf8",
+);
+const draftPatchRoute = await readFile(new URL("../api/workflow/draft-patch/route.ts", import.meta.url), "utf8");
+const verificationRoute = await readFile(new URL("../api/workflow/verify/route.ts", import.meta.url), "utf8");
 
 test("all paid actions have positive server-defined integer costs", () => {
   const costs = [...tokenSource.matchAll(/cost:\s*(\d+)/g)].map((match) => Number(match[1]));
   assert.ok(costs.length >= 10);
   assert.equal(costs.every((cost) => Number.isInteger(cost) && cost > 0), true);
+});
+
+test("workflow AI actions have transparent fixed defaults", () => {
+  assert.match(tokenSource, /verification_run: .*cost: 15/);
+  assert.match(tokenSource, /draft_patch: .*cost: 25/);
+  assert.match(workflowMigration, /'verification_run', 15/);
+  assert.match(workflowMigration, /'draft_patch', 25/);
+});
+
+test("launch workflow storage is user-scoped and protected by RLS", () => {
+  for (const table of ["remediation_items", "change_drafts", "verification_runs", "launch_snapshots"]) {
+    assert.match(workflowMigration, new RegExp(`alter table public\\.${table} enable row level security`));
+  }
+  assert.match(workflowMigration, /auth\.uid\(\) = user_id/g);
+  assert.match(workflowMigration, /expires_at timestamptz not null default \(now\(\) \+ interval '7 days'\)/);
+});
+
+test("paid workflow endpoints are idempotent and block unsafe automation", () => {
+  assert.match(draftPatchRoute, /runPaidAiAction\(request, "draft_patch"/);
+  assert.match(draftPatchRoute, /protectedPath\.test\(file\)/);
+  assert.match(draftPatchRoute, /secretLike\.test\(suggestion\.replacementCode\)/);
+  assert.match(draftPatchRoute, /publishSupported: false/);
+  assert.match(verificationRoute, /runPaidAiAction\(request, "verification_run"/);
+  assert.match(verificationRoute, /outcome: "inconclusive"/);
 });
 
 test("repository scan tiers use the required fixed prices", () => {

@@ -24,6 +24,11 @@ type SettingsPayload = Record<string, unknown> & {
   ignoredPaths?: string;
   apiRequestsPerMinute?: number;
   expensiveRequestsPerMinute?: number;
+  professionalHeadline?: string;
+  companyName?: string;
+  roleTitle?: string;
+  companySize?: string;
+  communityServerName?: string;
 };
 
 type SettingsRow = {
@@ -91,6 +96,11 @@ export async function POST(request: Request) {
       webhookUrl,
       webhookEvents,
       webhookSecret,
+      professionalHeadline,
+      companyName,
+      roleTitle,
+      companySize,
+      communityServerName,
       ...rest
     } = settings ?? {};
 
@@ -109,6 +119,11 @@ export async function POST(request: Request) {
 
     const normalized = {
       ...rest,
+      professionalHeadline: typeof professionalHeadline === "string" ? professionalHeadline.trim().slice(0, 160) : "",
+      companyName: typeof companyName === "string" ? companyName.trim().slice(0, 200) : "",
+      roleTitle: typeof roleTitle === "string" ? roleTitle.trim().slice(0, 120) : "",
+      companySize: ["", "solo", "2-10", "11-50", "51-200", "201+"].includes(companySize ?? "") ? companySize ?? "" : "",
+      communityServerName: typeof communityServerName === "string" ? communityServerName.trim().slice(0, 200) : "",
       retentionDays: 30,
       ...apiLimits,
       ...aiSettings,

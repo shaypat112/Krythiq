@@ -64,6 +64,15 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  const metadata = data.user.user_metadata ?? {};
+  const fullName = [metadata["full_name"], metadata["name"]].find((value) => typeof value === "string" && value.trim());
+  const avatarUrl = [metadata["avatar_url"], metadata["picture"]].find((value) => typeof value === "string" && value.startsWith("https://"));
+  await adminSupabaseFetch("profiles?on_conflict=id", {
+    method: "POST",
+    headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+    body: JSON.stringify({ id: data.user.id, ...(fullName ? { full_name: String(fullName).trim().slice(0, 200) } : {}), ...(avatarUrl ? { avatar_url: String(avatarUrl).slice(0, 2000) } : {}), updated_at: new Date().toISOString() }),
+  }).catch(() => undefined);
+
   if (referralCode) {
     await adminSupabaseFetch("rpc/claim_referral", {
       method: "POST",

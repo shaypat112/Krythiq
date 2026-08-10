@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 
 export default function IntegrationPanel({
@@ -18,17 +19,11 @@ export default function IntegrationPanel({
         <div className="flex-1">
           <div className="flex items-center gap-2">
             <p className="text-sm font-medium text-foreground">{title}</p>
-            {connected ? (
-              <span className="text-xs uppercase tracking-[0.14em] text-emerald-400">
-                connected
-              </span>
-            ) : null}
+            {connected ? <Badge variant="outline" className="border-emerald-500/30 text-emerald-500">Connected</Badge> : null}
           </div>
           <p className="mt-1 text-xs text-muted-foreground">{description}</p>
         </div>
-        <Button size="sm" variant="outline" onClick={onClick}>
-          {connected ? "Sync repositories" : "Connect"}
-        </Button>
+        {!connected ? <Button size="sm" variant="outline" onClick={onClick}>Connect</Button> : null}
       </CardContent>
     </Card>
   );

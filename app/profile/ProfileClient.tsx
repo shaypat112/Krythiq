@@ -171,13 +171,13 @@ export default function ProfileClient({ initialTab = "scans" }: { initialTab?: T
 
       if (!res.ok) {
         const { error: message } = await res.json().catch(() => ({ error: null }));
-        throw new Error(message ?? "Failed to sync repositories.");
+        throw new Error(message ?? "Your GitHub projects could not be loaded.");
       }
 
       const { repos: synced } = await res.json();
       setRepos(synced ?? []);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Failed to sync repositories.");
+      setError(cause instanceof Error ? cause.message : "Your GitHub projects could not be loaded.");
     }
   };
 
@@ -292,7 +292,7 @@ export default function ProfileClient({ initialTab = "scans" }: { initialTab?: T
         <div className="space-y-3">
           <IntegrationPanel
             title="GitHub"
-            description="Link repos to trigger scans on pushes and PRs."
+            description="Your GitHub projects are ready to scan."
             connected={repos.length > 0}
             onClick={connectGitHub}
           />

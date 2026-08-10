@@ -1,0 +1,17 @@
+.social-masonry {
+  column-count: 1;
+  column-gap: 1.25rem;
+}
+
+.social-masonry > * {
+  break-inside: avoid;
+  margin-bottom: 1.25rem;
+}
+
+@media (min-width: 768px) {
+  .social-masonry { column-count: 2; }
+}
+
+@media (min-width: 1440px) {
+  .social-masonry { column-count: 3; }
+}

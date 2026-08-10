@@ -71,3 +71,4 @@
   We have 5 open Dependabot security alerts across the root directory and the `backend/` directory. Please inspect the lock files (`package-
   lock.json` and `backend/package-lock.json`), identify the direct or transitive dependencies causing these vulnerabilities, and update or
   override them to safe versions.
+

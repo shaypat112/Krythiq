@@ -77,6 +77,10 @@ __pycache__/
 /db/
 /supabase/.temp/
 /supabase/migrations/
+!/supabase/migrations/
+/supabase/migrations/*
+!/supabase/migrations/20260810120000_launch_workflow.sql
+!/supabase/migrations/20260810143000_social_discovery.sql
 
 # local editor and AI-assistant instructions
 /.idea/

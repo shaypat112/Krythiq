@@ -17,8 +17,8 @@ const NAV_ITEMS = [
   { href: "/scan", label: "New scan", icon: FileSearch, exact: true },
   { href: "/scan/readiness", label: "Launch readiness", icon: Rocket },
   { href: "/scan/fixes", label: "Guided fixes", icon: ClipboardCheck },
-  { href: "/scan/verification", label: "Check fixes", icon: BadgeCheck },
   { href: "/scan/drafts", label: "Draft changes", icon: GitPullRequestArrow },
+  { href: "/scan/verification", label: "Check fixes", icon: BadgeCheck },
   { href: "/scan/history", label: "Scan history", icon: FileClock },
 ] as const;
 

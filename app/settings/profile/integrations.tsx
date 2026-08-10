@@ -101,7 +101,7 @@ export function IntegrationsSection() {
 
   return (
     <div className="space-y-6">
-      <header><p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Workspace</p><h1 className="mt-2 text-2xl font-semibold">Integrations</h1><p className="mt-2 text-sm leading-6 text-muted-foreground">Connect only what your team uses. Krythiq shows unavailable adapters honestly and never asks for credentials before a provider is production-ready.</p></header>
+      <header><p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Workspace</p><h1 className="mt-2 text-2xl font-semibold">Integrations</h1><p className="mt-2 text-sm leading-6 text-muted-foreground">Popular tools with a usable free option. Krythiq labels unfinished adapters honestly and never collects their credentials early.</p></header>
       {error ? <div role="alert" className="rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-500">{error}</div> : null}
       {categories.map((category) => (
         <section key={category} aria-labelledby={`category-${category}`}>
@@ -115,7 +115,7 @@ export function IntegrationsSection() {
                 <Card key={provider.id} className="h-full">
                   <CardHeader className="pb-3">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                      <div className="flex gap-3"><span className="rounded-lg bg-muted p-2"><Plug className="h-4 w-4" /></span><div><CardTitle className="text-base">{provider.name}</CardTitle><p className="mt-1 text-sm text-muted-foreground">{provider.description}</p></div></div>
+                      <div className="flex gap-3"><span className="rounded-lg bg-muted p-2"><Plug className="h-4 w-4" /></span><div><div className="flex flex-wrap items-center gap-2"><CardTitle className="text-base">{provider.name}</CardTitle><Badge variant="subtle">{provider.pricingLabel}</Badge></div><p className="mt-1 text-sm text-muted-foreground">{provider.description}</p></div></div>
                       <Badge variant="outline" className={status === "connected" ? "text-emerald-500" : status === "expired" || status === "error" ? "text-red-500" : ""}>
                         {status === "connected" ? <CheckCircle2 /> : status === "expired" || status === "error" ? <TriangleAlert /> : <Clock3 />}
                         {status === "disconnected" && provider.availability === "coming_soon" ? "Roadmap" : status.replace("_", " ")}
@@ -129,6 +129,7 @@ export function IntegrationsSection() {
                       {provider.id === "github" ? <Button size="sm" variant={connected ? "outline" : "default"} onClick={connectGitHub} disabled={working === provider.id}>{connected ? <RefreshCw /> : <KeyRound />}{connected ? "Reconnect" : "Connect GitHub"}</Button> : null}
                       {provider.id === "local-cli" && provider.documentationUrl ? <Button asChild size="sm" variant="outline"><Link href={provider.documentationUrl}>Setup CLI <ExternalLink /></Link></Button> : null}
                       {provider.id === "webhook" && provider.documentationUrl ? <Button asChild size="sm" variant="outline"><Link href={provider.documentationUrl}>Configure webhook <ExternalLink /></Link></Button> : null}
+                      {provider.documentationUrl && !["github", "local-cli", "webhook"].includes(provider.id) ? <Button asChild size="sm" variant="outline"><a href={provider.documentationUrl} target="_blank" rel="noreferrer">Setup guide <ExternalLink /></a></Button> : null}
                       {storedConnection ? <Button size="sm" variant="outline" onClick={() => void disconnect(provider.id)} disabled={working === provider.id}>Disconnect</Button> : null}
                       {provider.availability === "configuration_required" ? <p className="self-center text-xs text-amber-500">Deployment configuration required.</p> : null}
                       {provider.availability === "coming_soon" ? <p className="self-center text-xs text-muted-foreground">Adapter not enabled yet. No credentials are collected.</p> : null}

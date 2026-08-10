@@ -22,7 +22,7 @@ export const notificationEvents = [
   { id: "token.refund_requested", label: "Token refund requested", defaultChannels: ["in_app"] },
   { id: "team.invited", label: "Team invitation received", defaultChannels: ["in_app", "email"] },
   { id: "team.joined", label: "Team invitation accepted", defaultChannels: ["in_app"] },
-  { id: "repository.synced", label: "Repositories synchronized", defaultChannels: ["in_app"] },
+  { id: "repository.synced", label: "GitHub projects updated", defaultChannels: ["in_app"] },
   { id: "billing.updated", label: "Billing or subscription updated", defaultChannels: ["in_app", "email"] },
 ] as const;
 

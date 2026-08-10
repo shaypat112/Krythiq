@@ -42,7 +42,7 @@ export function RepositoryConnections() {
     setLoading(true);
     const response = await fetch("/api/github/repos", { method: "POST", headers: buildTeamAuthHeaders(session.access_token, selectedTeamId, { "Content-Type": "application/json" }), body: JSON.stringify({ providerToken: session.provider_token }) });
     const payload = await response.json().catch(() => ({}));
-    if (response.ok) setRepos(payload.repos ?? []); else setError(payload.error ?? "Repositories could not be synchronized.");
+    if (response.ok) setRepos(payload.repos ?? []); else setError(payload.error ?? "Your GitHub projects could not be loaded.");
     setLoading(false);
   };
 
@@ -65,9 +65,9 @@ export function RepositoryConnections() {
 
   return <section className="space-y-3" aria-labelledby="connected-repositories-title">
     <MultiStepLoaderDemo loading={scanningRepo !== null} />
-    <div><h2 id="connected-repositories-title" className="text-lg font-semibold">GitHub repositories</h2><p className="mt-1 text-sm text-muted-foreground">Connect, synchronize, and scan repositories from your account settings.</p></div>
+    <div><h2 id="connected-repositories-title" className="text-lg font-semibold">GitHub projects</h2><p className="mt-1 text-sm text-muted-foreground">Choose a connected project when you’re ready to run a scan.</p></div>
     {error ? <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert> : null}
-    <IntegrationPanel title="GitHub" description="Keep your repository list ready for scanning." connected={repos.length > 0} onClick={() => void connectGitHub()} />
+    <IntegrationPanel title="GitHub" description="Your GitHub projects are available for scanning." connected={repos.length > 0} onClick={() => void connectGitHub()} />
     {loading ? <div className="h-40 animate-pulse rounded-xl border border-border bg-muted/30" /> : <RepoTable repos={repos} onConnect={() => void connectGitHub()} onScan={(repo) => void runScan(repo)} scanningRepo={scanningRepo} />}
   </section>;
 }

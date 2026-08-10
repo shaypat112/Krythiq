@@ -21,6 +21,7 @@ export type IntegrationProvider = {
   availability: IntegrationAvailability;
   permissions: string[];
   documentationUrl?: string;
+  pricingLabel: "Free" | "Free plan";
 };
 
 export type IntegrationConnection = {

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getAdminIdentityConfig, isAdminAccess } from "@/app/lib/server/admin";
+import { fetchAuthUser, getAdminIdentityConfig, isAdminAccess } from "@/app/lib/server/admin";
 import {
   RequestAuthError,
   getSupabaseEnv,
@@ -37,7 +37,7 @@ export async function POST(request: Request) {
 
     const env = getSupabaseEnv();
 
-    const [profileRes, settingsRes, webhookRes, billingRes] = await Promise.all([
+    const [profileRes, settingsRes, webhookRes, billingRes, authUser] = await Promise.all([
       supabaseFetch(env, `profiles?id=eq.${userId}&select=full_name,username,avatar_url`, {
         accessToken,
       }),
@@ -50,6 +50,7 @@ export async function POST(request: Request) {
       supabaseFetch(env, `billing_customers?user_id=eq.${userId}&select=price_id,status&limit=1`, {
         accessToken,
       }),
+      fetchAuthUser(accessToken).catch(() => null),
     ]);
 
     if (!profileRes.ok) {
@@ -109,6 +110,11 @@ export async function POST(request: Request) {
       fullName: profile.full_name ?? "",
       username: profile.username ?? "",
       avatarUrl: profile.avatar_url ?? "",
+      professionalHeadline: storedSettings.professionalHeadline ?? authUser?.user_metadata?.["professional_headline"] ?? "",
+      companyName: storedSettings.companyName ?? authUser?.user_metadata?.["organization_name"] ?? "",
+      roleTitle: storedSettings.roleTitle ?? authUser?.user_metadata?.["role_title"] ?? "",
+      companySize: storedSettings.companySize ?? authUser?.user_metadata?.["organization_size"] ?? "",
+      communityServerName: storedSettings.communityServerName ?? authUser?.user_metadata?.["community_server_name"] ?? "",
       webhookEnabled: webhook.enabled ?? storedSettings.webhookEnabled ?? DEFAULT_SETTINGS.webhookEnabled,
       webhookUrl: webhook.url ?? storedSettings.webhookUrl ?? DEFAULT_SETTINGS.webhookUrl,
       webhookSecret: webhook.secret ?? "",

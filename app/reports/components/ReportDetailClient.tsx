@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SystemDesignOverview } from "@/app/components/SystemDesignOverview";
+import { LinkedInScanShare } from "@/app/components/LinkedInScanShare";
 
 type ScanFinding = {
   title?: string;
@@ -201,14 +202,7 @@ export function ReportDetailClient({ repo }: { repo: string }) {
           <span className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
             Repository Report
           </span>
-          <div className="space-y-2">
-            <h1 className="text-4xl font-semibold tracking-tight text-foreground">
-              {latest.repo}
-            </h1>
-            <p className="max-w-3xl text-sm leading-7 text-muted-foreground sm:text-base">
-              Security posture, issue movement, and generated remediation guidance from the latest repository scan.
-            </p>
-          </div>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"><div className="space-y-2"><h1 className="text-4xl font-semibold tracking-tight text-foreground">{latest.repo}</h1><p className="max-w-3xl text-sm leading-7 text-muted-foreground sm:text-base">See the latest risks, what changed, and which fixes to handle first.</p></div><LinkedInScanShare repository={latest.repo} severity={latest.severity} issues={latest.issues} score={latest.score} /></div>
           <div className="grid gap-3 md:grid-cols-4">
             <div className="rounded-2xl border border-border bg-background p-4">
               <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">

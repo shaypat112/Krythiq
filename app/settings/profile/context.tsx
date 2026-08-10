@@ -17,6 +17,11 @@ export type SettingsState = {
   fullName: string;
   username: string;
   avatarUrl: string;
+  professionalHeadline: string;
+  companyName: string;
+  roleTitle: string;
+  companySize: string;
+  communityServerName: string;
   webhookEnabled: boolean;
   webhookUrl: string;
   webhookSecret: string;
@@ -41,6 +46,11 @@ const defaultSettings: SettingsState = {
   fullName: "",
   username: "",
   avatarUrl: "",
+  professionalHeadline: "",
+  companyName: "",
+  roleTitle: "",
+  companySize: "",
+  communityServerName: "",
   webhookEnabled: false,
   webhookUrl: "",
   webhookSecret: "",

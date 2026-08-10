@@ -11,7 +11,9 @@
     "test:rules": "node --test app/lib/scanner/rules/security-rules.test.mjs",
     "test:api-limits": "node --experimental-strip-types --test app/lib/api-rate-limits.test.mjs",
     "test:auth": "node --experimental-strip-types --test app/lib/auth-validation.test.mjs",
+    "test:oauth": "node --test app/lib/oauth-onboarding-security.test.mjs",
     "test:tokens": "node --experimental-strip-types --test app/lib/token-referral-security.test.mjs",
+    "test:social": "node --test app/lib/social-security.test.mjs",
     "build:backend": "cd backend && npm run build",
     "install:backend": "cd backend && npm install && npm run build"
   },

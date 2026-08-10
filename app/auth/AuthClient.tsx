@@ -9,11 +9,14 @@ import {
   Eye,
   EyeOff,
   Github,
+  Gamepad2,
+  Linkedin,
   Loader2,
   LockKeyhole,
   Mail,
   ShieldCheck,
 } from "lucide-react";
+import type { Provider } from "@supabase/supabase-js";
 
 import {
   isStrongPassword,
@@ -38,7 +41,7 @@ import { BrandLogo } from "@/app/components/BrandLogo";
 
 type Mode = "sign-in" | "sign-up";
 type RecoveryMode = "forgot" | "reset" | null;
-type PendingAction = "password" | "github" | "magic-link" | "resend" | "reset-request" | "reset-update" | null;
+type PendingAction = "password" | "github" | "discord" | "linkedin" | "magic-link" | "resend" | "reset-request" | "reset-update" | null;
 
 function safeNextPath(value: string | null) {
   return value?.startsWith("/") && !value.startsWith("//")
@@ -179,13 +182,14 @@ export default function AuthClient() {
     router.refresh();
   };
 
-  const loginWithGitHub = async () => {
-    setPending("github");
+  const loginWithSocial = async (provider: Provider, pendingName: "github" | "discord" | "linkedin", scopes?: string) => {
+    setPending(pendingName);
     setError(null);
     const { error: oauthError } = await supabase.auth.signInWithOAuth({
-      provider: "github",
+      provider,
       options: {
-        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}${referralCode ? `&ref=${encodeURIComponent(referralCode)}` : ""}`,
+        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent("/onboarding")}${referralCode ? `&ref=${encodeURIComponent(referralCode)}` : ""}`,
+        ...(scopes ? { scopes } : {}),
       },
     });
     if (oauthError) {
@@ -389,10 +393,11 @@ export default function AuthClient() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
-          <Button variant="outline" className="w-full" onClick={() => void loginWithGitHub()} disabled={pending !== null}>
-            {pending === "github" ? <Loader2 className="animate-spin" /> : <Github />}
-            {pending === "github" ? "Connecting…" : "Continue with GitHub"}
-          </Button>
+          <div className="grid gap-2 sm:grid-cols-3">
+            <Button variant="outline" onClick={() => void loginWithSocial("github", "github")} disabled={pending !== null}>{pending === "github" ? <Loader2 className="animate-spin" /> : <Github />}{pending === "github" ? "Connecting…" : "GitHub"}</Button>
+            <Button variant="outline" onClick={() => void loginWithSocial("discord", "discord", "identify email")} disabled={pending !== null}>{pending === "discord" ? <Loader2 className="animate-spin" /> : <Gamepad2 />}{pending === "discord" ? "Connecting…" : "Discord"}</Button>
+            <Button variant="outline" onClick={() => void loginWithSocial("linkedin_oidc", "linkedin", "openid profile email")} disabled={pending !== null}>{pending === "linkedin" ? <Loader2 className="animate-spin" /> : <Linkedin />}{pending === "linkedin" ? "Connecting…" : "LinkedIn"}</Button>
+          </div>
 
           <div className="flex items-center gap-3 text-xs text-muted-foreground">
             <span className="h-px flex-1 bg-border" />
@@ -463,7 +468,7 @@ export default function AuthClient() {
           </Tabs>
 
           <p className="text-center text-xs leading-5 text-muted-foreground">
-            Email accounts must be verified before workspace access. GitHub access remains read-only.
+            Social sign-in reads only basic identity and email. Repository, Discord server, and LinkedIn company permissions are requested separately only when needed.
           </p>
         </CardContent>
       </Card>

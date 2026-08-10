@@ -10,15 +10,21 @@ export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   try {
-    const { name } = await request.json();
+    const { name, source } = await request.json();
     const { accessToken, userId } = requireRequestAuth(request);
 
-    if (!name) {
+    const normalizedName = typeof name === "string" ? name.trim() : "";
+    if (normalizedName.length < 2 || normalizedName.length > 120) {
       return NextResponse.json({ error: "Missing name." }, { status: 400 });
     }
 
     const env = getSupabaseEnv();
-    const slug = String(name)
+    if (source === "onboarding") {
+      const existingResponse = await supabaseFetch(env, `teams?owner_id=eq.${userId}&name=eq.${encodeURIComponent(normalizedName)}&select=id,name,slug,owner_id,created_at&limit=1`, { accessToken });
+      const existing = existingResponse.ok ? await existingResponse.json() : [];
+      if (existing?.[0]) return NextResponse.json({ team: existing[0], existing: true });
+    }
+    const slug = normalizedName
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-+|-+$/g, "");
@@ -28,7 +34,7 @@ export async function POST(request: Request) {
       accessToken,
       headers: { Prefer: "return=representation" },
       body: JSON.stringify({
-        name,
+        name: normalizedName,
         slug,
         owner_id: userId,
         created_at: new Date().toISOString(),

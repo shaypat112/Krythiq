@@ -11,6 +11,8 @@ export const tokenActionCatalog = {
   architecture_health: { label: "Architecture health", cost: 15 },
   attack_path: { label: "Attack-path simulation", cost: 20 },
   remediation_plan: { label: "Remediation plan", cost: 25 },
+  verification_run: { label: "Focused fix verification", cost: 15 },
+  draft_patch: { label: "Draft patch generation", cost: 25 },
 } as const;
 
 export type TokenAction = keyof typeof tokenActionCatalog;

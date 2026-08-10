@@ -29,6 +29,7 @@ import { AnimatedList } from "@/components/ui/animated-list";
 import MultiStepLoaderDemo from "@/components/multi-step-loader-demo";
 import { SystemDesignOverview } from "@/app/components/SystemDesignOverview";
 import { HelpTooltip } from "@/app/components/HelpTooltip";
+import { LinkedInScanShare } from "@/app/components/LinkedInScanShare";
 import { toast } from "sonner";
 import FileUpload from "@/components/kokonutui/file-upload";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -338,7 +339,7 @@ export function ScanWorkspace() {
   return <main className="mx-auto max-w-7xl space-y-6 pb-12">
     <MultiStepLoaderDemo loading={phase === "scanning"} />
     <section className="overflow-hidden rounded-3xl border border-border bg-[radial-gradient(circle_at_10%_0%,rgba(14,165,233,.16),transparent_32%),radial-gradient(circle_at_90%_10%,rgba(168,85,247,.12),transparent_28%),var(--card)] p-6 sm:p-8">
-      <div className="mt-4 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between"><div><h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Find the risks worth fixing first.</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">Krythiq reads supported files through the GitHub API and performs a static source review. Repository credentials are never included in scan output.</p></div>{result && <Button variant="outline" onClick={() => { setResult(null); setPhase("idle"); }}><RotateCw /> New scan</Button>}</div>
+      <div className="mt-4 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between"><div><h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Find the risks worth fixing first.</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">Krythiq safely reviews supported files from GitHub. Your login details are never included in a scan.</p></div>{result ? <div className="flex flex-wrap gap-2">{result.sourceType !== "file" ? <LinkedInScanShare repository={result.scan?.repo ?? result.repoUrl.replace(/^https?:\/\/github\.com\//, "")} severity={result.findings[0]?.severity ?? "low"} issues={result.totalFindings} score={score} /> : null}<Button variant="outline" onClick={() => { setResult(null); setPhase("idle"); }}><RotateCw />New scan</Button></div> : null}</div>
       <Tabs value={scanMode} onValueChange={(value) => setScanMode(value as "repository" | "file")} className="mt-7">
         <TabsList className="grid w-full max-w-sm grid-cols-2"><TabsTrigger value="repository"><FolderGit2 /> Repository</TabsTrigger><TabsTrigger value="file"><FileCode2 /> Single file</TabsTrigger></TabsList>
         <TabsContent value="repository" className="mt-5">

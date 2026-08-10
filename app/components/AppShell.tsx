@@ -28,6 +28,7 @@ import { useTheme } from "./theme-provider";
 
 const appLinks = [
   { href: "/scan", label: "Security workspace" },
+  { href: "/discover", label: "Discover" },
   { href: "/documentation", label: "Docs" },
   { href: "/settings", label: "Settings" },
 ];
@@ -71,7 +72,7 @@ function formatNotificationTitle(type: string) {
     case "team.joined":
       return "Team joined";
     case "repository.synced":
-      return "Repositories synchronized";
+      return "GitHub projects updated";
     default:
       return type.replace(".", " ");
   }
@@ -379,7 +380,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                     <TooltipContent side="bottom">
                       {githubReady
                         ? "GitHub connected — repositories are ready to scan."
-                        : "GitHub not connected — connect or reconnect to sync repositories."}
+                        : "Connect GitHub to choose projects for scanning."}
                     </TooltipContent>
                   </Tooltip>
                   <Link

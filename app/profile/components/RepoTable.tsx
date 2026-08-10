@@ -37,7 +37,7 @@ export default function RepoTable({
     <Card>
       <CardHeader>
         <CardTitle>Connected repositories</CardTitle>
-        <CardDescription>Repos synced from GitHub.</CardDescription>
+        <CardDescription>Projects available from your GitHub account.</CardDescription>
       </CardHeader>
       <CardContent>
         {repos.length === 0 ? (

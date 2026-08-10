@@ -9,6 +9,7 @@ import { createClient } from "@/app/lib/supabase";
 import { useTeam } from "@/app/components/TeamProvider";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { LinkedInScanShare } from "@/app/components/LinkedInScanShare";
 
 type ScanRow = {
   repo: string;
@@ -106,10 +107,7 @@ export function ReportsIndexClient({ embedded = false, onNewScan }: { embedded?:
               <h1 className="text-4xl font-semibold tracking-tight text-foreground">
                 Previous scans by repository
               </h1>
-              <p className="mt-2 max-w-2xl text-sm leading-7 text-muted-foreground sm:text-base">
-                Review the latest scan outcome for each repository in your current team context,
-                then drill into a repo for findings, history, and AI summary.
-              </p>
+              <p className="mt-2 max-w-2xl text-sm leading-7 text-muted-foreground sm:text-base">See each project’s latest result, changes over time, and recommended next steps.</p>
             </div>
           </div>
           <div className="flex flex-wrap items-end gap-3">
@@ -164,12 +162,7 @@ export function ReportsIndexClient({ embedded = false, onNewScan }: { embedded?:
                       "Most recent scan completed. Open the repo report to review severity, issue count, and latest findings."}
                   </CardDescription>
                 </div>
-                <Button asChild variant="outline" className="sm:self-start">
-                  <Link href={`/reports/${encodeURIComponent(repo.repo)}`}>
-                    Open report
-                    <ArrowUpRight className="h-4 w-4" />
-                  </Link>
-                </Button>
+                <div className="flex gap-2 sm:self-start"><LinkedInScanShare repository={repo.repo} severity={repo.latest.severity} issues={repo.latest.issues} score={repo.latest.score} compact /><Button asChild variant="outline"><Link href={`/reports/${encodeURIComponent(repo.repo)}`}>Open report<ArrowUpRight className="h-4 w-4" /></Link></Button></div>
               </CardHeader>
               <CardContent>
                 <div className="grid gap-3 md:grid-cols-4">
