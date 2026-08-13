@@ -4,7 +4,7 @@ alter table public.remediation_items enable row level security;
 alter table public.change_drafts enable row level security;
 alter table public.verification_runs enable row level security;
 alter table public.launch_snapshots enable row level security;
- 
+
 create policy "Users manage their remediation items" on public.remediation_items
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "Users manage their change drafts" on public.change_drafts
