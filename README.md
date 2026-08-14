@@ -1,5 +1,5 @@
 # Krythiq
-
+f
 Repository: <https://github.com/shaypat112/Krythiq>
 
 Krythiq is a code intelligence and application security platform for reviewing GitHub repositories. It combines fast static checks with optional AI-generated repository context, then presents findings, architecture notes, remediation priorities, and scan history in a team-oriented web dashboard.
