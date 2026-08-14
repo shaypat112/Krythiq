@@ -1,73 +1,91 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { Provider } from "@supabase/supabase-js";
+import { Check, FolderGit2, Globe2, Loader2, Lock, Search } from "lucide-react";
 import { createClient } from "@/app/lib/supabase";
 import { buildTeamAuthHeaders } from "@/app/lib/http";
 import { useTeam } from "@/app/components/TeamProvider";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import MultiStepLoaderDemo from "@/components/multi-step-loader-demo";
-import IntegrationPanel from "@/app/profile/components/IntegrationPanel";
-import RepoTable, { type ConnectedRepo } from "@/app/profile/components/RepoTable";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import type { ConnectedRepo } from "@/app/profile/components/RepoTable";
 
 export function RepositoryConnections() {
   const supabase = useMemo(() => createClient(), []);
   const { selectedTeamId } = useTeam();
+  const searchRef = useRef<HTMLInputElement>(null);
   const [repos, setRepos] = useState<ConnectedRepo[]>([]);
+  const [query, setQuery] = useState("");
+  const [selectedRepo, setSelectedRepo] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [scanningRepo, setScanningRepo] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let active = true;
-    void supabase.from("connected_repos").select("id, full_name, private, last_scanned_at").order("full_name", { ascending: true }).then(({ data, error: loadError }) => {
-      if (!active) return;
-      if (loadError) setError("Connected repositories could not be loaded.");
-      else setRepos((data as ConnectedRepo[]) ?? []);
-      setLoading(false);
-    });
-    return () => { active = false; };
-  }, [supabase]);
-
-  const connectGitHub = async () => {
-    setError(null);
-    const session = (await supabase.auth.getSession()).data.session;
-    if (!session?.access_token) { setError("Sign in before connecting GitHub."); return; }
-    if (!session.provider_token) {
-      const hasGitHubIdentity = session.user.identities?.some((identity) => identity.provider === "github") === true;
-      const options = { redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent("/settings?section=account")}`, scopes: "repo read:user user:email" };
-      const result = hasGitHubIdentity ? await supabase.auth.signInWithOAuth({ provider: "github", options }) : await supabase.auth.linkIdentity({ provider: "github", options });
-      if (result.error) setError(result.error.message);
-      return;
-    }
+  const fetchGitHubRepositories = useCallback(async () => {
     setLoading(true);
-    const response = await fetch("/api/github/repos", { method: "POST", headers: buildTeamAuthHeaders(session.access_token, selectedTeamId, { "Content-Type": "application/json" }), body: JSON.stringify({ providerToken: session.provider_token }) });
-    const payload = await response.json().catch(() => ({}));
-    if (response.ok) setRepos(payload.repos ?? []); else setError(payload.error ?? "Your GitHub projects could not be loaded.");
-    setLoading(false);
-  };
-
-  const runScan = async (repo: ConnectedRepo) => {
-    setError(null); setScanningRepo(repo.full_name);
+    setError(null);
     try {
       const session = (await supabase.auth.getSession()).data.session;
-      if (!session?.access_token) throw new Error("Sign in before scanning a repository.");
-      if (repo.private && !session.provider_token) throw new Error("Reconnect GitHub before scanning a private repository.");
-      const response = await fetch("/api/github/repo-scan", { method: "POST", headers: buildTeamAuthHeaders(session.access_token, selectedTeamId, { "Content-Type": "application/json" }), body: JSON.stringify({ providerToken: session.provider_token ?? null, repo: repo.full_name }) });
+      if (!session?.access_token) throw new Error("Unable to fetch repositories: you are not signed in.");
+      if (!session.provider_token) throw new Error("Unable to fetch repositories: GitHub is not connected. Sign in with GitHub to continue.");
+      const response = await fetch("/api/github/repos", {
+        method: "POST",
+        headers: buildTeamAuthHeaders(session.access_token, selectedTeamId, { "Content-Type": "application/json" }),
+        body: JSON.stringify({ providerToken: session.provider_token }),
+      });
       const payload = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(payload.error ?? "The repository scan could not start.");
-      const scannedAt = payload.scan?.created_at ?? new Date().toISOString();
-      setRepos((current) => current.map((item) => item.id === repo.id ? { ...item, last_scanned_at: scannedAt } : item));
-      window.dispatchEvent(new Event("tokens:updated"));
+      if (!response.ok) throw new Error(payload.error ?? "Unable to fetch repositories from GitHub.");
+      setRepos((payload.repos as ConnectedRepo[]) ?? []);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "The repository scan could not start.");
-    } finally { setScanningRepo(null); }
+      setRepos([]);
+      setError(cause instanceof Error ? cause.message : "Unable to fetch repositories from GitHub.");
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedTeamId, supabase]);
+
+  useEffect(() => { void fetchGitHubRepositories(); }, [fetchGitHubRepositories]);
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault(); searchRef.current?.focus();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
+  const connectGitHub = async () => {
+    const session = (await supabase.auth.getSession()).data.session;
+    if (!session?.access_token) { setError("Unable to fetch repositories: you are not signed in."); return; }
+    const options = { redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent("/settings?section=account")}`, scopes: "repo read:user user:email" };
+    const hasGitHubIdentity = session.user.identities?.some((identity) => identity.provider === "github") === true;
+    const result = hasGitHubIdentity
+      ? await supabase.auth.signInWithOAuth({ provider: "github", options })
+      : await supabase.auth.linkIdentity({ provider: "github" as Provider, options });
+    if (result.error) setError(result.error.message);
   };
 
+  const visibleRepos = repos.filter((repo) => repo.full_name.toLowerCase().includes(query.trim().toLowerCase()));
+
   return <section className="space-y-3" aria-labelledby="connected-repositories-title">
-    <MultiStepLoaderDemo loading={scanningRepo !== null} />
-    <div><h2 id="connected-repositories-title" className="text-lg font-semibold">GitHub projects</h2><p className="mt-1 text-sm text-muted-foreground">Choose a connected project when you’re ready to run a scan.</p></div>
-    {error ? <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert> : null}
-    <IntegrationPanel title="GitHub" description="Your GitHub projects are available for scanning." connected={repos.length > 0} onClick={() => void connectGitHub()} />
-    {loading ? <div className="h-40 animate-pulse rounded-xl border border-border bg-muted/30" /> : <RepoTable repos={repos} onConnect={() => void connectGitHub()} onScan={(repo) => void runScan(repo)} scanningRepo={scanningRepo} />}
+    <div className="rounded-xl border border-border bg-card shadow-sm">
+      <div className="border-b border-border px-5 py-4">
+        <h2 id="connected-repositories-title" className="text-sm font-semibold">Find a connected repository</h2>
+        <p className="mt-1 text-xs text-muted-foreground">Search repositories available to the GitHub account currently connected to Krythiq.</p>
+      </div>
+      <div className="p-4 sm:p-5">
+        <div className="overflow-hidden rounded-xl border border-border bg-background shadow-lg shadow-black/5">
+          <div className="flex items-center gap-3 border-b border-border p-3">
+            <Search className="size-5 shrink-0 text-muted-foreground" />
+            <Input ref={searchRef} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search your connected GitHub repositories…" className="h-10 flex-1 border-0 bg-transparent px-0 text-base shadow-none focus-visible:ring-0" />
+            <kbd className="hidden rounded-md border border-border bg-muted px-2 py-1 font-mono text-[11px] text-muted-foreground sm:inline">⌘K</kbd>
+          </div>
+          {loading ? <div className="flex h-40 items-center justify-center gap-2 text-sm text-muted-foreground"><Loader2 className="size-4 animate-spin" />Fetching repositories from GitHub…</div> : error ? <div className="space-y-4 p-4"><Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert><Button size="sm" variant="outline" onClick={() => void connectGitHub()}>Connect GitHub</Button></div> : visibleRepos.length ? <div className="max-h-80 overflow-y-auto p-2">{visibleRepos.map((repo) => { const selected = selectedRepo === repo.full_name; return <button key={repo.id} type="button" onClick={() => setSelectedRepo(repo.full_name)} className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"><span className="grid size-9 shrink-0 place-items-center rounded-lg bg-sky-500/10 text-sky-500"><FolderGit2 className="size-4" /></span><span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium">{repo.full_name}</span><span className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">{repo.private ? <Lock className="size-3" /> : <Globe2 className="size-3" />}{repo.private ? "Private repository" : "Public repository"}</span></span>{selected ? <Badge variant="outline" className="border-emerald-500/30 text-emerald-500"><Check />Selected</Badge> : null}</button>; })}</div> : <div className="p-8 text-center"><FolderGit2 className="mx-auto size-7 text-muted-foreground" /><p className="mt-3 text-sm font-medium">{query ? "No matching repositories" : "No repositories found"}</p><p className="mt-1 text-xs text-muted-foreground">{query ? "Try a different repository name." : "The connected GitHub account did not return any repositories."}</p></div>}
+        </div>
+        {!loading && !error ? <div className="mt-3 flex items-center justify-between gap-3 text-xs text-muted-foreground"><span>{visibleRepos.length} of {repos.length} repositories</span><Button size="xs" variant="ghost" onClick={() => void fetchGitHubRepositories()}>Refresh from GitHub</Button></div> : null}
+      </div>
+    </div>
   </section>;
 }

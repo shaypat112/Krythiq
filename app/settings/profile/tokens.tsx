@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Check, Coins, Loader2, Plus, RotateCcw, Send, ShieldCheck, X } from "lucide-react";
+import { BarChart3, Check, Coins, List, Loader2, Plus, RotateCcw, Send, ShieldCheck, X } from "lucide-react";
+import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { createClient } from "@/app/lib/supabase";
 import { buildAuthHeaders } from "@/app/lib/http";
 import { formatTokens } from "@/app/lib/tokens";
@@ -12,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { BentoGrid } from "@/components/ui/bento-grid";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 type Account = {
   balance: number;
@@ -144,7 +146,7 @@ export function TokensSection() {
   return <div className="space-y-6">
     <header><p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Usage currency</p><h1 className="mt-2 text-2xl font-semibold">Tokens</h1><p className="mt-2 text-sm text-muted-foreground">Token balances and charges are recorded by the secure server-side ledger.</p></header>
     {error ? <p role="alert" className="rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-500">{error}</p> : null}
-    {account ? <>
+    {account ? <Tabs defaultValue="table" className="gap-6"><TabsList className="grid w-full grid-cols-2 sm:w-72"><TabsTrigger value="table"><List />Table</TabsTrigger><TabsTrigger value="graphs"><BarChart3 />Graphs</TabsTrigger></TabsList><TabsContent value="table" className="mt-4"><>
       <BentoGrid className="auto-rows-auto grid-cols-1 gap-4 lg:grid-cols-2">
       <Card className="h-full lg:col-span-2"><CardContent className="flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between"><div className="flex items-center gap-4"><div className="rounded-full bg-amber-500/10 p-3 text-amber-500"><Coins /></div><div><p className="text-sm text-muted-foreground">Available balance</p><p className="text-2xl font-semibold">{formatTokens(account.balance)}</p></div></div><Button asChild><Link href="/buy-tokens"><Plus />Buy Tokens</Link></Button></CardContent></Card>
       <Card className="h-full">
@@ -244,6 +246,26 @@ export function TokensSection() {
           <CardContent>{requests.pendingRequests.length ? <div className="divide-y">{requests.pendingRequests.map((request) => { const requesterName = request.requester?.username ? `@${request.requester.username}` : request.requester?.full_name ?? request.user_id; return <div key={request.id} className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-medium">{requesterName}</p><p className="mt-1 text-sm text-muted-foreground">Requests {formatTokens(request.amount)} · {request.request_type === "refund" ? "Refund" : "Test Tokens"} · {new Date(request.created_at).toLocaleString()}</p>{request.reason ? <p className="mt-2 max-w-xl text-sm leading-5 text-muted-foreground">“{request.reason}”</p> : null}</div><div className="flex gap-2"><Button size="sm" variant="outline" disabled={reviewingId !== null} onClick={() => void reviewRequest(request.id, "rejected")}><X /> Reject</Button><Button size="sm" disabled={reviewingId !== null} onClick={() => void reviewRequest(request.id, "approved")}>{reviewingId === request.id ? <Loader2 className="animate-spin" /> : <Check />} Approve</Button></div></div>; })}</div> : <p className="py-8 text-center text-sm text-muted-foreground">No pending requests.</p>}</CardContent>
         </Card>
       ) : null}
-    </> : null}
+    </></TabsContent><TabsContent value="graphs" className="mt-4"><TokenGraphs account={account} requests={requests} /></TabsContent></Tabs> : null}
   </div>;
 }
+
+function TokenGraphs({ account, requests }: { account: Account; requests: RequestSummary | null }) {
+  const activity = useMemo(() => {
+    const points = new Map<string, { date: string; spent: number; added: number }>();
+    [...account.transactions].reverse().forEach((transaction) => {
+      const date = new Date(transaction.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+      const point = points.get(date) ?? { date, spent: 0, added: 0 };
+      if (transaction.amount < 0) point.spent += Math.abs(transaction.amount);
+      else point.added += transaction.amount;
+      points.set(date, point);
+    });
+    return Array.from(points.values());
+  }, [account.transactions]);
+  const costs = Object.values(account.costs).map((item) => ({ action: item.label, cost: item.cost }));
+  const requestData = ["pending", "approved", "rejected"].map((status) => ({ name: status[0].toUpperCase() + status.slice(1), value: requests?.ownRequests.filter((request) => request.status === status).length ?? 0 })).filter((item) => item.value > 0);
+  const tooltipStyle = { borderRadius: 12, borderColor: "var(--border)", background: "var(--popover)", color: "var(--popover-foreground)" };
+  return <div className="grid gap-4 lg:grid-cols-2"><Card className="lg:col-span-2"><CardHeader><CardTitle>Token activity</CardTitle><p className="text-sm text-muted-foreground">Tokens added and spent over time. Current balance: {formatTokens(account.balance)}.</p></CardHeader><CardContent>{activity.length ? <div className="h-80"><ResponsiveContainer width="100%" height="100%"><AreaChart data={activity} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}><defs><linearGradient id="tokenSpent" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.4} /><stop offset="95%" stopColor="#8b5cf6" stopOpacity={0.02} /></linearGradient><linearGradient id="tokenAdded" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#10b981" stopOpacity={0.35} /><stop offset="95%" stopColor="#10b981" stopOpacity={0.02} /></linearGradient></defs><CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" opacity={0.12} /><XAxis dataKey="date" tickLine={false} axisLine={false} fontSize={12} /><YAxis tickLine={false} axisLine={false} fontSize={12} /><Tooltip contentStyle={tooltipStyle} formatter={(value, name) => [formatTokens(Number(value)), name === "spent" ? "Spent" : "Added"]} /><Area type="monotone" dataKey="spent" stroke="#8b5cf6" strokeWidth={2} fill="url(#tokenSpent)" /><Area type="monotone" dataKey="added" stroke="#10b981" strokeWidth={2} fill="url(#tokenAdded)" /></AreaChart></ResponsiveContainer></div> : <EmptyGraph text="Token activity will appear after your first transaction." />}</CardContent></Card><Card><CardHeader><CardTitle>AI action prices</CardTitle><p className="text-sm text-muted-foreground">Compare the Token cost of each assisted action.</p></CardHeader><CardContent><div className="h-80"><ResponsiveContainer width="100%" height="100%"><BarChart data={costs} layout="vertical" margin={{ top: 0, right: 12, left: 28, bottom: 0 }}><CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="currentColor" opacity={0.12} /><XAxis type="number" tickLine={false} axisLine={false} fontSize={12} /><YAxis dataKey="action" type="category" width={112} tickLine={false} axisLine={false} fontSize={11} /><Tooltip contentStyle={tooltipStyle} formatter={(value) => [formatTokens(Number(value)), "Cost"]} /><Bar dataKey="cost" fill="#38bdf8" radius={[0, 7, 7, 0]} maxBarSize={24} /></BarChart></ResponsiveContainer></div></CardContent></Card><Card><CardHeader><CardTitle>Request outcomes</CardTitle><p className="text-sm text-muted-foreground">Status of your test Token and refund requests.</p></CardHeader><CardContent>{requestData.length ? <div className="h-80"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={requestData} dataKey="value" nameKey="name" innerRadius={62} outerRadius={98} paddingAngle={4}>{["#f59e0b", "#10b981", "#ef4444"].map((color) => <Cell key={color} fill={color} />)}</Pie><Tooltip contentStyle={tooltipStyle} formatter={(value) => [Number(value), "Requests"]} /></PieChart></ResponsiveContainer></div> : <EmptyGraph text="Request outcomes will appear after your first Token request." />}</CardContent></Card></div>;
+}
+
+function EmptyGraph({ text }: { text: string }) { return <div className="grid h-72 place-items-center text-center text-sm text-muted-foreground">{text}</div>; }

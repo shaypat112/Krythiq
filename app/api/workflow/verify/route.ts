@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { runPaidAiAction } from "@/app/lib/server/tokenLedger";
 import { loadOwnedWorkflowScans, readSuggestion, type WorkflowSuggestion } from "@/app/lib/server/workflow-scans";
+import { RequestAuthError } from "@/app/lib/server/supabaseRest";
 
 export const runtime = "nodejs";
 
@@ -17,20 +17,23 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Choose a valid repository and fix." }, { status: 400 });
   }
 
-  return runPaidAiAction(request, "verification_run", async () => {
+  try {
     const scans = await loadOwnedWorkflowScans(request, repository);
     const baselineIndex = scans.findIndex((scan) => scan.created_at === baselineCreatedAt);
     const baseline = baselineIndex >= 0 ? [scans[baselineIndex]] : [];
     const original = readSuggestion(baseline, suggestionIndex);
     if (!original) throw new Error("The selected fix no longer exists.");
     if (baselineIndex <= 0) {
-      return { outcome: "inconclusive", repository, title: original.title, checkedAt: new Date().toISOString(), explanation: "Run a new repository scan after making the change. One scan cannot prove that code changed." };
+      return NextResponse.json({ outcome: "inconclusive", repository, title: original.title, checkedAt: new Date().toISOString(), explanation: "Run a new repository scan after making the change. One scan cannot prove that code changed." });
     }
     const latestSuggestions = scans[0]?.findings?.aiReview?.suggestions ?? [];
     const stillPresent = latestSuggestions.some((item) => signature(item) === signature(original));
     if (!stillPresent) {
-      return { outcome: "verified", repository, title: original.title, baselineCreatedAt, latestCreatedAt: scans[0].created_at, checkedAt: new Date().toISOString(), explanation: "The latest scan no longer reports the same file, category, and fix title. This is verified for static scan evidence; runtime behavior was not executed." };
+      return NextResponse.json({ outcome: "verified", repository, title: original.title, baselineCreatedAt, latestCreatedAt: scans[0].created_at, checkedAt: new Date().toISOString(), explanation: "The latest scan no longer reports the same file, category, and fix title. This is verified for static scan evidence; runtime behavior was not executed." });
     }
-    return { outcome: "still_present", repository, title: original.title, checkedAt: new Date().toISOString(), explanation: "The latest scan still reports the same file, category, and fix title. Review the change and scan again." };
-  });
+    return NextResponse.json({ outcome: "still_present", repository, title: original.title, checkedAt: new Date().toISOString(), explanation: "The latest scan still reports the same file, category, and fix title. Review the change and scan again." });
+  } catch (error) {
+    if (error instanceof RequestAuthError) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Unable to check this fix." }, { status: 403 });
+  }
 }

@@ -5,6 +5,7 @@ import {
   requireRequestAuth,
   supabaseFetch,
 } from "@/app/lib/server/supabaseRest";
+import { getUserEntitlements } from "@/app/lib/server/plan-entitlements";
 
 export const runtime = "nodejs";
 
@@ -23,6 +24,15 @@ export async function POST(request: Request) {
       const existingResponse = await supabaseFetch(env, `teams?owner_id=eq.${userId}&name=eq.${encodeURIComponent(normalizedName)}&select=id,name,slug,owner_id,created_at&limit=1`, { accessToken });
       const existing = existingResponse.ok ? await existingResponse.json() : [];
       if (existing?.[0]) return NextResponse.json({ team: existing[0], existing: true });
+    }
+    const entitlements = await getUserEntitlements(userId);
+    if (entitlements.maxOwnedTeams !== null) {
+      const ownedResponse = await supabaseFetch(env, `teams?owner_id=eq.${userId}&select=id`, { accessToken });
+      if (!ownedResponse.ok) return NextResponse.json({ error: "Unable to verify your team allowance." }, { status: 500 });
+      const owned = await ownedResponse.json() as Array<{ id: string }>;
+      if (owned.length >= entitlements.maxOwnedTeams) {
+        return NextResponse.json({ error: `The ${entitlements.label} plan supports up to ${entitlements.maxOwnedTeams} teams. Upgrade to create another team.`, code: "TEAM_LIMIT_REACHED", limit: entitlements.maxOwnedTeams }, { status: 403 });
+      }
     }
     const slug = normalizedName
       .toLowerCase()

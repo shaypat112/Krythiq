@@ -62,6 +62,18 @@ export function requireRequestAuth(request: Request) {
   return { accessToken, userId };
 }
 
+export async function requireVerifiedRequestAuth(request: Request) {
+  const credentials = requireRequestAuth(request);
+  const env = getSupabaseEnv();
+  const response = await fetch(`${env.url}/auth/v1/user`, {
+    headers: buildSupabaseHeaders(env.anonKey, credentials.accessToken),
+  });
+  if (!response.ok) throw new RequestAuthError("Unauthorized");
+  const user = await response.json() as { id?: string };
+  if (user.id !== credentials.userId) throw new RequestAuthError("Unauthorized");
+  return credentials;
+}
+
 export function extractSelectedTeamId(request: Request) {
   const value = request.headers.get("x-krythiq-team-id");
   if (!value) return null;

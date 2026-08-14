@@ -1,2 +1,5 @@
 import { GuidedFixesPage } from "../workspace-data";
-export default function Page() { return <GuidedFixesPage />; }
+export default async function Page({ searchParams }: { searchParams: Promise<{ repo?: string }> }) {
+  const { repo } = await searchParams;
+  return <GuidedFixesPage repository={repo} />;
+}

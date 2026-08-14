@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { Loader2, Mail, Trash2, Users, X } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Loader2, Mail, Search, Trash2, Users, X } from "lucide-react";
 import { buildAuthHeaders } from "@/app/lib/http";
 import { cn } from "@/app/lib/utils";
 import { useTeam } from "@/app/components/TeamProvider";
@@ -24,13 +24,6 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useSettings } from "./context";
 import {
   SectionCard,
@@ -88,6 +81,7 @@ export function TeamsSection() {
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
   const [teamName, setTeamName] = useState("");
   const [inviteUserId, setInviteUserId] = useState("");
+  const [userSearch, setUserSearch] = useState("");
   const [inviteEmail, setInviteEmail] = useState("");
   const [invitations, setInvitations] = useState<TeamInvitation[]>([]);
   const [sendingInvite, setSendingInvite] = useState(false);
@@ -97,6 +91,7 @@ export function TeamsSection() {
   const [teamError, setTeamError] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Team | null>(null);
   const [deletingTeam, setDeletingTeam] = useState(false);
+  const userSearchRequestRef = useRef(0);
 
   const loadMembers = useCallback(async (teamId: string, token: string) => {
     const res = await fetch(`/api/teams/members?teamId=${teamId}`, {
@@ -175,10 +170,10 @@ export function TeamsSection() {
     });
     if (res.ok) {
       setInviteUserId("");
-      await Promise.all([
-        loadMembers(selectedTeamId, accessToken),
-        loadPlatformUsers(selectedTeamId, accessToken),
-      ]);
+      setUserSearch("");
+      setPlatformUsers([]);
+      userSearchRequestRef.current += 1;
+      await loadMembers(selectedTeamId, accessToken);
     } else {
       const d = await res.json().catch(() => ({}));
       setTeamError(d?.error ?? "Unable to add member.");
@@ -203,6 +198,10 @@ export function TeamsSection() {
   const selectTeam = async (teamId: string) => {
     if (!accessToken) return;
     setSelectedTeamId(teamId);
+    setInviteUserId("");
+    setUserSearch("");
+    setPlatformUsers([]);
+    userSearchRequestRef.current += 1;
     await loadMembers(teamId, accessToken);
   };
 
@@ -220,11 +219,13 @@ export function TeamsSection() {
       !members.some((member) => member.user_id === user.id),
   );
 
-  const loadPlatformUsers = useCallback(async (teamId: string, token: string) => {
+  const loadPlatformUsers = useCallback(async (teamId: string, token: string, query: string) => {
+    const requestId = ++userSearchRequestRef.current;
     setLoadingPlatformUsers(true);
-    const res = await fetch(`/api/teams/platform-members?teamId=${teamId}`, {
+    const res = await fetch(`/api/teams/platform-members?teamId=${encodeURIComponent(teamId)}&q=${encodeURIComponent(query)}`, {
       headers: buildAuthHeaders(token),
     });
+    if (requestId !== userSearchRequestRef.current) return;
     if (res.ok) {
       const data = await res.json();
       setPlatformUsers((data?.members ?? []) as PlatformUser[]);
@@ -251,11 +252,21 @@ export function TeamsSection() {
   useEffect(() => {
     if (!accessToken || !selectedTeamId || !canManageSelectedTeam) return;
     const timer = window.setTimeout(() => {
-      void loadPlatformUsers(selectedTeamId, accessToken);
       void loadInvitations(selectedTeamId, accessToken);
     }, 0);
     return () => window.clearTimeout(timer);
   }, [accessToken, canManageSelectedTeam, loadInvitations, loadPlatformUsers, selectedTeamId]);
+
+  useEffect(() => {
+    const query = userSearch.trim();
+    if (!accessToken || !selectedTeamId || !canManageSelectedTeam || query.length < 2) {
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      void loadPlatformUsers(selectedTeamId, accessToken, query);
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [accessToken, canManageSelectedTeam, loadPlatformUsers, selectedTeamId, userSearch]);
 
   const sendInvitation = async () => {
     if (!accessToken || !selectedTeamId || !inviteEmail.trim()) return;
@@ -370,7 +381,8 @@ export function TeamsSection() {
         </div>
         <p className="text-xs text-muted-foreground">
           Creating a team makes you its owner. Owners and admins can invite,
-          promote, and remove members.
+          promote, and remove members. Free accounts can own 2 teams; Pro and
+          Plus include unlimited teams.
         </p>
       </FieldGroup>
 
@@ -467,47 +479,63 @@ export function TeamsSection() {
                   ) : null}
                 </FieldGroup>
                 <FieldGroup label="Add existing Krythiq user">
-                  <div className="flex gap-2">
-                    <div className="flex-1">
-                      <Select
-                        value={inviteUserId}
-                        onValueChange={setInviteUserId}
-                      >
-                        <SelectTrigger className="h-9 rounded-lg border border-border bg-background text-sm text-foreground">
-                          <SelectValue
-                            placeholder={
-                              loadingPlatformUsers
-                                ? "Loading platform members..."
-                                : availablePlatformUsers.length === 0
-                                  ? "No available members"
-                                  : "Select a platform member"
+                  <div className="space-y-2">
+                    <div className="flex gap-2">
+                      <label className="relative flex-1">
+                        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <StyledInput
+                          value={userSearch}
+                          onChange={(event) => {
+                            const nextQuery = event.target.value;
+                            userSearchRequestRef.current += 1;
+                            setUserSearch(nextQuery);
+                            setInviteUserId("");
+                            if (nextQuery.trim().length < 2) {
+                              setPlatformUsers([]);
+                              setLoadingPlatformUsers(false);
                             }
-                          />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {availablePlatformUsers.map((user) => (
-                            <SelectItem key={user.id} value={user.id}>
-                              {user.full_name ?? user.username ?? "Member"}
-                              {user.username ? ` (@${user.username})` : ""}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                          }}
+                          placeholder="Search by name or username"
+                          aria-label="Search existing Krythiq users"
+                          className="w-full pl-9"
+                        />
+                      </label>
+                      <button
+                        onClick={addMember}
+                        disabled={!inviteUserId || loadingPlatformUsers}
+                        className={cn(
+                          "rounded-lg border border-white/[0.1] bg-white/[0.05] px-4 py-2 text-sm font-medium text-zinc-200",
+                          "hover:border-white/[0.18] hover:bg-white/[0.09] hover:text-white transition-colors",
+                          "disabled:opacity-40 disabled:cursor-not-allowed",
+                        )}
+                      >
+                        Add
+                      </button>
                     </div>
-                    <button
-                      onClick={addMember}
-                      disabled={!inviteUserId || loadingPlatformUsers}
-                      className={cn(
-                        "rounded-lg border border-white/[0.1] bg-white/[0.05] px-4 py-2 text-sm font-medium text-zinc-200",
-                        "hover:border-white/[0.18] hover:bg-white/[0.09] hover:text-white transition-colors",
-                        "disabled:opacity-40 disabled:cursor-not-allowed",
-                      )}
-                    >
-                      Add
-                    </button>
+                    {userSearch.trim().length >= 2 ? (
+                      <div className="overflow-hidden rounded-lg border border-border bg-background" role="listbox" aria-label="Matching Krythiq users">
+                        {loadingPlatformUsers ? (
+                          <p className="flex items-center gap-2 px-3 py-3 text-xs text-muted-foreground"><Loader2 className="h-3.5 w-3.5 animate-spin" />Searching…</p>
+                        ) : availablePlatformUsers.length ? availablePlatformUsers.map((user) => (
+                          <button
+                            key={user.id}
+                            type="button"
+                            role="option"
+                            aria-selected={inviteUserId === user.id}
+                            onClick={() => setInviteUserId(user.id)}
+                            className={cn("flex w-full items-center justify-between border-b border-border px-3 py-2.5 text-left last:border-b-0 hover:bg-muted", inviteUserId === user.id && "bg-muted")}
+                          >
+                            <span className="text-sm text-foreground">{user.full_name ?? user.username ?? "Member"}</span>
+                            {user.username ? <span className="text-xs text-muted-foreground">@{user.username}</span> : null}
+                          </button>
+                        )) : (
+                          <p className="px-3 py-3 text-xs text-muted-foreground">No matching users found.</p>
+                        )}
+                      </div>
+                    ) : null}
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Pick from users already on the platform instead of typing a username.
+                    Enter at least two characters, then select the person you want to add.
                   </p>
                 </FieldGroup>
                 </>

@@ -52,7 +52,7 @@ function SyntaxText({ text }: { text: string }) {
   })}</>;
 }
 
-export function ScanTerminal() {
+export function ScanTerminal({ onReset }: { onReset?: () => void }) {
   const [lines, setLines] = useState<Line[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [busy, setBusy] = useState(true);
@@ -260,6 +260,10 @@ export function ScanTerminal() {
 
   const restart = () => {
     cancelledRef.current = true;
+    if (onReset) {
+      onReset();
+      return;
+    }
     startedRef.current = true;
     window.setTimeout(() => playIntro(), 60);
   };
@@ -284,7 +288,7 @@ export function ScanTerminal() {
           className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-1 text-[11px] text-muted-foreground transition hover:text-foreground"
         >
           <RefreshCw className="h-3 w-3" />
-          restart
+          reset
         </button>
       </div>
 

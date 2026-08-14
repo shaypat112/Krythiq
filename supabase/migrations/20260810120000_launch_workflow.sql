@@ -1,4 +1,7 @@
+begin;
 
+alter table public.change_drafts
+  add column if not exists expires_at timestamptz not null default (now() + interval '7 days');
 
 alter table public.remediation_items enable row level security;
 alter table public.change_drafts enable row level security;

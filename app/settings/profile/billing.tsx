@@ -8,7 +8,7 @@ import { BentoGrid } from "@/components/ui/bento-grid";
 import { Skeleton } from "@/components/ui/skeleton";
 import { UsageTable } from "@/components/billingsdk/usage-table";
 import { PaymentFailure } from "@/components/billingsdk/payment-failure";
-import { UsageBasedPricing } from "@/components/billingsdk/usage-based-pricing";
+import { InvoiceAnalytics } from "@/components/billingsdk/invoice-analytics";
 import {
   hasPaymentFailure,
   toUsageItems,
@@ -170,52 +170,18 @@ export function BillingSection() {
             </div>
           </BentoGrid>
 
-          <BentoGrid className="auto-rows-auto grid-cols-1 gap-4 lg:grid-cols-5">
+          <BentoGrid className="auto-rows-auto grid-cols-1 gap-4">
           <UsageTable
-            className="lg:col-span-3"
+            className="w-full"
             usageHistory={toUsageItems(transactions)}
             title="Recent usage"
             description="Token activity recorded by the secure usage ledger."
             limit={8}
           />
 
-          <UsageBasedPricing
-            className="max-w-none lg:col-span-2"
-            min={100}
-            max={5000}
-            defaultValue={1000}
-            snapTo={100}
-            basePrice={0}
-            includedCredits={0}
-            unitPricePerCredit={0.01}
-            title="Usage-based estimate"
-            subtitle="Plan a monthly token budget. This calculator does not start a charge."
-            unitLabel="Tokens"
-          />
           </BentoGrid>
 
-          {summary.invoices.length ? (
-            <div className="rounded-2xl border bg-background p-5">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="font-semibold">Recent invoices</p>
-                  <p className="mt-1 text-sm text-muted-foreground">Latest Stripe test-mode billing records.</p>
-                </div>
-                <span className="text-xs text-muted-foreground">{summary.invoices.length} invoices</span>
-              </div>
-              <div className="mt-4 divide-y">
-                {summary.invoices.map((invoice) => (
-                  <div key={invoice.id} className="flex items-center justify-between gap-4 py-3 text-sm">
-                    <div>
-                      <p className="font-medium">{invoice.month}</p>
-                      <p className="text-xs capitalize text-muted-foreground">{invoice.status}</p>
-                    </div>
-                    <span className="font-semibold tabular-nums">${invoice.amount.toFixed(2)}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : null}
+          {summary.invoices.length ? <InvoiceAnalytics invoices={summary.invoices} /> : null}
         </div>
       )}
     </div>

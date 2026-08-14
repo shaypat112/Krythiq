@@ -27,6 +27,10 @@ function copyResponseCookies(source: NextResponse, target: NextResponse) {
   return target;
 }
 
+function safeNextPath(value: string | null) {
+  return value?.startsWith("/") && !value.startsWith("//") ? value : null;
+}
+
 async function authenticatedPageResponse(request: NextRequest) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -59,7 +63,18 @@ async function authenticatedPageResponse(request: NextRequest) {
     Boolean(user && verified) &&
     user?.user_metadata?.onboarding_completed !== true;
 
-  if (user && verified && (isLandingRoute || (isAuthRoute && !isPasswordRecovery))) {
+  if (user && verified && isAuthRoute && !isPasswordRecovery) {
+    const requestedPath = safeNextPath(request.nextUrl.searchParams.get("next")) ?? "/dashboard";
+    const destination = needsOnboarding
+      ? new URL("/onboarding", request.url)
+      : new URL(requestedPath, request.url);
+    if (needsOnboarding && requestedPath !== "/onboarding") {
+      destination.searchParams.set("next", requestedPath);
+    }
+    return copyResponseCookies(response, NextResponse.redirect(destination));
+  }
+
+  if (user && verified && isLandingRoute) {
     return copyResponseCookies(
       response,
       NextResponse.redirect(
@@ -89,9 +104,10 @@ async function authenticatedPageResponse(request: NextRequest) {
     !needsOnboarding &&
     pathname === "/onboarding"
   ) {
+    const requestedPath = safeNextPath(request.nextUrl.searchParams.get("next")) ?? "/dashboard";
     return copyResponseCookies(
       response,
-      NextResponse.redirect(new URL("/dashboard", request.url)),
+      NextResponse.redirect(new URL(requestedPath, request.url)),
     );
   }
 

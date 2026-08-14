@@ -27,6 +27,11 @@ const workspaceOptions = [
   { id: "community", label: "Community", detail: "A Discord server or group", icon: Gamepad2 },
 ] as const;
 
+function requestedDestination() {
+  const requested = new URLSearchParams(window.location.search).get("next");
+  return requested?.startsWith("/") && !requested.startsWith("//") ? requested : "/dashboard";
+}
+
 export default function OnboardingPage() {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
@@ -46,15 +51,15 @@ export default function OnboardingPage() {
     void supabase.auth.getUser().then(({ data, error: userError }) => {
       if (!active) return;
       if (userError || !data.user) {
-        router.replace("/auth");
+        router.replace(`/auth?next=${encodeURIComponent(requestedDestination())}`);
         return;
       }
       if (!data.user.email_confirmed_at) {
-        router.replace("/auth?verification=required");
+        router.replace(`/auth?verification=required&next=${encodeURIComponent(requestedDestination())}`);
         return;
       }
       if (data.user.user_metadata?.onboarding_completed === true) {
-        router.replace("/dashboard");
+        router.replace(requestedDestination());
         return;
       }
       setLoading(false);
@@ -101,11 +106,7 @@ export default function OnboardingPage() {
       setSaving(false);
       return;
     }
-    const requested = new URLSearchParams(window.location.search).get("next");
-    const destination = requested?.startsWith("/") && !requested.startsWith("//")
-      ? requested
-      : "/dashboard";
-    router.replace(destination);
+    router.replace(requestedDestination());
     router.refresh();
   };
 

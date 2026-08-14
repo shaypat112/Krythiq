@@ -146,7 +146,7 @@ export default function AuthClient() {
       const response = await fetch("/api/auth/email-link", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ kind: "signup", email: normalizedEmail, password, referralCode }),
+        body: JSON.stringify({ kind: "signup", email: normalizedEmail, password, referralCode, next: nextPath }),
       });
       const result = await response.json().catch(() => ({}));
       if (!response.ok) {
@@ -188,7 +188,7 @@ export default function AuthClient() {
     const { error: oauthError } = await supabase.auth.signInWithOAuth({
       provider,
       options: {
-        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent("/onboarding")}${referralCode ? `&ref=${encodeURIComponent(referralCode)}` : ""}`,
+        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}${referralCode ? `&ref=${encodeURIComponent(referralCode)}` : ""}`,
         ...(scopes ? { scopes } : {}),
       },
     });
@@ -208,7 +208,7 @@ export default function AuthClient() {
     const response = await fetch("/api/auth/email-link", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ kind: "magiclink", email: normalizeEmail(email) }),
+      body: JSON.stringify({ kind: "magiclink", email: normalizeEmail(email), next: nextPath }),
     });
     const result = await response.json().catch(() => ({}));
     setPending(null);

@@ -106,7 +106,7 @@ export async function POST(request: Request) {
     }
 
     const stored = await insertRes.json();
-    await createNotification({ env, accessToken, userId, type: "repository.synced", data: { repository_count: stored.length, message: `${stored.length} GitHub ${stored.length === 1 ? "project is" : "projects are"} ready to scan.` } }).catch(() => undefined);
+    await createNotification({ env, accessToken, userId, type: "repository.synced", data: { repository_count: stored.length, message: `${stored.length} GitHub ${stored.length === 1 ? "repository is" : "repositories are"} connected to Krythiq.` } }).catch(() => undefined);
     return NextResponse.json({ repos: stored });
   } catch (error) {
     if (error instanceof RequestAuthError) {

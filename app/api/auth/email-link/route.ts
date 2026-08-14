@@ -13,6 +13,9 @@ export async function POST(request: Request) {
     const kind = body?.kind === "signup" ? "signup" : body?.kind === "magiclink" ? "magiclink" : null;
     const email = normalizeEmail(typeof body?.email === "string" ? body.email : "");
     const password = typeof body?.password === "string" ? body.password : "";
+    const nextPath = typeof body?.next === "string" && body.next.startsWith("/") && !body.next.startsWith("//")
+      ? body.next
+      : "/dashboard";
     const referralCode = /^[A-Za-z0-9_-]{20,80}$/.test(body?.referralCode ?? "")
       ? String(body.referralCode)
       : null;
@@ -29,7 +32,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Email authentication is temporarily unavailable." }, { status: 503 });
     }
     const origin = process.env.NEXT_PUBLIC_SITE_URL?.trim() || new URL(request.url).origin;
-    const redirectUrl = new URL("/auth/callback?next=/onboarding", origin);
+    const redirectUrl = new URL("/auth/callback", origin);
+    redirectUrl.searchParams.set("next", nextPath);
     if (kind === "signup" && referralCode) redirectUrl.searchParams.set("ref", referralCode);
     const redirectTo = redirectUrl.toString();
     const supabase = createClient(url, serviceRoleKey, {
@@ -48,7 +52,7 @@ export async function POST(request: Request) {
     const actionUrl = new URL("/auth/callback", origin);
     actionUrl.searchParams.set("token_hash", result.data.properties.hashed_token);
     actionUrl.searchParams.set("type", kind === "signup" ? "signup" : "magiclink");
-    actionUrl.searchParams.set("next", "/onboarding");
+    actionUrl.searchParams.set("next", nextPath);
     if (kind === "signup" && referralCode) actionUrl.searchParams.set("ref", referralCode);
     await sendAuthLinkEmail({
       to: email,

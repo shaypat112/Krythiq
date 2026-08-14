@@ -14,16 +14,8 @@ export default function DocsLayout({
             <BrandLogo className="h-8 w-8 rounded-xl" priority />
             Krythiq
           </Link>
-          <div className="rounded-2xl border border-border bg-background p-4">
-            <p className="text-xs uppercase tracking-[0.28em] text-muted-foreground">
-              Documentation
-            </p>
-            <p className="mt-2 text-sm font-medium text-foreground">
-              Setup, install guides, and usage notes for Krythiq.
-            </p>
-          </div>
-
           <div className="space-y-8">
+            <Link href="/documentation/navigate-site" className="block text-sm text-muted-foreground transition-colors hover:text-foreground">Navigate this site</Link>
             <div>
               <h4 className="mb-4 text-[10px] font-semibold uppercase tracking-[0.35em] text-muted-foreground">
                 Getting Started
@@ -160,6 +152,7 @@ export default function DocsLayout({
         <nav aria-label="Documentation sections" className="flex gap-2 overflow-x-auto">
           {[
             ["/documentation", "Start"],
+            ["/documentation/navigate-site", "Navigate site"],
             ["/documentation/quickstart", "Quick start"],
             ["/documentation/project-structure", "Structure"],
             ["/documentation/commands", "CLI"],

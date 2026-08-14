@@ -4,8 +4,9 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { ArrowDown, ArrowRight, Check, GitBranch, ScanSearch, ShieldCheck, Sparkles } from "lucide-react";
 import { AnimatePresence, motion, useInView, useReducedMotion, useScroll, useTransform } from "motion/react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import MacbookScrollDemo from "@/components/macbook-scroll-demo";
+import SlideTextButton from "@/components/kokonutui/slide-text-button";
 import { RepositoryScene } from "./RepositoryScene";
 import { ScanTerminal } from "./ScanTerminal";
 import styles from "../landing.module.css";
@@ -189,10 +190,12 @@ export function LandingExperience() {
 
       <section className={styles.finalCta}>
         <Reveal>
-          <p className={styles.eyebrow}>One more layer before production</p>
           <h2>Your AI wrote the code.<br />Get a second opinion before you ship it.</h2>
           <p>Review security, architecture, frontend quality, and production readiness in one place.</p>
-          <Link href="/scan" className={styles.primaryButton}>Scan your repository <ArrowRight size={16} /></Link>
+          <div className={styles.finalActions}>
+            <Link href="/scan" className={styles.primaryButton}>Scan your repository <ArrowRight size={16} /></Link>
+            <SlideTextButton href="/documentation" text="View Documentation" hoverText="Explore the docs" variant="ghost" className={styles.documentationButton} />
+          </div>
         </Reveal>
       </section>
     </main>
@@ -209,6 +212,16 @@ function ProductDemoSequence() {
   const reduced = useReducedMotion();
   const [screen, setScreen] = useState<"report" | "terminal">("report");
 
+  useEffect(() => {
+    if (screen !== "report") return;
+
+    const transitionTimer = window.setTimeout(() => {
+      setScreen("terminal");
+    }, 2000);
+
+    return () => window.clearTimeout(transitionTimer);
+  }, [screen]);
+
   return (
     <section ref={sectionRef} className={styles.demoSection} aria-labelledby="demo-heading">
       <Reveal className={styles.demoHeading}>
@@ -219,18 +232,14 @@ function ProductDemoSequence() {
       <motion.div className={styles.laptopStage} style={reduced ? undefined : { opacity: laptopOpacity, y: laptopY, scale: laptopScale, rotateX: laptopRotate }}>
         <MacbookScrollDemo>
           <div className={styles.demoScreen}>
-            <div className={styles.screenToggle} role="group" aria-label="Choose product demo view">
-              <button type="button" aria-pressed={screen === "report"} onClick={() => setScreen("report")}>Report</button>
-              <button type="button" aria-pressed={screen === "terminal"} onClick={() => setScreen("terminal")}>Terminal</button>
-            </div>
             <AnimatePresence mode="wait" initial={false}>
               {screen === "report" ? (
-                <motion.div key="report" className={styles.screenPanel} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
+                <motion.div key="report" className={styles.screenPanel} initial={{ opacity: 0, scale: 0.995 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 1.01 }} transition={{ duration: reduced ? 0 : 0.35 }}>
                   <RepositoryScene />
                 </motion.div>
               ) : (
-                <motion.div key="terminal" className={`${styles.screenPanel} ${styles.screenTerminal}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
-                  <ScanTerminal />
+                <motion.div key="terminal" className={`${styles.screenPanel} ${styles.screenTerminal}`} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: reduced ? 0 : 0.35, ease: [0.16, 1, 0.3, 1] }}>
+                  <ScanTerminal onReset={() => setScreen("report")} />
                 </motion.div>
               )}
             </AnimatePresence>

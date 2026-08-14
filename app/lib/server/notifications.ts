@@ -56,7 +56,9 @@ export async function createNotification(options: {
         } else {
           const catalogEvent = notificationEvents.find((event) => event.id === type);
           const message = typeof data.message === "string" ? data.message : `${catalogEvent?.label ?? "Account update"} in your Krythiq workspace.`;
-          await sendNotificationEmail({ to: user.email, title: catalogEvent?.label ?? "Krythiq account update", message, actionUrl: new URL("/settings?section=notifications", siteUrl).toString() });
+          const requestedHref = typeof data.href === "string" ? data.href : "";
+          const safeHref = requestedHref.startsWith("/") && !requestedHref.startsWith("//") ? requestedHref : "/settings?section=notifications";
+          await sendNotificationEmail({ to: user.email, title: catalogEvent?.label ?? "Krythiq account update", message, actionUrl: new URL(safeHref, siteUrl).toString() });
         }
       }
     } catch (error) {

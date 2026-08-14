@@ -12,7 +12,7 @@ export const runtime = "nodejs";
 function formatPlanName(priceId: string | null) {
   const { pricePro, priceTeam, priceProYearly, priceTeamYearly } = getStripeConfig();
   if (!priceId) return "No active plan";
-  if (priceId === priceTeam || priceId === priceTeamYearly) return "Team";
+  if (priceId === priceTeam || priceId === priceTeamYearly) return "Plus";
   if (priceId === pricePro || priceId === priceProYearly) return "Pro";
   return "Custom";
 }

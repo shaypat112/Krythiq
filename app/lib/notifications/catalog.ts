@@ -24,6 +24,9 @@ export const notificationEvents = [
   { id: "team.joined", label: "Team invitation accepted", defaultChannels: ["in_app"] },
   { id: "repository.synced", label: "GitHub projects updated", defaultChannels: ["in_app"] },
   { id: "billing.updated", label: "Billing or subscription updated", defaultChannels: ["in_app", "email"] },
+  { id: "social.follow_requested", label: "New follow request", defaultChannels: ["in_app", "email"] },
+  { id: "social.follow_accepted", label: "Follow request accepted", defaultChannels: ["in_app", "email"] },
+  { id: "social.message_received", label: "New direct message", defaultChannels: ["in_app", "email"] },
 ] as const;
 
 export type NotificationChannelId = (typeof notificationChannels)[number]["id"];

@@ -27,10 +27,10 @@ export const apiPlanCatalog: Record<ApiPlanId, {
     limits: { apiRequestsPerMinute: 300, expensiveRequestsPerMinute: 20 },
   },
   team: {
-    name: "Team",
+    name: "Plus",
     audience: "Engineering teams sharing repositories and policy",
     pricePosition: "Per-team subscription",
-    included: "Shared workflows, team controls, and highest standard limits",
+    included: "Fair-use unlimited Tokens, unlimited teams, and highest standard limits",
     limits: { apiRequestsPerMinute: 1200, expensiveRequestsPerMinute: 60 },
   },
 };

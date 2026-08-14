@@ -34,9 +34,15 @@ export async function GET(request: Request) {
       const metadata = product.metadata as ProductMetadata;
       let features: string[] = [];
       try { features = JSON.parse(metadata.features ?? "[]") as string[]; } catch { features = []; }
+      const planId = metadata.plan_id ?? price.id;
+      const entitlementFeatures = planId === "pro"
+        ? ["2,000 Tokens refreshed every week", "Unlimited teams"]
+        : planId === "team"
+          ? ["Fair-use unlimited Tokens", "Unlimited teams", "Rate limits protect platform availability"]
+          : [];
       return {
-        id: metadata.plan_id ?? price.id,
-        name: product.name,
+        id: planId,
+        name: planId === "team" ? "Plus" : planId === "pro" ? "Pro" : product.name,
         description: product.description ?? "Recurring security scanning subscription.",
         priceId: price.id,
         amount: price.unit_amount ?? 0,
@@ -44,7 +50,7 @@ export async function GET(request: Request) {
         interval: price.recurring?.interval ?? "month",
         yearlyAmount: yearlyPrice?.unit_amount ?? null,
         yearlyPriceId: yearlyPrice?.id ?? null,
-        features,
+        features: [...entitlementFeatures, ...features.filter((feature) => !entitlementFeatures.includes(feature))],
       };
     }));
     return NextResponse.json({ configured: true, plans });

@@ -30,6 +30,11 @@ function isCurrent(pathname: string, item: (typeof NAV_ITEMS)[number]) {
 
 export default function ScanLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const isDedicatedDraft = /^\/scan\/drafts\/[^/]+$/.test(pathname);
+
+  if (isDedicatedDraft) {
+    return <div className="min-h-[calc(100svh-9rem)] bg-background text-foreground">{children}</div>;
+  }
 
   return (
     <div className="flex min-h-[calc(100svh-9rem)] items-start bg-background text-foreground">

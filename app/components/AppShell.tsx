@@ -73,6 +73,12 @@ function formatNotificationTitle(type: string) {
       return "Team joined";
     case "repository.synced":
       return "GitHub projects updated";
+    case "social.follow_requested":
+      return "New follow request";
+    case "social.follow_accepted":
+      return "Follow request accepted";
+    case "social.message_received":
+      return "New direct message";
     default:
       return type.replace(".", " ");
   }
@@ -358,31 +364,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
 	            {!loading && user ? (
 	              <div className="flex items-center gap-3">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Link
-                        href="/settings?section=integrations"
-                        className={`inline-flex h-9 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition hover:brightness-110 ${
-                          githubReady
-                            ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                            : "border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-400"
-                        }`}
-                        aria-label={githubReady ? "GitHub connected and ready to scan" : "GitHub not connected"}
-                      >
-                        <Github className="h-4 w-4" />
-                        <span className="hidden sm:inline">{githubReady ? "GitHub ready" : "GitHub offline"}</span>
-                        <span
-                          aria-hidden="true"
-                          className={`h-1.5 w-1.5 rounded-full ${githubReady ? "bg-emerald-500" : "bg-red-500"}`}
-                        />
-                      </Link>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom">
-                      {githubReady
-                        ? "GitHub connected — repositories are ready to scan."
-                        : "Connect GitHub to choose projects for scanning."}
-                    </TooltipContent>
-                  </Tooltip>
                   <Link
                     href="/settings?section=tokens"
                     className="inline-flex h-9 items-center gap-1.5 rounded-full border border-border bg-card px-3 text-xs font-medium transition hover:bg-muted"
@@ -427,9 +408,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                     ) : (
                       <div className="max-h-64 overflow-auto">
                         {notifications.map((item) => (
-                          <div
+                          <Link
                             key={item.id}
-                            className="px-3 py-2 text-xs text-foreground"
+                            href={typeof item.data?.["href"] === "string" && String(item.data["href"]).startsWith("/") && !String(item.data["href"]).startsWith("//") ? String(item.data["href"]) : "/settings?section=notifications"}
+                            className="block px-3 py-2 text-xs text-foreground transition hover:bg-muted"
                           >
                             <div className="font-medium">
                               {formatNotificationTitle(item.type)}
@@ -446,7 +428,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                             <div className="text-[10px] text-muted-foreground">
                               {new Date(item.created_at).toLocaleString()}
                             </div>
-                          </div>
+                          </Link>
                         ))}
                       </div>
                     )}
@@ -491,6 +473,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                   >
                     <DropdownMenuLabel>{displayName}</DropdownMenuLabel>
                     <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link href="/settings?section=integrations" className="flex items-center gap-2">
+                        <Github className="h-4 w-4" />
+                        <span>{githubReady ? "GitHub ready" : "GitHub offline"}</span>
+                        <span aria-hidden="true" className={`ml-auto h-2 w-2 rounded-full ${githubReady ? "bg-emerald-500" : "bg-red-500"}`} />
+                      </Link>
+                    </DropdownMenuItem>
                     <DropdownMenuItem asChild>
                       <Link href="/billing" className="flex items-center gap-2">
                         <CreditCard className="h-4 w-4" />

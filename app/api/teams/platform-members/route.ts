@@ -13,9 +13,11 @@ export async function GET(request: Request) {
     const { accessToken, userId } = requireRequestAuth(request);
     const { searchParams } = new URL(request.url);
     const teamId = searchParams.get("teamId");
+    const query = searchParams.get("q")?.trim().slice(0, 64) ?? "";
+    const searchableQuery = query.replace(/[,%_*()]/g, "").trim();
 
-    if (!teamId) {
-      return NextResponse.json({ error: "Missing teamId." }, { status: 400 });
+    if (!teamId || searchableQuery.length < 2) {
+      return NextResponse.json({ error: "Enter at least two characters to search." }, { status: 400 });
     }
 
     const [adminAccess, managerAccess] = await Promise.all([
@@ -30,8 +32,9 @@ export async function GET(request: Request) {
       );
     }
 
+    const searchTerm = encodeURIComponent(`*${searchableQuery}*`);
     const profilesRes = await adminSupabaseFetch(
-      "profiles?select=id,username,full_name,avatar_url&order=username.asc.nullslast&limit=250",
+      `profiles?or=(username.ilike.${searchTerm},full_name.ilike.${searchTerm})&select=id,username,full_name,avatar_url&order=username.asc.nullslast&limit=10`,
     );
 
     if (!profilesRes.ok) {

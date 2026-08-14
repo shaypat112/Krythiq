@@ -19,7 +19,8 @@ test("social sign-in does not request administrative provider permissions", () =
   for (const source of [authClient, account]) {
     assert.doesNotMatch(source, /guilds\.join|guilds\.members\.read|manage_pages|rw_organization_admin|w_member_social/);
   }
-  assert.match(authClient, /next=.*onboarding/);
+  assert.match(authClient, /const nextPath = safeNextPath\(searchParams\.get\("next"\)\)/);
+  assert.match(authClient, /callback\?next=\$\{encodeURIComponent\(nextPath\)\}/);
 });
 
 test("OAuth callback copies only bounded display metadata into the profile", () => {
@@ -35,4 +36,7 @@ test("organization onboarding is bounded and retry-safe", () => {
   assert.match(teamRoute, /normalizedName\.length < 2 \|\| normalizedName\.length > 120/);
   assert.match(teamRoute, /source === "onboarding"/);
   assert.match(teamRoute, /existing: true/);
+  assert.match(teamRoute, /getUserEntitlements\(userId\)/);
+  assert.match(teamRoute, /TEAM_LIMIT_REACHED/);
+  assert.match(teamRoute, /owned\.length >= entitlements\.maxOwnedTeams/);
 });

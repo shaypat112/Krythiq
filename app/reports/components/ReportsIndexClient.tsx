@@ -7,9 +7,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { buildTeamAuthHeaders } from "@/app/lib/http";
 import { createClient } from "@/app/lib/supabase";
 import { useTeam } from "@/app/components/TeamProvider";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { LinkedInScanShare } from "@/app/components/LinkedInScanShare";
+import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 type ScanRow = {
   repo: string;
@@ -34,7 +36,7 @@ function severityTone(severity: string) {
   return "text-emerald-400";
 }
 
-export function ReportsIndexClient({ embedded = false, onNewScan }: { embedded?: boolean; onNewScan?: () => void }) {
+export function ReportsIndexClient({ onNewScan }: { embedded?: boolean; onNewScan?: () => void }) {
   const supabase = useMemo(() => createClient(), []);
   const { selectedTeamId } = useTeam();
   const [repos, setRepos] = useState<RepoSummary[]>([]);
@@ -97,38 +99,7 @@ export function ReportsIndexClient({ embedded = false, onNewScan }: { embedded?:
 
   return (
     <div className="mx-auto max-w-6xl space-y-8">
-      <section className={embedded ? "rounded-3xl border border-border bg-card p-6 sm:p-8" : "rounded-[2rem] border border-border bg-[radial-gradient(circle_at_top_left,rgba(244,63,94,0.12),transparent_26%),radial-gradient(circle_at_bottom_right,rgba(34,197,94,0.12),transparent_28%),linear-gradient(135deg,var(--card),var(--background))] p-8 shadow-[0_24px_90px_rgba(0,0,0,0.1)]"}>
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-          <div className="space-y-3">
-            <span className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-              Scan history
-            </span>
-            <div>
-              <h1 className="text-4xl font-semibold tracking-tight text-foreground">
-                Previous scans by repository
-              </h1>
-              <p className="mt-2 max-w-2xl text-sm leading-7 text-muted-foreground sm:text-base">See each project’s latest result, changes over time, and recommended next steps.</p>
-            </div>
-          </div>
-          <div className="flex flex-wrap items-end gap-3">
-            {onNewScan ? <Button onClick={onNewScan}><Plus /> New scan</Button> : <Button asChild><Link href="/scan"><Plus /> New scan</Link></Button>}
-            <div className="grid gap-3 sm:grid-cols-3">
-              <div className="rounded-2xl border border-border bg-background/80 p-4">
-                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Repositories</p>
-                <p className="mt-2 text-2xl font-semibold text-foreground">{repos.length}</p>
-              </div>
-              <div className="rounded-2xl border border-border bg-background/80 p-4">
-                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Latest severity</p>
-                <p className="mt-2 text-2xl font-semibold text-foreground">{repos[0]?.latest.severity?.toUpperCase?.() ?? "-"}</p>
-              </div>
-              <div className="rounded-2xl border border-border bg-background/80 p-4">
-                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Latest score</p>
-                <p className="mt-2 text-2xl font-semibold text-foreground">{repos[0]?.latest.score ?? "-"}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+      <div className="flex items-center justify-between gap-4 border-b border-border pb-4"><div><h1 className="text-xl font-semibold">Scan history</h1><p className="mt-1 text-sm text-muted-foreground">{repos.length} {repos.length === 1 ? "repository" : "repositories"}</p></div>{onNewScan ? <Button onClick={onNewScan}><Plus /> New scan</Button> : <Button asChild><Link href="/scan"><Plus /> New scan</Link></Button>}</div>
 
       {loading ? (
         <div className="space-y-4" aria-label="Loading reports">
@@ -151,58 +122,7 @@ export function ReportsIndexClient({ embedded = false, onNewScan }: { embedded?:
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4">
-          {repos.map((repo) => (
-            <Card key={repo.repo} className="border-border bg-card shadow-sm">
-              <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                <div className="space-y-2">
-                  <CardTitle className="text-lg text-foreground">{repo.repo}</CardTitle>
-                  <CardDescription className="max-w-2xl text-sm leading-6">
-                    {repo.latest.findings?.ai_summary ??
-                      "Most recent scan completed. Open the repo report to review severity, issue count, and latest findings."}
-                  </CardDescription>
-                </div>
-                <div className="flex gap-2 sm:self-start"><LinkedInScanShare repository={repo.repo} severity={repo.latest.severity} issues={repo.latest.issues} score={repo.latest.score} compact /><Button asChild variant="outline"><Link href={`/reports/${encodeURIComponent(repo.repo)}`}>Open report<ArrowUpRight className="h-4 w-4" /></Link></Button></div>
-              </CardHeader>
-              <CardContent>
-                <div className="grid gap-3 md:grid-cols-4">
-                  <div className="rounded-2xl border border-border bg-background p-4">
-                    <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                      Severity
-                    </p>
-                    <p className={`mt-2 text-lg font-semibold ${severityTone(repo.latest.severity)}`}>
-                      {repo.latest.severity}
-                    </p>
-                  </div>
-                  <div className="rounded-2xl border border-border bg-background p-4">
-                    <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                      Issues
-                    </p>
-                    <p className="mt-2 text-lg font-semibold text-foreground">
-                      {repo.latest.issues}
-                    </p>
-                  </div>
-                  <div className="rounded-2xl border border-border bg-background p-4">
-                    <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                      Score
-                    </p>
-                    <p className="mt-2 text-lg font-semibold text-foreground">
-                      {repo.latest.score}
-                    </p>
-                  </div>
-                  <div className="rounded-2xl border border-border bg-background p-4">
-                    <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                      Scan history
-                    </p>
-                    <p className="mt-2 text-lg font-semibold text-foreground">
-                      {repo.totalScans}
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        <div className="overflow-hidden rounded-xl border border-border"><Table><TableHeader><TableRow><TableHead className="pl-4 sm:pl-6">Repository</TableHead><TableHead>Severity</TableHead><TableHead className="hidden sm:table-cell text-right">Issues</TableHead><TableHead className="hidden md:table-cell text-right">Score</TableHead><TableHead className="hidden lg:table-cell text-right">Scans</TableHead><TableHead className="hidden xl:table-cell">Last scanned</TableHead><TableHead className="pr-4 text-right sm:pr-6">Actions</TableHead></TableRow></TableHeader><TableBody>{repos.map((repo) => <TableRow key={repo.repo}><TableCell className="min-w-0 max-w-0 pl-4 sm:pl-6"><p className="truncate font-medium">{repo.repo}</p><p className="mt-1 text-xs text-muted-foreground sm:hidden">{repo.latest.issues} issues · score {repo.latest.score}</p></TableCell><TableCell><Badge variant="outline" className={`capitalize ${severityTone(repo.latest.severity)}`}>{repo.latest.severity}</Badge></TableCell><TableCell className="hidden text-right tabular-nums sm:table-cell">{repo.latest.issues}</TableCell><TableCell className="hidden text-right tabular-nums md:table-cell">{repo.latest.score}</TableCell><TableCell className="hidden text-right tabular-nums lg:table-cell">{repo.totalScans}</TableCell><TableCell className="hidden whitespace-nowrap text-muted-foreground xl:table-cell">{new Date(repo.latest.created_at).toLocaleDateString()}</TableCell><TableCell className="pr-4 sm:pr-6"><div className="flex justify-end gap-1"><LinkedInScanShare repository={repo.repo} severity={repo.latest.severity} issues={repo.latest.issues} score={repo.latest.score} compact /><Button asChild size="icon-sm" variant="ghost"><Link href={`/reports/${encodeURIComponent(repo.repo)}`} aria-label={`Open ${repo.repo} report`}><ArrowUpRight /></Link></Button></div></TableCell></TableRow>)}</TableBody></Table></div>
       )}
     </div>
   );

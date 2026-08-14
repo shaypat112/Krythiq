@@ -10,7 +10,6 @@ import ProfileHeader from "./components/ProfileHeader";
 import ScanTable, { type ScanRow } from "./components/ScanTable";
 import StatsRow from "./components/StatsRow";
 import TabNav, { type TabKey } from "./components/TabNav";
-import IntegrationPanel from "./components/IntegrationPanel";
 import RepoTable, { type ConnectedRepo } from "./components/RepoTable";
 import { useTeam } from "@/app/components/TeamProvider";
 import MultiStepLoaderDemo from "@/components/multi-step-loader-demo";
@@ -290,13 +289,6 @@ export default function ProfileClient({ initialTab = "scans" }: { initialTab?: T
 
       {activeTab === "integrations" && (
         <div className="space-y-3">
-          <IntegrationPanel
-            title="GitHub"
-            description="Your GitHub projects are ready to scan."
-            connected={repos.length > 0}
-            onClick={connectGitHub}
-          />
-
           <RepoTable
             repos={repos}
             onConnect={connectGitHub}
