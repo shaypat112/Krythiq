@@ -19,6 +19,8 @@ export interface ToolbarItem {
   id: string;
   title: string;
   icon: ToolbarIcon;
+  activeClassName?: string;
+  iconClassName?: string;
 }
 
 interface ToolbarProps {
@@ -67,9 +69,10 @@ export function Toolbar({
               className={cn(
                 "flex h-10 items-center justify-center gap-0 rounded-lg text-sm font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50",
                 active ? "gap-2 bg-background text-foreground shadow-sm ring-1 ring-border" : "text-muted-foreground hover:bg-background/60 hover:text-foreground",
+                active && item.activeClassName,
               )}
             >
-              <item.icon aria-hidden size={18} className={cn("shrink-0", active && "text-sky-500")} />
+              <item.icon aria-hidden size={18} className={cn("shrink-0", active && (item.iconClassName ?? "text-sky-500"))} />
               <AnimatePresence initial={false}>
                 {active ? (
                   <motion.span

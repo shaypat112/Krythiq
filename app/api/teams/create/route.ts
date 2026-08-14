@@ -2,9 +2,10 @@ import { NextResponse } from "next/server";
 import {
   RequestAuthError,
   getSupabaseEnv,
-  requireRequestAuth,
+  requireVerifiedRequestAuth,
   supabaseFetch,
 } from "@/app/lib/server/supabaseRest";
+import { adminSupabaseFetch } from "@/app/lib/server/admin";
 import { getUserEntitlements } from "@/app/lib/server/plan-entitlements";
 
 export const runtime = "nodejs";
@@ -12,7 +13,7 @@ export const runtime = "nodejs";
 export async function POST(request: Request) {
   try {
     const { name, source } = await request.json();
-    const { accessToken, userId } = requireRequestAuth(request);
+    const { accessToken, userId } = await requireVerifiedRequestAuth(request);
 
     const normalizedName = typeof name === "string" ? name.trim() : "";
     if (normalizedName.length < 2 || normalizedName.length > 120) {
@@ -39,9 +40,8 @@ export async function POST(request: Request) {
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-+|-+$/g, "");
 
-    const res = await supabaseFetch(env, "teams", {
+    const res = await adminSupabaseFetch("teams", {
       method: "POST",
-      accessToken,
       headers: { Prefer: "return=representation" },
       body: JSON.stringify({
         name: normalizedName,
@@ -54,24 +54,42 @@ export async function POST(request: Request) {
 
     if (!res.ok) {
       const text = await res.text();
-      return NextResponse.json({ error: text }, { status: 500 });
+      let message = "Unable to create team.";
+      try {
+        const payload = JSON.parse(text) as { message?: string };
+        if (payload.message) message = payload.message;
+      } catch {
+        // Keep the stable user-facing fallback for non-JSON upstream errors.
+      }
+      return NextResponse.json({ error: message }, { status: 500 });
     }
 
     const rows = await res.json();
     const team = rows?.[0];
 
-    if (team?.id) {
-      await supabaseFetch(env, "team_members", {
-        method: "POST",
-        accessToken,
-        headers: { Prefer: "return=minimal" },
-        body: JSON.stringify({
-          team_id: team.id,
-          user_id: userId,
-          role: "owner",
-          created_at: new Date().toISOString(),
-        }),
-      });
+    if (!team?.id) {
+      return NextResponse.json({ error: "Unable to create team." }, { status: 500 });
+    }
+
+    const membershipResponse = await adminSupabaseFetch("team_members", {
+      method: "POST",
+      headers: { Prefer: "return=minimal" },
+      body: JSON.stringify({
+        team_id: team.id,
+        user_id: userId,
+        role: "owner",
+        created_at: new Date().toISOString(),
+      }),
+    });
+
+    if (!membershipResponse.ok) {
+      await adminSupabaseFetch(`teams?id=eq.${encodeURIComponent(team.id)}`, {
+        method: "DELETE",
+      }).catch(() => undefined);
+      return NextResponse.json(
+        { error: "Unable to establish team ownership." },
+        { status: 500 },
+      );
     }
 
     return NextResponse.json({ team });

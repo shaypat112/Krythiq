@@ -4,6 +4,7 @@ import { adminSupabaseFetch } from "@/app/lib/server/admin";
 import { auditWorkspace, requireWorkspaceRequest, type WorkspaceFile } from "@/app/lib/server/repository-workspaces";
 import { scannerPolicy } from "@/app/lib/scanner/rules/registry";
 import { RequestAuthError } from "@/app/lib/server/supabaseRest";
+import { deliverWorkspaceWebhook } from "@/app/lib/server/webhooks";
 
 export const runtime = "nodejs";
 type Context = { params: Promise<{ workspaceId: string }> };
@@ -11,7 +12,7 @@ type Context = { params: Promise<{ workspaceId: string }> };
 export async function POST(request: Request, { params }: Context) {
   try {
     const { workspaceId } = await params;
-    const { workspace, userId } = await requireWorkspaceRequest(request, workspaceId);
+    const { workspace, userId, accessToken } = await requireWorkspaceRequest(request, workspaceId);
     const body = await request.json();
     const providerToken = typeof body?.providerToken === "string" ? body.providerToken : "";
     const headers: HeadersInit = { Accept: "application/vnd.github+json", "User-Agent": "krythiq-workspaces", "X-GitHub-Api-Version": "2022-11-28", ...(providerToken ? { Authorization: `Bearer ${providerToken}` } : {}) };
@@ -45,6 +46,7 @@ export async function POST(request: Request, { params }: Context) {
     }
     const archive = zipSync(files, { level: 6 });
     await auditWorkspace(workspace.id, userId, "zip.exported", { base_commit_sha: workspace.base_commit_sha, file_count: Object.keys(files).length, archive_bytes: archive.byteLength });
+    await deliverWorkspaceWebhook(accessToken, { userId, teamId: workspace.team_id, event: "workspace.zip_exported", workspace, details: { file_count: Object.keys(files).length, archive_bytes: archive.byteLength } }).catch(() => undefined);
     const filename = `${workspace.repository.replace("/", "-")}-${workspace.base_commit_sha.slice(0, 7)}.zip`;
     return new Response(Buffer.from(archive), { headers: { "Content-Type": "application/zip", "Content-Disposition": `attachment; filename="${filename}"`, "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff" } });
   } catch (error) {

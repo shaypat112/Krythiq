@@ -69,13 +69,12 @@ export function RepositoryConnections() {
 
   const visibleRepos = repos.filter((repo) => repo.full_name.toLowerCase().includes(query.trim().toLowerCase()));
 
-  return <section className="space-y-3" aria-labelledby="connected-repositories-title">
-    <div className="rounded-xl border border-border bg-card shadow-sm">
-      <div className="border-b border-border px-5 py-4">
+  return <section className="space-y-4" aria-labelledby="connected-repositories-title">
+      <div>
         <h2 id="connected-repositories-title" className="text-sm font-semibold">Find a connected repository</h2>
         <p className="mt-1 text-xs text-muted-foreground">Search repositories available to the GitHub account currently connected to Krythiq.</p>
       </div>
-      <div className="p-4 sm:p-5">
+      <div>
         <div className="overflow-hidden rounded-xl border border-border bg-background shadow-lg shadow-black/5">
           <div className="flex items-center gap-3 border-b border-border p-3">
             <Search className="size-5 shrink-0 text-muted-foreground" />
@@ -86,6 +85,5 @@ export function RepositoryConnections() {
         </div>
         {!loading && !error ? <div className="mt-3 flex items-center justify-between gap-3 text-xs text-muted-foreground"><span>{visibleRepos.length} of {repos.length} repositories</span><Button size="xs" variant="ghost" onClick={() => void fetchGitHubRepositories()}>Refresh from GitHub</Button></div> : null}
       </div>
-    </div>
   </section>;
 }

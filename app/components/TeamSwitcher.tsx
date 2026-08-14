@@ -39,6 +39,13 @@ export function TeamSwitcher() {
     ? "Loading workspace…"
     : selectedTeam?.name ?? "Personal workspace";
 
+  const switchWorkspace = (value: string) => {
+    const nextTeamId = value === PERSONAL_WORKSPACE ? null : value;
+    if (nextTeamId === selectedTeamId) return;
+    setSelectedTeamId(nextTeamId);
+    window.location.reload();
+  };
+
   return (
     <Menubar className="h-9 min-w-0 max-w-56 shrink-0 bg-card p-0 shadow-sm">
       <MenubarMenu>
@@ -72,9 +79,7 @@ export function TeamSwitcher() {
           </MenubarLabel>
           <MenubarRadioGroup
             value={selectedTeamId ?? PERSONAL_WORKSPACE}
-            onValueChange={(value) =>
-              setSelectedTeamId(value === PERSONAL_WORKSPACE ? null : value)
-            }
+            onValueChange={switchWorkspace}
           >
             <MenubarRadioItem
               value={PERSONAL_WORKSPACE}

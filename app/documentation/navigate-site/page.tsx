@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, BookOpen, CheckCircle2, Coins, Compass, FileCode2, GitPullRequestArrow, History, MessageCircle, ScanSearch, Settings, ShieldCheck, Users } from "lucide-react";
+import { ArrowRight, BookOpen, CheckCircle2, Coins, Compass, FileCode2, History, MessageCircle, ScanSearch, Settings, ShieldCheck, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const sections = [
@@ -16,7 +16,7 @@ const sections = [
   {
     title: "Fix what was found",
     description: "Guided Fixes turns a finding into a prompt for Codex, Claude, Gemini, Copilot, Windsurf, or Cursor. Draft Changes lets you inspect and edit the proposed code before using it.",
-    links: [{ href: "/scan/fixes", label: "Guided fixes", icon: CheckCircle2 }, { href: "/scan/drafts", label: "Draft changes", icon: FileCode2 }, { href: "/scan/verification", label: "Check fixes", icon: GitPullRequestArrow }],
+    links: [{ href: "/scan/fixes", label: "Guided fixes", icon: CheckCircle2 }, { href: "/scan/drafts", label: "Draft changes", icon: FileCode2 }],
   },
   {
     title: "Build with your team",

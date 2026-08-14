@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Check, Code2, Download, Eye, FileCode2, GitBranch, Loader2, Maximize2, Minimize2, Play, RotateCcw, Search, Users, X } from "lucide-react";
+import Link from "next/link";
+import { Check, Code2, Download, Eye, FileCode2, GitBranch, Loader2, Maximize2, Minimize2, Play, RotateCcw, Search, Users, Webhook, X } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/app/lib/supabase";
 import { buildAuthHeaders } from "@/app/lib/http";
@@ -10,7 +11,8 @@ import { cn } from "@/app/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
+import { Toolbar, type ToolbarItem } from "@/components/kokonutui/toolbar";
 
 export type DraftPatch = {
   workspaceId: string;
@@ -37,6 +39,16 @@ type WorkspaceFile = {
 };
 
 type RepositoryFile = { path: string; sha: string; size: number };
+type WorkspaceTab = "edit" | "changed" | "diff" | "preview" | "collaborators" | "publish";
+
+const workspaceTabs: Array<ToolbarItem & { id: WorkspaceTab }> = [
+  { id: "edit", title: "Files", icon: Code2, activeClassName: "!bg-sky-500/10 !ring-sky-500/30", iconClassName: "text-sky-400" },
+  { id: "changed", title: "Changed files", icon: FileCode2, activeClassName: "!bg-amber-500/10 !ring-amber-500/30", iconClassName: "text-amber-400" },
+  { id: "diff", title: "Diff", icon: GitBranch, activeClassName: "!bg-violet-500/10 !ring-violet-500/30", iconClassName: "text-violet-400" },
+  { id: "preview", title: "Preview", icon: Eye, activeClassName: "!bg-emerald-500/10 !ring-emerald-500/30", iconClassName: "text-emerald-400" },
+  { id: "collaborators", title: "Collaborators", icon: Users, activeClassName: "!bg-pink-500/10 !ring-pink-500/30", iconClassName: "text-pink-400" },
+  { id: "publish", title: "Publish", icon: Check, activeClassName: "!bg-cyan-500/10 !ring-cyan-500/30", iconClassName: "text-cyan-400" },
+];
 
 function download(name: string, contents: string, type = "text/plain") {
   const url = URL.createObjectURL(new Blob([contents], { type }));
@@ -66,6 +78,7 @@ export function DraftCodeWorkspace({ draft, onClose }: { draft: DraftPatch; onCl
   const [openingPath, setOpeningPath] = useState<string | null>(null);
   const [treeError, setTreeError] = useState<string | null>(null);
   const [focusMode, setFocusMode] = useState(false);
+  const [activeTab, setActiveTab] = useState<WorkspaceTab>("edit");
   const [saveState, setSaveState] = useState<"saved" | "saving" | "conflict" | "error">("saved");
   const [conflictContent, setConflictContent] = useState<string | null>(null);
   const [presence, setPresence] = useState<Array<{ user_id: string; active_file_path: string | null; last_seen_at: string }>>([]);
@@ -217,6 +230,7 @@ export function DraftCodeWorkspace({ draft, onClose }: { draft: DraftPatch; onCl
         <Code2 className="size-5 text-sky-500" />
         <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{draft.repository}</p><p className="truncate text-xs text-muted-foreground">{activePath} · {draft.baseBranch}@{draft.baseCommitSha.slice(0, 7)}</p></div>
         <Badge variant="outline">{repositoryFiles.length.toLocaleString()} files</Badge>
+        <Button asChild variant="ghost" size="sm"><Link href="/settings?section=webhooks"><Webhook />Webhooks</Link></Button>
         <Button variant="outline" size="sm" onClick={() => setFocusMode((value) => !value)}>{focusMode ? <Minimize2 /> : <Maximize2 />}{focusMode ? "Exit focus" : "Fullscreen"}</Button>
         <Button variant="ghost" size="icon-sm" aria-label="Close workspace" onClick={onClose}><X /></Button>
       </header>
@@ -235,9 +249,9 @@ export function DraftCodeWorkspace({ draft, onClose }: { draft: DraftPatch; onCl
         </aside>
 
         <div className="min-w-0 min-h-0">
-          <Tabs defaultValue="edit" className="gap-0">
+          <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as WorkspaceTab)} className="gap-0">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b px-3 py-2">
-              <div className="max-w-full overflow-x-auto"><TabsList className="w-max"><TabsTrigger value="edit"><Code2 />Files</TabsTrigger><TabsTrigger value="changed"><FileCode2 />Changed files</TabsTrigger><TabsTrigger value="diff"><GitBranch />Diff</TabsTrigger><TabsTrigger value="preview"><Eye />Preview</TabsTrigger><TabsTrigger value="collaborators"><Users />Collaborators</TabsTrigger><TabsTrigger value="publish"><Check />Publish</TabsTrigger></TabsList></div>
+              <Toolbar ariaLabel="Draft workspace tools" selected={activeTab} onSelect={(value) => setActiveTab(value as WorkspaceTab)} items={workspaceTabs} className="max-w-full" />
               <span className="text-xs text-muted-foreground">{saveState === "saving" ? "Saving…" : saveState === "conflict" ? "Save conflict" : saveState === "error" ? "Save failed" : "Saved"}</span>
             </div>
             <TabsContent value="edit" className="mt-0"><textarea value={current.content} onChange={(event) => setOpenedFiles((files) => ({ ...files, [activePath]: { ...current, content: event.target.value } }))} spellCheck={false} aria-label={`Edit ${activePath}`} className={cn("w-full resize-none border-0 bg-zinc-950 p-5 font-mono text-[13px] leading-6 text-zinc-100 outline-none", focusMode ? "h-[calc(100svh-155px)]" : "min-h-[620px]")} /></TabsContent>

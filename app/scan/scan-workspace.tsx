@@ -357,10 +357,7 @@ export function ScanWorkspace() {
           ) : null}
           <fieldset className="mb-5">
             <legend className="text-sm font-medium">Analysis focus</legend>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Choose which repository surface is loaded and reviewed. The token
-              cost is still controlled by scan coverage.
-            </p>
+
             <Tabs
               value={analysisScope}
               onValueChange={(value) =>
@@ -424,7 +421,7 @@ export function ScanWorkspace() {
         <TabsContent value="file" className="mt-5">
           <div className="grid gap-5 lg:grid-cols-[minmax(0,420px)_1fr] lg:items-center">
             <FileUpload uploadDelay={450} maxFileSize={1024 * 1024} acceptedFileTypes={[".ts", ".tsx", ".js", ".jsx", ".py", ".go", ".rs", ".java", ".cs", ".php", ".rb", ".sh", ".yml", ".yaml", ".json", ".txt"]} validateFile={(file) => /\.(?:tsx?|jsx?|py|go|rs|java|cs|php|rb|sh|ya?ml|json|txt)$/i.test(file.name) ? null : { code: "UNSUPPORTED_FILE", message: "Choose a supported source, config, or manifest file." }} onUploadSuccess={(file) => void scanFile(file)} onUploadError={(uploadError) => setError(uploadError.message)} />
-            <div className="rounded-2xl border border-border bg-background/45 p-5"><p className="font-medium">Private, focused file review</p><p className="mt-2 text-sm leading-6 text-muted-foreground">Upload one code, configuration, or manifest file up to 1 MB. The scan is free, runs only for this request, and points to the exact lines that need attention.</p></div>
+
           </div>
         </TabsContent>
       </Tabs>

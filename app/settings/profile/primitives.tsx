@@ -18,8 +18,8 @@ export function Toggle({
   return (
     <div
       className={cn(
-        "flex items-center justify-between gap-4 rounded-lg px-4 py-3 transition-colors",
-        "border border-border bg-card hover:bg-muted/60",
+        "flex items-center justify-between gap-4 border-b border-border py-4 transition-colors",
+        "bg-transparent hover:border-foreground/20",
       )}
     >
       <div className="min-w-0">
@@ -114,7 +114,7 @@ export function StyledSelect({
   );
 }
 
-// ─── Section card ─────────────────────────────────────────────────────────────
+// ─── Section ──────────────────────────────────────────────────────────────────
 
 export function SectionCard({
   title,
@@ -128,15 +128,15 @@ export function SectionCard({
   className?: string;
 }) {
   return (
-    <div className={cn("overflow-hidden rounded-xl border border-border bg-card shadow-sm", className)}>
-      <div className="border-b border-border px-6 py-4">
+    <section className={cn("border-b border-border pb-8", className)}>
+      <div className="pb-5">
         <h3 className="text-sm font-semibold text-foreground">{title}</h3>
         {description && (
-          <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>
+          <p className="mt-1 max-w-3xl text-xs leading-5 text-muted-foreground">{description}</p>
         )}
       </div>
-      <div className="p-6 space-y-4">{children}</div>
-    </div>
+      <div className="space-y-4">{children}</div>
+    </section>
   );
 }
 

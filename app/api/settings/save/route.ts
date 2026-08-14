@@ -112,7 +112,16 @@ export async function POST(request: Request) {
       ? await validatePublicHttpsUrl(webhookUrl)
       : null;
 
-    const allowedEvents = new Set(["scan.completed", "scan.failed"]);
+    const allowedEvents = new Set([
+      "scan.completed",
+      "scan.failed",
+      "workspace.created",
+      "workspace.conflict",
+      "workspace.zip_exported",
+      "workspace.branch_published",
+      "workspace.pull_request_created",
+      "workspace.main_pushed",
+    ]);
     const events = Array.isArray(webhookEvents)
       ? webhookEvents.filter((event): event is string => allowedEvents.has(event))
       : [];

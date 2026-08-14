@@ -1,18 +1,27 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { BellRing, Check, Loader2 } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { BellRing, Check, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { createClient } from "@/app/lib/supabase";
 import { buildTeamAuthHeaders } from "@/app/lib/http";
 import { useTeam } from "@/app/components/TeamProvider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
 
 type Channel = { id: string; label: string; description: string; available: boolean };
 type Event = { id: string; label: string; defaultChannels: string[] };
 type Preference = { channel: string; event: string; enabled: boolean };
+type NotificationItem = { id: string; type: string; data: Record<string, unknown>; read_at: string | null; created_at: string };
+
+function notificationDetail(item: NotificationItem) {
+  const candidates = [item.data.message, item.data.repo_name, item.data.repository, item.data.sender_name, item.data.inviter_name];
+  const value = candidates.find((candidate) => typeof candidate === "string" && candidate.trim());
+  return typeof value === "string" ? value : "Account activity recorded by Krythiq.";
+}
 
 export function NotificationsSection() {
   const supabase = useMemo(() => createClient(), []);
@@ -23,6 +32,31 @@ export function NotificationsSection() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [notificationPage, setNotificationPage] = useState(1);
+  const [notificationLoading, setNotificationLoading] = useState(true);
+  const [notificationError, setNotificationError] = useState<string | null>(null);
+  const [notificationHasMore, setNotificationHasMore] = useState(false);
+
+  const loadNotifications = useCallback(async (page: number) => {
+    setNotificationLoading(true);
+    setNotificationError(null);
+    try {
+      const token = (await supabase.auth.getSession()).data.session?.access_token;
+      if (!token) throw new Error("Sign in to view notification history.");
+      const response = await fetch(`/api/notifications?page=${page}&pageSize=50`, { headers: buildTeamAuthHeaders(token, selectedTeamId) });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload?.error ?? "Unable to load notification history.");
+      const rows = (payload.notifications ?? []) as NotificationItem[];
+      setNotifications(rows);
+      setNotificationPage(page);
+      setNotificationHasMore(rows.length === 50);
+    } catch (cause) {
+      setNotificationError(cause instanceof Error ? cause.message : "Unable to load notification history.");
+    } finally {
+      setNotificationLoading(false);
+    }
+  }, [selectedTeamId, supabase]);
 
   useEffect(() => {
     let active = true;
@@ -52,6 +86,20 @@ export function NotificationsSection() {
     void load();
     return () => { active = false; };
   }, [selectedTeamId, supabase]);
+
+  useEffect(() => { void loadNotifications(1); }, [loadNotifications]);
+
+  useEffect(() => {
+    let active = true;
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    void supabase.auth.getUser().then(({ data }) => {
+      if (!active || !data.user) return;
+      channel = supabase.channel(`settings-notifications:${data.user.id}`)
+        .on("postgres_changes", { event: "*", schema: "public", table: "notifications", filter: `user_id=eq.${data.user.id}` }, () => { void loadNotifications(notificationPage); })
+        .subscribe();
+    });
+    return () => { active = false; if (channel) void supabase.removeChannel(channel); };
+  }, [loadNotifications, notificationPage, supabase]);
 
   const toggle = (event: string, channel: Channel) => {
     if (!channel.available) return;
@@ -97,6 +145,43 @@ export function NotificationsSection() {
         </CardContent>
       </Card>
       <Button onClick={() => void save()} disabled={saving}>{saving ? <Loader2 className="animate-spin" /> : <Check />}{saving ? "Saving…" : "Save notification preferences"}</Button>
+
+      <section className="border-t border-border pt-8" aria-labelledby="notification-history-title">
+        <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2 id="notification-history-title" className="text-base font-semibold">Notification history</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Every in-app notification recorded for your account, newest first.</p>
+          </div>
+          <span className="text-xs text-muted-foreground">Page {notificationPage} · up to 50 per page</span>
+        </div>
+
+        <div className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950 text-zinc-100 shadow-sm">
+          <Table className="table-fixed">
+            <TableHeader className="bg-zinc-900/80 [&_tr]:border-zinc-800">
+              <TableRow className="border-zinc-800 hover:bg-zinc-900/80">
+                <TableHead className="w-[46%] px-4 text-zinc-400">Notification</TableHead>
+                <TableHead className="w-[18%] px-4 text-zinc-400">Status</TableHead>
+                <TableHead className="w-[36%] px-4 text-zinc-400">Timestamp</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {notificationLoading ? <TableRow className="border-zinc-800 hover:bg-transparent"><TableCell colSpan={3} className="h-28 text-center text-zinc-400"><span className="inline-flex items-center gap-2"><Loader2 className="size-4 animate-spin" />Loading notification history…</span></TableCell></TableRow> : notificationError ? <TableRow className="border-zinc-800 hover:bg-transparent"><TableCell colSpan={3} className="h-28 whitespace-normal px-4 text-center text-red-400">{notificationError}</TableCell></TableRow> : notifications.length ? notifications.map((item) => {
+                const label = events.find((event) => event.id === item.type)?.label ?? item.type.split(".").map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(" ");
+                return <TableRow key={item.id} className="border-zinc-800 hover:bg-zinc-900/60">
+                  <TableCell className="whitespace-normal px-4 py-3"><p className="font-medium text-zinc-100">{label}</p><p className="mt-1 line-clamp-2 text-xs leading-5 text-zinc-400">{notificationDetail(item)}</p></TableCell>
+                  <TableCell className="px-4 py-3"><Badge variant="outline" className={item.read_at ? "border-zinc-700 text-zinc-400" : "border-sky-500/40 bg-sky-500/10 text-sky-300"}>{item.read_at ? "Read" : "Unread"}</Badge></TableCell>
+                  <TableCell className="whitespace-normal px-4 py-3"><time dateTime={item.created_at} className="text-sm text-zinc-200">{new Date(item.created_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}</time><p className="mt-1 text-xs text-zinc-500">{new Date(item.created_at).toLocaleDateString(undefined, { weekday: "long", year: "numeric", month: "long", day: "numeric" })}</p></TableCell>
+                </TableRow>;
+              }) : <TableRow className="border-zinc-800 hover:bg-transparent"><TableCell colSpan={3} className="h-28 text-center text-zinc-400">No notifications have been recorded yet.</TableCell></TableRow>}
+            </TableBody>
+          </Table>
+        </div>
+
+        <div className="mt-4 flex items-center justify-end gap-2">
+          <Button size="sm" variant="outline" disabled={notificationLoading || notificationPage === 1} onClick={() => void loadNotifications(notificationPage - 1)}><ChevronLeft />Previous</Button>
+          <Button size="sm" variant="outline" disabled={notificationLoading || !notificationHasMore} onClick={() => void loadNotifications(notificationPage + 1)}>Next<ChevronRight /></Button>
+        </div>
+      </section>
     </div>
   );
 }

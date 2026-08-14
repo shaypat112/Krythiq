@@ -152,7 +152,7 @@ function SettingsInner({ children }: { children: React.ReactNode }) {
         <MobileSettingsNav active={active} />
 
       <div className="bg-background px-4 py-8 sm:px-10 sm:py-10">
-        <div className="mx-auto max-w-5xl space-y-6">
+        <div className="mx-auto max-w-5xl space-y-8 [&_[data-slot=card]]:!rounded-none [&_[data-slot=card]]:!border-0 [&_[data-slot=card]]:!border-b [&_[data-slot=card]]:!border-border [&_[data-slot=card]]:!bg-transparent [&_[data-slot=card]]:!pb-8 [&_[data-slot=card]]:!shadow-none [&_[data-slot=card]]:!ring-0 [&_[data-slot=card-header]]:!px-0 [&_[data-slot=card-content]]:!px-0">
           {children}
         </div>
       </div>

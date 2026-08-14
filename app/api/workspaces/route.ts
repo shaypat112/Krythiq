@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { adminSupabaseFetch } from "@/app/lib/server/admin";
 import { auditWorkspace, requireSelectedWorkspaceTeam, resolveGitHubStarterFile } from "@/app/lib/server/repository-workspaces";
 import { RequestAuthError } from "@/app/lib/server/supabaseRest";
+import { deliverWorkspaceWebhook } from "@/app/lib/server/webhooks";
 
 export const runtime = "nodejs";
 
@@ -20,7 +21,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const { userId, teamId } = await requireSelectedWorkspaceTeam(request);
+    const { userId, teamId, accessToken } = await requireSelectedWorkspaceTeam(request);
     const body = await request.json();
     const repository = typeof body?.repository === "string" ? body.repository.trim() : "";
     const providerToken = typeof body?.providerToken === "string" ? body.providerToken : undefined;
@@ -36,6 +37,7 @@ export async function POST(request: Request) {
     }
     const file = (await fileResponse.json())?.[0];
     await auditWorkspace(workspace.id, userId, "workspace.created", { repository, base_branch: starter.baseBranch, base_commit_sha: starter.baseCommitSha, path: starter.path, source: "repository" });
+    await deliverWorkspaceWebhook(accessToken, { userId, teamId, event: "workspace.created", workspace, details: { source: "repository", initial_path: starter.path } }).catch(() => undefined);
     return NextResponse.json({ workspaceId: workspace.id, repository, file: starter.path, title: workspace.title, originalContent: starter.content, draftContent: starter.content, patch: "", patchSha256: "", baseBranch: starter.baseBranch, baseCommitSha: starter.baseCommitSha, version: file.version }, { status: 201 });
   } catch (error) {
     if (error instanceof RequestAuthError) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

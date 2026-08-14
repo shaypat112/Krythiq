@@ -15,6 +15,12 @@ import {
 const WEBHOOK_EVENTS = [
   { id: "scan.completed", label: "Scan completed" },
   { id: "scan.failed", label: "Scan failed" },
+  { id: "workspace.created", label: "Draft workspace created" },
+  { id: "workspace.conflict", label: "Workspace blocked by upstream changes" },
+  { id: "workspace.zip_exported", label: "Workspace ZIP exported" },
+  { id: "workspace.branch_published", label: "Workspace branch published" },
+  { id: "workspace.pull_request_created", label: "Workspace pull request created" },
+  { id: "workspace.main_pushed", label: "Workspace pushed to main" },
 ] as const;
 
 export function WebhooksSection() {
@@ -53,7 +59,7 @@ export function WebhooksSection() {
   return (
     <SectionCard
       title="Webhooks"
-      description="Push scan events to your own infrastructure."
+      description="Push scan and Draft Workspace events to your own infrastructure."
     >
       <Toggle
         label="Enable webhook delivery"

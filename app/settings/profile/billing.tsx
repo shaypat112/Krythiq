@@ -150,7 +150,7 @@ export function BillingSection() {
               <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Balance</p>
               <p className="mt-3 text-2xl font-semibold">{balance === null ? "—" : formatTokens(balance)}</p>
             </div>
-            <div className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:col-span-2 lg:col-span-4">
+            <div className="border-b border-border py-5 sm:col-span-2 lg:col-span-4">
               <p className="text-sm font-semibold text-foreground">
                 Manage billing
               </p>
@@ -163,7 +163,7 @@ export function BillingSection() {
               </GhostButton>
             </div>
 
-            <div className="rounded-2xl border border-border bg-[radial-gradient(circle_at_top_right,rgba(139,92,246,.1),transparent_42%),var(--card)] p-5 shadow-sm sm:col-span-2 lg:col-span-2">
+            <div className="border-b border-border py-5 sm:col-span-2 lg:col-span-2">
               <p className="text-sm font-semibold text-foreground">Purchase a plan</p>
               <p className="mt-1 text-sm text-muted-foreground">Open the secure in-app checkout to compare current Stripe prices and subscribe.</p>
               <GhostButton className="mt-4" onClick={() => { window.location.href = "/billing"; }}>View plans</GhostButton>

@@ -3,6 +3,7 @@ import { adminSupabaseFetch } from "@/app/lib/server/admin";
 import { auditWorkspace, requireWorkspaceRequest, type WorkspaceFile } from "@/app/lib/server/repository-workspaces";
 import { isTeamOwner } from "@/app/lib/server/teams";
 import { RequestAuthError } from "@/app/lib/server/supabaseRest";
+import { deliverWorkspaceWebhook } from "@/app/lib/server/webhooks";
 
 export const runtime = "nodejs";
 type Context = { params: Promise<{ workspaceId: string }> };
@@ -34,6 +35,7 @@ export async function POST(request: Request, { params }: Context) {
     const currentRef = await github<{ object: { sha: string } }>(`/repos/${workspace.repository}/git/ref/heads/${encodeURIComponent(workspace.base_branch)}`);
     if (currentRef.object.sha !== workspace.base_commit_sha) {
       await adminSupabaseFetch(`repository_workspaces?id=eq.${workspace.id}`, { method: "PATCH", body: JSON.stringify({ status: "conflicted", updated_at: new Date().toISOString() }) });
+      await deliverWorkspaceWebhook(accessToken, { userId, teamId: workspace.team_id, event: "workspace.conflict", workspace, details: { upstream_commit_sha: currentRef.object.sha } }).catch(() => undefined);
       return NextResponse.json({ error: "GitHub changed after this workspace was created. Publishing is blocked until the changes are reconciled.", upstreamCommitSha: currentRef.object.sha }, { status: 409 });
     }
     const filesResponse = await adminSupabaseFetch(`workspace_files?workspace_id=eq.${workspace.id}&select=id,workspace_id,path,base_blob_sha,original_content,content,last_edited_by,version,created_at,updated_at&order=path.asc`);
@@ -50,6 +52,7 @@ export async function POST(request: Request, { params }: Context) {
     if (mode === "main") {
       await github(`/repos/${workspace.repository}/git/refs/heads/${encodeURIComponent(workspace.base_branch)}`, { method: "PATCH", body: JSON.stringify({ sha: commit.sha, force: false }) });
       await auditWorkspace(workspace.id, userId, "main.pushed", { branch: workspace.base_branch, commit_sha: commit.sha });
+      await deliverWorkspaceWebhook(accessToken, { userId, teamId: workspace.team_id, event: "workspace.main_pushed", workspace, details: { branch: workspace.base_branch, commit_sha: commit.sha } }).catch(() => undefined);
       return NextResponse.json({ mode, branch: workspace.base_branch, commitSha: commit.sha, url: `https://github.com/${workspace.repository}/commit/${commit.sha}` });
     }
 
@@ -59,8 +62,10 @@ export async function POST(request: Request, { params }: Context) {
     if (mode === "pull_request") {
       const pull = await github<{ number: number; html_url: string }>(`/repos/${workspace.repository}/pulls`, { method: "POST", body: JSON.stringify({ title: commitMessage, head: branch, base: workspace.base_branch, body: `Created from Krythiq workspace ${workspace.id}.\n\nBase commit: ${workspace.base_commit_sha}` }) });
       await auditWorkspace(workspace.id, userId, "pull_request.created", { branch, commit_sha: commit.sha, pull_request_number: pull.number });
+      await deliverWorkspaceWebhook(accessToken, { userId, teamId: workspace.team_id, event: "workspace.pull_request_created", workspace, details: { branch, commit_sha: commit.sha, pull_request_number: pull.number } }).catch(() => undefined);
       return NextResponse.json({ mode, branch, commitSha: commit.sha, pullRequestNumber: pull.number, url: pull.html_url });
     }
+    await deliverWorkspaceWebhook(accessToken, { userId, teamId: workspace.team_id, event: "workspace.branch_published", workspace, details: { branch, commit_sha: commit.sha } }).catch(() => undefined);
     return NextResponse.json({ mode, branch, commitSha: commit.sha, url: `https://github.com/${workspace.repository}/tree/${encodeURIComponent(branch)}` });
   } catch (error) {
     if (error instanceof RequestAuthError) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

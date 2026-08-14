@@ -1,9 +1,20 @@
-import { supabaseFetch, type SupabaseEnv } from "./supabaseRest";
+import { getSupabaseEnv, supabaseFetch, type SupabaseEnv } from "./supabaseRest";
 import { createHmac } from "node:crypto";
 import { fetchWithTimeout, validatePublicHttpsUrl } from "./outboundRequests";
 import { notificationEvents } from "@/app/lib/notifications/catalog";
 
 const RETRY_MINUTES = 5;
+
+export const workspaceWebhookEvents = [
+  "workspace.created",
+  "workspace.conflict",
+  "workspace.zip_exported",
+  "workspace.branch_published",
+  "workspace.pull_request_created",
+  "workspace.main_pushed",
+] as const;
+
+type WorkspaceWebhookEvent = (typeof workspaceWebhookEvents)[number];
 
 type RetryDelivery = {
   id: string;
@@ -20,6 +31,27 @@ function getRetryAt() {
   const date = new Date();
   date.setMinutes(date.getMinutes() + RETRY_MINUTES);
   return date.toISOString();
+}
+
+export async function deliverWorkspaceWebhook(accessToken: string, options: {
+  userId: string;
+  teamId?: string | null;
+  event: WorkspaceWebhookEvent;
+  workspace: { id: string; repository: string; base_branch: string; base_commit_sha: string };
+  details?: Record<string, string | number | boolean | null>;
+}) {
+  return deliverWebhooks(getSupabaseEnv(), accessToken, {
+    userId: options.userId,
+    teamId: options.teamId,
+    event: options.event,
+    payload: {
+      workspace_id: options.workspace.id,
+      repository: options.workspace.repository,
+      base_branch: options.workspace.base_branch,
+      base_commit_sha: options.workspace.base_commit_sha,
+      ...(options.details ?? {}),
+    },
+  });
 }
 
 export async function deliverWebhooks(

@@ -10,6 +10,7 @@ const draftRoute = await readFile(new URL("../api/workflow/draft-patch/route.ts"
 const publishRoute = await readFile(new URL("../api/workspaces/[workspaceId]/publish/route.ts", import.meta.url), "utf8");
 const exportRoute = await readFile(new URL("../api/workspaces/[workspaceId]/export/route.ts", import.meta.url), "utf8");
 const sandbox = await readFile(new URL("./server/workspace-sandbox.ts", import.meta.url), "utf8");
+const webhooks = await readFile(new URL("./server/webhooks.ts", import.meta.url), "utf8");
 
 test("repository workspaces are team scoped and protected by forced RLS", () => {
   for (const table of ["repository_workspaces", "workspace_files", "workspace_presence", "workspace_audit_events"]) {
@@ -72,4 +73,18 @@ test("ZIP export is bounded and sandbox execution is unavailable by default", ()
   assert.match(exportRoute, /"zip\.exported"/);
   assert.match(sandbox, /readonly available = false/);
   assert.doesNotMatch(sandbox, /child_process|exec\(|spawn\(/);
+});
+
+test("workspace lifecycle webhooks reuse signed, retryable, SSRF-safe delivery", () => {
+  assert.match(webhooks, /workspace\.created/);
+  assert.match(webhooks, /workspace\.conflict/);
+  assert.match(webhooks, /workspace\.pull_request_created/);
+  assert.match(webhooks, /validatePublicHttpsUrl\(endpoint\.url\)/);
+  assert.match(webhooks, /createHmac\("sha256", endpoint\.secret\)/);
+  assert.match(webhooks, /webhook_deliveries/);
+  assert.doesNotMatch(webhooks, /providerToken|original_content|content:/);
+  assert.match(workspaceListRoute, /deliverWorkspaceWebhook/);
+  assert.match(draftRoute, /deliverWorkspaceWebhook/);
+  assert.match(exportRoute, /workspace\.zip_exported/);
+  assert.match(publishRoute, /workspace\.main_pushed/);
 });

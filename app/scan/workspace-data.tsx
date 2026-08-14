@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, ArrowRight, Atom, BadgeCheck, Bot, CheckCircle2, Clipboard, ClipboardCheck, Clock3, Code2, FileDiff, Gem, Github, Loader2, MousePointer2, Rocket, ShieldCheck, Sparkles, Terminal, WandSparkles, Waves } from "lucide-react";
+import { AlertTriangle, ArrowRight, Atom, Bot, CheckCircle2, Clipboard, ClipboardCheck, Clock3, Code2, FileDiff, Gem, Github, Loader2, MousePointer2, Rocket, ShieldCheck, Sparkles, Terminal, WandSparkles, Waves } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/app/lib/supabase";
 import { buildTeamAuthHeaders } from "@/app/lib/http";
@@ -43,26 +43,22 @@ function useRecentScans() {
     })();
     return () => { active = false; };
   }, [selectedTeamId, supabase]);
-  return { scans: Array.from(new Map(scans.map((scan) => [scan.repo, scan])).values()), history: scans, loading, error };
+  return { scans: Array.from(new Map(scans.map((scan) => [scan.repo, scan])).values()), loading, error };
 }
 
 function useWorkflowAction() {
   const supabase = useMemo(() => createClient(), []);
   const { selectedTeamId } = useTeam();
-  const [busy, setBusy] = useState<string | null>(null);
-  const run = async (path: string, repository: string, suggestionIndex: number, baselineCreatedAt?: string) => {
-    const key = `${repository}:${suggestionIndex}`; setBusy(key);
-    try {
-      const session = (await supabase.auth.getSession()).data.session;
-      const token = session?.access_token;
-      if (!token) throw new Error("Sign in to continue.");
-      const response = await fetch(path, { method: "POST", headers: buildTeamAuthHeaders(token, selectedTeamId, { "Content-Type": "application/json", "Idempotency-Key": crypto.randomUUID() }), body: JSON.stringify({ repository, suggestionIndex, baselineCreatedAt, providerToken: session?.provider_token ?? null }) });
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(payload.error ?? "The action could not be completed.");
-      return payload;
-    } finally { setBusy(null); }
+  const run = async (path: string, repository: string, suggestionIndex: number) => {
+    const session = (await supabase.auth.getSession()).data.session;
+    const token = session?.access_token;
+    if (!token) throw new Error("Sign in to continue.");
+    const response = await fetch(path, { method: "POST", headers: buildTeamAuthHeaders(token, selectedTeamId, { "Content-Type": "application/json", "Idempotency-Key": crypto.randomUUID() }), body: JSON.stringify({ repository, suggestionIndex, providerToken: session?.provider_token ?? null }) });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(payload.error ?? "The action could not be completed.");
+    return payload;
   };
-  return { busy, run };
+  return { run };
 }
 
 function gateFor(scan: Scan) {
@@ -86,7 +82,20 @@ function evidence(scan: Scan) {
 export function LaunchReadinessPage() {
   const { scans, loading, error } = useRecentScans();
   return <WorkspacePage eyebrow="Launch readiness" title="Can I safely ship?" description="A release gate built from real scan evidence. Missing evidence is shown as not checked instead of becoming a made-up score.">
-    <WorkspaceState loading={loading} error={error} empty={!scans.length}>{scans.map((scan) => { const gate = gateFor(scan); const top = (scan.findings?.list ?? []).slice(0, 3); return <Card key={scan.repo}><CardHeader><div className="flex flex-wrap items-start justify-between gap-4"><div><CardTitle>{scan.repo}</CardTitle><p className="mt-1 text-sm text-muted-foreground">Evidence captured {new Date(scan.created_at).toLocaleString()}</p></div><Badge variant="outline" className={gate.tone}><gate.Icon />{gate.label}</Badge></div></CardHeader><CardContent className="space-y-5"><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{evidence(scan).map((area) => <div key={area.name} className="rounded-xl border border-border bg-muted/20 p-3"><p className="text-xs text-muted-foreground">{area.name}</p><p className={area.known ? "mt-1 font-semibold" : "mt-1 font-semibold text-muted-foreground"}>{area.value}</p></div>)}</div><p className="text-sm">{gate.note}</p>{top.length ? <ol className="space-y-2">{top.map((finding, index) => <li key={`${finding.file}-${index}`} className="text-sm text-muted-foreground"><span className="mr-2 font-medium text-foreground">{index + 1}.</span>{finding.title ?? finding.message ?? "Review this finding"}</li>)}</ol> : null}<Button asChild><Link href={`/scan/fixes?repo=${encodeURIComponent(scan.repo)}`}>Review launch blockers <ArrowRight /></Link></Button></CardContent></Card>; })}</WorkspaceState>
+    <WorkspaceState loading={loading} error={error} empty={!scans.length} flat>{scans.map((scan) => {
+      const gate = gateFor(scan);
+      const top = (scan.findings?.list ?? []).slice(0, 3);
+      return <section key={scan.repo} className="space-y-5 border-b border-border pb-8 last:border-b-0">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div><h2 className="font-semibold">{scan.repo}</h2><p className="mt-1 text-sm text-muted-foreground">Evidence captured {new Date(scan.created_at).toLocaleString()}</p></div>
+          <Badge variant="outline" className={gate.tone}><gate.Icon />{gate.label}</Badge>
+        </div>
+        <div className="grid border-y border-border sm:grid-cols-2 lg:grid-cols-4">{evidence(scan).map((area) => <div key={area.name} className="border-b border-border py-4 last:border-b-0 sm:border-b-0 sm:border-r sm:px-4 sm:first:pl-0 sm:last:border-r-0"><p className="text-xs text-muted-foreground">{area.name}</p><p className={area.known ? "mt-1 font-semibold" : "mt-1 font-semibold text-muted-foreground"}>{area.value}</p></div>)}</div>
+        <p className="text-sm">{gate.note}</p>
+        {top.length ? <ol className="space-y-2">{top.map((finding, index) => <li key={`${finding.file}-${index}`} className="text-sm text-muted-foreground"><span className="mr-2 font-medium text-foreground">{index + 1}.</span>{finding.title ?? finding.message ?? "Review this finding"}</li>)}</ol> : null}
+        <Button asChild><Link href={`/scan/fixes?repo=${encodeURIComponent(scan.repo)}`}>Review launch blockers <ArrowRight /></Link></Button>
+      </section>;
+    })}</WorkspaceState>
   </WorkspacePage>;
 }
 
@@ -129,19 +138,6 @@ export function DraftChangesPage() {
     finally { setOpeningRepository(null); }
   };
   return <WorkspacePage eyebrow="Draft changes" title="Edit and review changes together" description="Open a repository workspace, edit code, inspect live diffs, collaborate, export, and publish reviewed changes."><SafetyNote icon={FileDiff} text="Workspaces are pinned to an exact GitHub commit and synchronized only with authorized team members. Repository code is never executed on the Krythiq server." />{workspaces.length ? <section className="border-y border-border py-4"><div className="mb-3 flex items-center justify-between"><h2 className="text-sm font-semibold">Saved workspaces</h2><span className="text-xs text-muted-foreground">{workspaces.length} active</span></div><div className="divide-y divide-border">{workspaces.map((workspace) => <button key={workspace.id} type="button" className="flex w-full items-center gap-4 py-3 text-left transition hover:bg-muted/30" onClick={() => openWorkspace(workspace.id)}><FileDiff className="size-4 shrink-0 text-sky-500" /><span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium">{workspace.title}</span><span className="block truncate text-xs text-muted-foreground">{workspace.repository} · {workspace.base_branch}@{workspace.base_commit_sha.slice(0, 7)} · {workspace.workspace_files?.length ?? 0} opened files</span></span><span className="text-xs text-muted-foreground">{new Date(workspace.updated_at).toLocaleDateString()}</span><ArrowRight className="size-4" /></button>)}</div></section> : null}<WorkspaceState loading={loading} error={error} empty={!scans.length}><section className="border-y border-border"><div className="flex items-center justify-between border-b border-border py-3"><div><h2 className="text-sm font-semibold">Repositories</h2><p className="mt-1 text-xs text-muted-foreground">Open a workspace directly—scan recommendations are optional.</p></div><Badge variant="outline">{scans.length} available</Badge></div><div className="divide-y divide-border">{scans.map((scan) => { const suggestionCount = scan.findings?.aiReview?.suggestions?.length ?? 0; return <div key={scan.repo} className="flex flex-wrap items-center gap-4 py-4"><span className="grid size-9 place-items-center rounded-lg bg-sky-500/10 text-sky-500"><Code2 className="size-4" /></span><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{scan.repo}</p><p className="mt-1 text-xs text-muted-foreground">{suggestionCount ? `${suggestionCount} guided ${suggestionCount === 1 ? "change" : "changes"} available` : "Ready for direct editing"} · scanned {new Date(scan.created_at).toLocaleDateString()}</p></div><Button size="sm" disabled={openingRepository === scan.repo} onClick={() => void startWorkspace(scan.repo)}>{openingRepository === scan.repo ? <Loader2 className="animate-spin" /> : <Code2 />}{openingRepository === scan.repo ? "Opening…" : "Open workspace"}</Button>{suggestionCount ? <Button size="sm" variant="outline" onClick={() => void generate(scan.repo, 0)}>Draft first fix</Button> : null}</div>; })}</div></section></WorkspaceState></WorkspacePage>;
-}
-
-export function CheckFixesPage() {
-  const { history, loading, error } = useRecentScans();
-  const action = useWorkflowAction();
-  const candidates = Array.from(new Map(history.flatMap((scan) => (scan.findings?.aiReview?.suggestions ?? []).map((item, index) => [`${scan.repo}:${item.file ?? ""}:${item.category ?? ""}:${item.title.toLowerCase()}`, { scan, index }]))).values());
-  const verify = async (repo: string, index: number, baselineCreatedAt: string) => { try { const result = await action.run("/api/workflow/verify", repo, index, baselineCreatedAt); const label = result.outcome === "still_present" ? "Still present" : result.outcome === "verified" ? "Verified resolved" : "Inconclusive"; toast(result.explanation, { description: label }); } catch (cause) { toast.error(cause instanceof Error ? cause.message : "Verification failed."); } };
-  return <WorkspacePage eyebrow="Check fixes" title="Prove what changed" description="Focused comparison gives an honest result: verified, still present, regressed, or inconclusive."><SafetyNote icon={BadgeCheck} text="Check Fixes is free. Krythiq compares saved scan evidence and never executes untrusted repository code on its servers." /><WorkspaceState loading={loading} error={error} empty={!history.length}>{candidates.map(({ scan, index }) => <VerificationCandidate key={`${scan.repo}:${scan.created_at}:${index}`} scan={scan} index={index} busy={action.busy} onVerify={verify} />)}</WorkspaceState></WorkspacePage>;
-}
-
-function VerificationCandidate({ scan, index, busy, onVerify }: { scan: Scan; index: number; busy: string | null; onVerify: (repo: string, index: number, baselineCreatedAt: string) => void }) {
-  const item = scan.findings?.aiReview?.suggestions?.[index]; if (!item) return null;
-  return <Card><CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between"><div><div className="flex items-center gap-2"><BadgeCheck className="h-4 w-4 text-sky-500" /><p className="font-medium">{item.title}</p></div><p className="mt-2 text-sm text-muted-foreground">{scan.repo} · baseline {new Date(scan.created_at).toLocaleString()} · {item.file ?? "multiple files"}</p></div><Button variant="outline" disabled={busy === `${scan.repo}:${index}`} onClick={() => onVerify(scan.repo, index, scan.created_at)}><BadgeCheck />{busy ? "Checking…" : "Compare with latest scan · Free"}</Button></CardContent></Card>;
 }
 
 type AgentId = "codex" | "claude" | "windsurf" | "gemini" | "copilot" | "cursor" | "generic";
@@ -203,5 +199,5 @@ function AgentPromptHandoff({ repository, source, issueIndex }: { repository: st
 }
 
 function WorkspacePage({ children }: { eyebrow: string; title: string; description: string; children: React.ReactNode }) { return <div className="mx-auto max-w-6xl space-y-6">{children}</div>; }
-function WorkspaceState({ loading, error, empty, children }: { loading: boolean; error: string | null; empty: boolean; children: React.ReactNode }) { if (loading) return <div className="space-y-4"><Skeleton className="h-56" /><Skeleton className="h-56" /></div>; if (error) return <Card><CardContent className="p-6 text-sm text-destructive">{error}</CardContent></Card>; if (empty) return <Card><CardContent className="p-10 text-center"><Rocket className="mx-auto h-8 w-8 text-muted-foreground" /><p className="mt-4 font-medium">Run your first scan</p><p className="mt-1 text-sm text-muted-foreground">Your readiness evidence and guided workflow will appear here.</p><Button asChild className="mt-5"><Link href="/scan"><ShieldCheck />Start a scan</Link></Button></CardContent></Card>; return <div className="space-y-4">{children}</div>; }
+function WorkspaceState({ loading, error, empty, children, flat = false }: { loading: boolean; error: string | null; empty: boolean; children: React.ReactNode; flat?: boolean }) { if (loading) return <div className="space-y-4"><Skeleton className="h-56" /><Skeleton className="h-56" /></div>; if (error) return flat ? <p className="border-y border-border py-6 text-sm text-destructive">{error}</p> : <Card><CardContent className="p-6 text-sm text-destructive">{error}</CardContent></Card>; if (empty) return flat ? <div className="border-y border-border py-10 text-center"><Rocket className="mx-auto h-8 w-8 text-muted-foreground" /><p className="mt-4 font-medium">Run your first scan</p><p className="mt-1 text-sm text-muted-foreground">Your readiness evidence and guided workflow will appear here.</p><Button asChild className="mt-5"><Link href="/scan"><ShieldCheck />Start a scan</Link></Button></div> : <Card><CardContent className="p-10 text-center"><Rocket className="mx-auto h-8 w-8 text-muted-foreground" /><p className="mt-4 font-medium">Run your first scan</p><p className="mt-1 text-sm text-muted-foreground">Your readiness evidence and guided workflow will appear here.</p><Button asChild className="mt-5"><Link href="/scan"><ShieldCheck />Start a scan</Link></Button></CardContent></Card>; return <div className="space-y-6">{children}</div>; }
 function SafetyNote({ icon: Icon, text }: { icon: typeof ClipboardCheck; text: string }) { return <div className="flex gap-3 rounded-2xl border border-amber-500/25 bg-amber-500/10 p-4 text-sm leading-6"><Icon className="mt-0.5 h-5 w-5 shrink-0 text-amber-500" /><p>{text}</p></div>; }

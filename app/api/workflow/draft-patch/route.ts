@@ -4,6 +4,7 @@ import { loadOwnedWorkflowScans, readSuggestion } from "@/app/lib/server/workflo
 import { adminSupabaseFetch } from "@/app/lib/server/admin";
 import { auditWorkspace, requireSelectedWorkspaceTeam, resolveGitHubFile } from "@/app/lib/server/repository-workspaces";
 import { RequestAuthError } from "@/app/lib/server/supabaseRest";
+import { deliverWorkspaceWebhook } from "@/app/lib/server/webhooks";
 
 export const runtime = "nodejs";
 
@@ -29,7 +30,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { userId, teamId } = await requireSelectedWorkspaceTeam(request);
+    const { userId, teamId, accessToken } = await requireSelectedWorkspaceTeam(request);
     const scans = await loadOwnedWorkflowScans(request, repository);
     const suggestion = readSuggestion(scans, suggestionIndex);
     if (!suggestion?.file || !suggestion.currentCode || !suggestion.replacementCode) {
@@ -65,6 +66,7 @@ export async function POST(request: Request) {
     }
     const workspaceFile = (await fileResponse.json())?.[0];
     await auditWorkspace(workspace.id, userId, "workspace.created", { repository, base_branch: githubFile.baseBranch, base_commit_sha: githubFile.baseCommitSha, path: file });
+    await deliverWorkspaceWebhook(accessToken, { userId, teamId, event: "workspace.created", workspace, details: { source: "guided_fix", initial_path: file } }).catch(() => undefined);
     return NextResponse.json({
       workspaceId: workspace.id,
       repository,

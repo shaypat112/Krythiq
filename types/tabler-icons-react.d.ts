@@ -3,6 +3,7 @@ declare module "@tabler/icons-react" {
   export type IconProps = SVGProps<SVGSVGElement> & { size?: number | string; stroke?: number | string };
   export type Icon = ForwardRefExoticComponent<IconProps & RefAttributes<SVGSVGElement>>;
   export const IconBrandGithub: Icon;
+  export const IconBrandX: Icon;
   export const IconBrightnessDown: Icon;
   export const IconBrightnessUp: Icon;
   export const IconCaretRightFilled: Icon;

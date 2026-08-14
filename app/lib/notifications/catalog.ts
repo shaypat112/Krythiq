@@ -27,6 +27,12 @@ export const notificationEvents = [
   { id: "social.follow_requested", label: "New follow request", defaultChannels: ["in_app", "email"] },
   { id: "social.follow_accepted", label: "Follow request accepted", defaultChannels: ["in_app", "email"] },
   { id: "social.message_received", label: "New direct message", defaultChannels: ["in_app", "email"] },
+  { id: "workspace.created", label: "Draft workspace created", defaultChannels: ["webhook"] },
+  { id: "workspace.conflict", label: "Workspace upstream conflict", defaultChannels: ["webhook"] },
+  { id: "workspace.zip_exported", label: "Workspace ZIP exported", defaultChannels: ["webhook"] },
+  { id: "workspace.branch_published", label: "Workspace branch published", defaultChannels: ["webhook"] },
+  { id: "workspace.pull_request_created", label: "Workspace pull request created", defaultChannels: ["webhook"] },
+  { id: "workspace.main_pushed", label: "Workspace pushed to main", defaultChannels: ["webhook"] },
 ] as const;
 
 export type NotificationChannelId = (typeof notificationChannels)[number]["id"];

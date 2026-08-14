@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { BadgeCheck, CheckCircle2, Globe2, Heart, ImagePlus, Lightbulb, Loader2, MessageCircle, PanelRightClose, PanelRightOpen, PartyPopper, Pin, ScanSearch, Send, ShieldCheck, UserPlus, Users } from "lucide-react";
+import { BadgeCheck, Globe2, Heart, ImagePlus, Lightbulb, Loader2, MessageCircle, PanelRightClose, PanelRightOpen, PartyPopper, Pin, ScanSearch, Send, ShieldCheck, UserPlus, Users } from "lucide-react";
 import { toast } from "sonner";
 import Masonry from "@/components/Masonry";
 import FileUpload from "@/components/kokonutui/file-upload";
@@ -177,7 +177,7 @@ export function DiscoverClient() {
       </main>
 
       <aside className={cn("fixed right-3 top-24 z-40 transition-[width] duration-300 xl:sticky xl:right-auto xl:top-6 xl:z-auto xl:w-auto", sidebarOpen ? "w-[min(380px,calc(100vw-1.5rem))]" : "w-16")}>
-        <div className={cn("overflow-hidden rounded-2xl border border-border bg-card/80 shadow-lg backdrop-blur-xl transition-all duration-300 xl:shadow-sm", sidebarOpen ? "max-h-[calc(100svh-7rem)] overflow-y-auto p-3" : "p-1.5")}>
+        <div className={cn("overflow-hidden transition-all duration-300", sidebarOpen && "max-h-[calc(100svh-7rem)] overflow-y-auto")}>
           <Tooltip>
             <TooltipTrigger asChild>
               <Button type="button" variant={sidebarOpen ? "ghost" : "outline"} size={sidebarOpen ? "sm" : "icon-lg"} className={cn("shrink-0", sidebarOpen ? "mb-3 w-full justify-between" : "size-[50px] rounded-xl border-sky-500/25 bg-sky-500/10 text-sky-400 shadow-[0_0_24px_rgba(56,189,248,.12)] hover:bg-sky-500/15 hover:text-sky-300")} onClick={() => setSidebarOpen((open) => !open)} aria-expanded={sidebarOpen} aria-label={sidebarOpen ? "Close community sidebar" : "Open community sidebar"}>
@@ -194,7 +194,6 @@ export function DiscoverClient() {
             {selectedTeamId ? <RainbowBentoCard className="col-span-2"><h2 className="flex items-center gap-2 font-semibold"><Pin className="size-5 text-fuchsia-500" />Pin a team project</h2><p className="mt-2 text-xs leading-5 text-muted-foreground">Feature one project and check its badge from recent evidence.</p><div className="mt-3 space-y-2"><Select value={projectRepo} onValueChange={setProjectRepo}><SelectTrigger className="h-9"><SelectValue placeholder="Choose repository" /></SelectTrigger><SelectContent>{teamScans.map((scan) => <SelectItem key={scan.repository} value={scan.repository}>{scan.repository}</SelectItem>)}</SelectContent></Select><Button className="w-full" size="sm" variant="outline" disabled={!projectRepo || working} onClick={() => void pinProject()}><BadgeCheck />Pin and check badge</Button></div></RainbowBentoCard> : null}
             <RainbowBentoCard><h2 className="flex items-center gap-2 text-sm font-semibold"><Users className="size-4 text-sky-500" />People</h2><div className="mt-3 space-y-2">{Array.from(new Map((data?.posts ?? []).map((post) => [post.author_id, post])).values()).slice(0, 4).map((person) => <Link href={`/discover/people/${person.author_id}`} key={person.author_id} className="flex items-center gap-2 rounded-lg p-1 transition hover:bg-muted"><Avatar size="sm"><AvatarImage src={person.author_avatar_url ?? undefined} alt="" /><AvatarFallback>{initials(person.author_name)}</AvatarFallback></Avatar><div className="min-w-0"><p className="truncate text-xs font-medium">{person.author_name}</p>{person.author_username ? <p className="truncate text-[10px] text-muted-foreground">@{person.author_username}</p> : null}</div></Link>)}{!data?.posts.length ? <p className="text-xs leading-5 text-muted-foreground">No people yet.</p> : null}</div></RainbowBentoCard>
             <RainbowBentoCard><h2 className="flex items-center gap-2 text-sm font-semibold"><ShieldCheck className="size-4 text-emerald-500" />Verified</h2><div className="mt-3 space-y-2">{data?.projects.filter((project) => project.verification_status === "verified").slice(0, 3).map((project) => <div key={project.id} className="min-w-0 rounded-xl bg-background/60 p-2"><p className="truncate text-xs font-medium">{project.name}</p><p className="truncate text-[10px] text-muted-foreground">{project.team_name}</p></div>)}{!data?.projects.some((project) => project.verification_status === "verified") ? <p className="text-xs leading-5 text-muted-foreground">No verified projects yet.</p> : null}</div></RainbowBentoCard>
-            <RainbowBentoCard className="col-span-2"><div className="flex gap-3"><CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-500" /><div><p className="text-sm font-medium">Safe sharing</p><p className="mt-1 text-xs leading-5 text-muted-foreground">Private repositories stay out of the public feed. Media uses short-lived links.</p></div></div></RainbowBentoCard>
           </BentoGrid> : null}
         </div>
       </aside>

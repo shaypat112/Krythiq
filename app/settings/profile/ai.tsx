@@ -80,7 +80,7 @@ function ToggleSetting({
       role="switch"
       aria-checked={checked}
       onClick={() => onCheckedChange(!checked)}
-      className="flex w-full items-center justify-between gap-4 rounded-xl border border-border p-4 text-left transition hover:bg-muted/40"
+      className="flex w-full items-center justify-between gap-4 border-b border-border py-4 text-left transition hover:border-foreground/20"
     >
       <span>
         <span className="block text-sm font-medium">{title}</span>
@@ -138,7 +138,7 @@ export function AiSection() {
       </header>
 
       <BentoGrid className="auto-rows-auto grid-cols-1 gap-4 lg:grid-cols-6">
-      <section className="rounded-2xl border border-border bg-card p-5 shadow-sm lg:col-span-2">
+      <section className="border-b border-border pb-8 lg:col-span-2">
         <div className="pb-4">
           <h2 className="flex items-center gap-2 font-semibold">
             <Gauge className="h-5 w-5" /> AI usage
@@ -167,7 +167,7 @@ export function AiSection() {
         </div>
       </section>
 
-      <section className="rounded-2xl border border-border bg-[radial-gradient(circle_at_top_right,rgba(56,189,248,.08),transparent_42%),var(--card)] p-5 shadow-sm lg:col-span-4">
+      <section className="border-b border-border pb-8 lg:col-span-4">
         <div className="pb-4">
           <h2 className="flex items-center gap-2 font-semibold">
             <BrainCircuit className="h-5 w-5" /> Default scan focus
@@ -196,7 +196,7 @@ export function AiSection() {
         </div>
       </section>
 
-      <section className="rounded-2xl border border-border bg-[radial-gradient(circle_at_top_right,rgba(139,92,246,.1),transparent_38%),var(--card)] p-5 shadow-sm lg:col-span-6">
+      <section className="border-b border-border pb-8 lg:col-span-6">
         <div className="pb-4">
           <h2 className="flex items-center gap-2 font-semibold">
             <Sparkles className="h-5 w-5" /> Review output
