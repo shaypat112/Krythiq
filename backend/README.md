@@ -128,7 +128,7 @@ Publishing posts the summary and full finding objects to `/rest/v1/scan_history`
 
 ```bash
 krythiq run "npm test" --no-ai
-ANTHROPIC_API_KEY=sk-ant-your-key krythiq run "npm start"
+ANTHROPIC_API_KEY=your-anthropic-api-key krythiq run "npm start"
 krythiq run "npm start" --model claude-sonnet-4-20250514
 ```
 

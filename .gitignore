@@ -50,7 +50,14 @@ yarn-error.log*
 .env
 .env.*
 !.env.example
+!**/.env.example
 *.local
+.envrc
+.direnv/
+.dev.vars
+.dev.vars.*
+.npmrc
+.sentryclirc
 
 # vercel
 .vercel/
@@ -59,6 +66,7 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .cache/
+.swc/
 .turbo/
 .eslintcache
 .stylelintcache
@@ -69,21 +77,40 @@ __pycache__/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+.tmp/
+tmp/
+temp/
 
 # local Krythiq state
 .krythiq/
 
-# local database and Supabase CLI state
+# Local databases, exports, and generated archives
 /db/
+*.dump
+*.backup
+*.bak
+*.zip
+/exports/
+/uploads/
+
+# Supabase migrations are source code and are safe to publish. Ignore only
+# local CLI state, credentials, branch metadata, and machine-specific seeds.
 /supabase/.temp/
-/supabase/migrations/
-!/supabase/migrations/
-/supabase/migrations/*
-!/supabase/migrations/20260810120000_launch_workflow.sql
-!/supabase/migrations/20260810143000_social_discovery.sql
+/supabase/.branches/
+/supabase/.env
+/supabase/.env.*
+/supabase/config.local.toml
+/supabase/seed.local.sql
+/supabase/*.dump
+/supabase/*.backup
 
 # local editor and AI-assistant instructions
 /.idea/
+/.vscode/settings.local.json
+/.agents/
+/.codex/
+/.claude/
+/.cursor/
 /AGENTS.md
 /CLAUDE.md
 /UNUSED.md

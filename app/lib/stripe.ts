@@ -10,7 +10,7 @@ const publishableKey = configuredPublishableKey.startsWith("pk_test_")
   ? configuredPublishableKey
   : "";
 
-export const stripe = new Stripe(secretKey || "sk_test_placeholder", {
+export const stripe = new Stripe(secretKey || "stripe_not_configured", {
   apiVersion: "2026-02-25.clover",
 });
 
