@@ -17,7 +17,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Bell, ChevronDown, Coins, CreditCard, Github, Moon, SunMedium } from "lucide-react";
+import { Bell, ChevronDown, Coins, CreditCard, Github, Moon, SunMedium, UserPlus, UserRound } from "lucide-react";
 import { formatTokens } from "@/app/lib/tokens";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { DesktopRequired } from "./mobile/DesktopRequired";
@@ -472,6 +472,19 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                     className="bg-card text-foreground"
                   >
                     <DropdownMenuLabel>{displayName}</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link href={`/discover/people/${user.id}`} className="flex items-center gap-2">
+                        <UserRound className="h-4 w-4" />
+                        View profile
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href="/discover/requests" className="flex items-center gap-2">
+                        <UserPlus className="h-4 w-4" />
+                        View requests
+                      </Link>
+                    </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem asChild>
                       <Link href="/settings?section=integrations" className="flex items-center gap-2">
