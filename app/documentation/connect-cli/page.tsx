@@ -44,7 +44,7 @@ export default function ConnectCliDocsPage() {
 
     <section className="space-y-5">
       <h2 className="text-xl font-semibold">Check or remove the connection</h2>
-      <div className="space-y-3"><div><p className="mb-2 text-sm font-medium">Show connection and Token balance</p><Command>npx krythiq connect --status</Command></div><div><p className="mb-2 text-sm font-medium">Remove the connection from this computer</p><Command>npx krythiq connect --disconnect</Command></div></div>
+      <div className="space-y-3"><div><p className="mb-2 text-sm font-medium">See which account is signed in and verify the session</p><Command>npx krythiq whoami</Command><p className="mt-2 text-sm leading-6 text-muted-foreground">This checks the saved session with Krythiq.dev and shows the account, Token balance, CLI scans, and scan Tokens used. If the session expired or was revoked, it tells you to connect again.</p></div><div><p className="mb-2 text-sm font-medium">Show connection and Token balance</p><Command>npx krythiq connect --status</Command></div><div><p className="mb-2 text-sm font-medium">Remove the connection from this computer</p><Command>npx krythiq connect --disconnect</Command></div></div>
       <p className="leading-7 text-muted-foreground">You can also revoke a terminal from <Link href="/settings?section=cli" className="font-medium text-foreground underline underline-offset-4">Settings → CLI</Link>. The CLI section appears only after a terminal is connected.</p>
     </section>
 

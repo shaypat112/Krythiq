@@ -1,6 +1,6 @@
 {
   "name": "krythiq",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "CLI for Semgrep/npm-audit security scans, custom rules, and optional AI terminal trace analysis",
   "keywords": [
     "cli",

@@ -6,6 +6,7 @@ import { initCommand } from "./commands/init.js";
 import { scanCommand } from "./commands/scan.js";
 import { authCommand } from "./commands/auth.js";
 import { connectCommand } from "./commands/connect.js";
+import { whoamiCommand } from "./commands/whoami.js";
 import { checkUpdate } from "./utils/update.js";
 
 export function runCli() {
@@ -64,6 +65,11 @@ export function runCli() {
     .option("--disconnect", "remove the stored dashboard connection")
     .option("--no-browser", "print the authorization URL without opening it")
     .action(connectCommand);
+
+  program
+    .command("whoami")
+    .description("show which Krythiq.dev account this terminal is signed in to")
+    .action(whoamiCommand);
 
   program
     .command("auth")

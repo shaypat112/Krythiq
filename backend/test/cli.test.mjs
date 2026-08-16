@@ -20,6 +20,13 @@ test("help starts without requiring a writable credential store", () => {
   assert.equal(result.status, 0);
   assert.match(result.stdout, /Commands:/);
   assert.match(result.stdout, /connect/);
+  assert.match(result.stdout, /whoami/);
+});
+
+test("whoami is registered as a standalone command", () => {
+  const result = run(["whoami", "--help"]);
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /show which Krythiq\.dev account/);
 });
 
 test("CLI starts through a package-manager-style binary symlink", async () => {
@@ -28,7 +35,7 @@ test("CLI starts through a package-manager-style binary symlink", async () => {
   await symlink(cli, binary);
   const result = spawnSync(binary, ["--version"], { encoding: "utf8" });
   assert.equal(result.status, 0, result.stderr);
-  assert.equal(result.stdout.trim(), "0.2.0");
+  assert.equal(result.stdout.trim(), "0.2.1");
 });
 
 test("scan emits valid JSON and custom-rule findings", async () => {

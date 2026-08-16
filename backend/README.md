@@ -53,8 +53,14 @@ are never copied into the terminal.
 
 ```bash
 npx krythiq connect --status
+npx krythiq whoami
 npx krythiq connect --disconnect
 ```
+
+`krythiq whoami` verifies the saved session with Krythiq.dev and prints the
+signed-in account, dashboard address, Token balance, CLI scan count, and scan
+Tokens used. A missing, expired, or revoked session exits with an error and a
+reconnect instruction.
 
 Use `KRYTHIQ_DASHBOARD_URL=http://localhost:3000` when testing against a local
 Krythiq web app. Use `--no-browser` on remote or headless machines.

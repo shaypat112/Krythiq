@@ -31,13 +31,18 @@ export async function loadDashboardAccount() {
   if (!token) return null;
   const response = await fetch(`${dashboardUrl()}/api/cli/account`, { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(15_000) });
   if (!response.ok) throw new Error(response.status === 401 ? "CLI connection expired. Run krythiq connect again." : `Dashboard returned HTTP ${response.status}.`);
-  return response.json() as Promise<{ connected: boolean; balance: number }>;
+  return response.json() as Promise<{
+    connected: boolean;
+    balance: number;
+    profile: { username: string | null; fullName: string | null; email: string | null };
+    cli: { scanCount: number; tokensUsed: number };
+  }>;
 }
 
 export async function publishDashboardScan(payload: { repository: string; severity: string; score: number; findings: unknown[] }) {
   const token = dashboardToken();
   if (!token) return null;
-  const response = await fetch(`${dashboardUrl()}/api/cli/scans`, { method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({ ...payload, cliVersion: "0.2.0" }), signal: AbortSignal.timeout(20_000) });
+  const response = await fetch(`${dashboardUrl()}/api/cli/scans`, { method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({ ...payload, cliVersion: "0.2.1" }), signal: AbortSignal.timeout(20_000) });
   if (!response.ok) throw new Error(response.status === 401 ? "CLI connection expired. Run krythiq connect again." : `Dashboard upload returned HTTP ${response.status}.`);
   return response.json();
 }
