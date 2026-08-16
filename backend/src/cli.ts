@@ -5,6 +5,7 @@ import { runCommand } from "./commands/run.js";
 import { initCommand } from "./commands/init.js";
 import { scanCommand } from "./commands/scan.js";
 import { authCommand } from "./commands/auth.js";
+import { connectCommand } from "./commands/connect.js";
 import { checkUpdate } from "./utils/update.js";
 
 export function runCli() {
@@ -54,6 +55,15 @@ export function runCli() {
     .option("--ai", "enable a Mistral remediation summary")
     .option("--ai-model <model>", "Mistral model name", "mistral-large-latest")
     .action(scanCommand);
+
+  program
+    .command("connect")
+    .alias("connectx")
+    .description("sign in with the web and connect terminal scans to your dashboard")
+    .option("--status", "show dashboard connection and Token balance")
+    .option("--disconnect", "remove the stored dashboard connection")
+    .option("--no-browser", "print the authorization URL without opening it")
+    .action(connectCommand);
 
   program
     .command("auth")

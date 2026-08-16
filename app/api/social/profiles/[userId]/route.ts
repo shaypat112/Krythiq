@@ -31,7 +31,12 @@ export async function GET(request: Request, { params }: { params: Promise<{ user
     const posts = postsResponse.ok ? await postsResponse.json() : [];
     const projects = projectsResponse.ok ? await projectsResponse.json() : [];
     const connection = connectionResponse.ok ? (await connectionResponse.json())?.[0] ?? null : null;
-    return NextResponse.json({ profile, professional, posts, projects, connection, viewerId, isSelf: viewerId === userId });
+    let unreadCount = 0;
+    if (connection?.status === "accepted") {
+      const unreadResponse = await adminSupabaseFetch(`social_messages?connection_id=eq.${connection.id}&sender_id=eq.${userId}&read_at=is.null&select=id`);
+      unreadCount = unreadResponse.ok ? (await unreadResponse.json() as unknown[]).length : 0;
+    }
+    return NextResponse.json({ profile, professional, posts, projects, connection, unreadCount, viewerId, isSelf: viewerId === userId });
   } catch (error) {
     if (error instanceof RequestAuthError) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     return NextResponse.json({ error: "Unable to load profile." }, { status: 500 });

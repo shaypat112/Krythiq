@@ -13,6 +13,8 @@ import { IntegrationsSection } from "./profile/integrations";
 import { NotificationsSection } from "./profile/notifications";
 import { EmailSection } from "./profile/email";
 import { TokensSection } from "./profile/tokens";
+import { CliSection } from "./profile/cli";
+import { useSettings } from "./profile/context";
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -27,6 +29,7 @@ const SECTION_MAP = {
   email: EmailSection,
   tokens: TokensSection,
   notifications: NotificationsSection,
+  cli: CliSection,
 } satisfies Record<string, React.ComponentType>;
 
 type SectionKey = keyof typeof SECTION_MAP;
@@ -41,8 +44,9 @@ export default function SettingsPage() {
 
 function SettingsContent() {
   const searchParams = useSearchParams();
+  const { hasCliConnection } = useSettings();
   const requestedSection = searchParams?.get("section");
-  const active: SectionKey = requestedSection && requestedSection in SECTION_MAP
+  const active: SectionKey = requestedSection && requestedSection in SECTION_MAP && (requestedSection !== "cli" || hasCliConnection)
     ? requestedSection as SectionKey
     : "account";
 

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Check, Code2, Download, Eye, FileCode2, GitBranch, Loader2, Maximize2, Minimize2, Play, RotateCcw, Search, Users, Webhook, X } from "lucide-react";
+import { Check, Code2, Download, ExternalLink, Eye, FileCode2, GitBranch, Loader2, Maximize2, Minimize2, Play, RotateCcw, Search, Users, Webhook, X } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/app/lib/supabase";
 import { buildAuthHeaders } from "@/app/lib/http";
@@ -39,6 +39,8 @@ type WorkspaceFile = {
 };
 
 type RepositoryFile = { path: string; sha: string; size: number };
+type WorkspaceRevision = { id: string; workspace_file_id: string; path: string; actor_id: string; from_version: number; to_version: number; before_content: string; after_content: string; created_at: string };
+type WorkspaceAuditEvent = { id: string; actor_id: string; action: string; metadata: Record<string, unknown>; created_at: string };
 type WorkspaceTab = "edit" | "changed" | "diff" | "preview" | "collaborators" | "publish";
 
 const workspaceTabs: Array<ToolbarItem & { id: WorkspaceTab }> = [
@@ -66,6 +68,15 @@ function filePatch(file: WorkspaceFile) {
   return `--- a/${file.path}\n+++ b/${file.path}\n@@ -1,${oldLines.length} +1,${newLines.length} @@\n${oldLines.map((line) => `-${line}`).join("\n")}\n${newLines.map((line) => `+${line}`).join("\n")}\n`;
 }
 
+function previewAddress(value: string) {
+  try {
+    const url = new URL(value.trim());
+    return ["http:", "https:"].includes(url.protocol) ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
 export function DraftCodeWorkspace({ draft, onClose }: { draft: DraftPatch; onClose: () => void }) {
   const supabase = useMemo(() => createClient(), []);
   const { selectedTeam } = useTeam();
@@ -79,13 +90,18 @@ export function DraftCodeWorkspace({ draft, onClose }: { draft: DraftPatch; onCl
   const [treeError, setTreeError] = useState<string | null>(null);
   const [focusMode, setFocusMode] = useState(false);
   const [activeTab, setActiveTab] = useState<WorkspaceTab>("edit");
-  const [saveState, setSaveState] = useState<"saved" | "saving" | "conflict" | "error">("saved");
+  const [saveState, setSaveState] = useState<"saved" | "dirty" | "saving" | "conflict" | "error">("saved");
   const [conflictContent, setConflictContent] = useState<string | null>(null);
   const [presence, setPresence] = useState<Array<{ user_id: string; active_file_path: string | null; last_seen_at: string }>>([]);
   const [profiles, setProfiles] = useState<Array<{ id: string; username?: string | null; full_name?: string | null }>>([]);
+  const [revisions, setRevisions] = useState<WorkspaceRevision[]>([]);
+  const [auditEvents, setAuditEvents] = useState<WorkspaceAuditEvent[]>([]);
+  const [selectedCollaborator, setSelectedCollaborator] = useState<string | null>(null);
   const [commitMessage, setCommitMessage] = useState(`Update ${draft.repository}`.slice(0, 200));
   const [publishing, setPublishing] = useState<string | null>(null);
   const [exportingZip, setExportingZip] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState("http://localhost:3000");
+  const [runningPreviewUrl, setRunningPreviewUrl] = useState<string | null>(null);
   const lastSaved = useRef<Record<string, string>>({ [draft.file]: draft.draftContent });
 
   const current = openedFiles[activePath] ?? initialFile;
@@ -96,6 +112,30 @@ export function DraftCodeWorkspace({ draft, onClose }: { draft: DraftPatch; onCl
     return query ? repositoryFiles.filter((file) => file.path.toLowerCase().includes(query)) : repositoryFiles;
   }, [fileQuery, repositoryFiles]);
   const canPreview = /\.(html?|svg)$/i.test(activePath);
+
+  useEffect(() => {
+    const saved = window.localStorage.getItem(`krythiq:preview-url:${draft.repository}`);
+    const timer = window.setTimeout(() => {
+      if (saved && previewAddress(saved)) setPreviewUrl(saved);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [draft.repository]);
+
+  const runPreview = () => {
+    const url = previewAddress(previewUrl);
+    if (!url) { toast.error("Enter a valid http:// or https:// preview URL."); return; }
+    window.localStorage.setItem(`krythiq:preview-url:${draft.repository}`, url);
+    setPreviewUrl(url);
+    setActiveTab("preview");
+    const localHost = ["localhost", "127.0.0.1", "[::1]"].includes(new URL(url).hostname);
+    const canEmbed = window.location.protocol === "http:" && localHost;
+    if (canEmbed) setRunningPreviewUrl(url);
+    else {
+      setRunningPreviewUrl(null);
+      window.open(url, "_blank", "noopener,noreferrer");
+      toast.success(localHost ? "Opened your local app in a new tab." : "Opened the preview in a new tab.");
+    }
+  };
 
   useEffect(() => {
     let active = true;
@@ -114,6 +154,10 @@ export function DraftCodeWorkspace({ draft, onClose }: { draft: DraftPatch; onCl
         const files = Object.fromEntries((workspacePayload.files as WorkspaceFile[]).map((file) => [file.path, file]));
         setOpenedFiles(files);
         lastSaved.current = Object.fromEntries(Object.values(files).map((file) => [file.path, file.content]));
+        setPresence(workspacePayload.presence ?? []);
+        setProfiles(workspacePayload.profiles ?? []);
+        setRevisions(workspacePayload.revisions ?? []);
+        setAuditEvents(workspacePayload.auditEvents ?? []);
       }
       if (treeResponse.ok) {
         setRepositoryFiles(treePayload.files ?? []);
@@ -134,7 +178,7 @@ export function DraftCodeWorkspace({ draft, onClose }: { draft: DraftPatch; onCl
       userId = session.user.id;
       const response = await fetch(`/api/workspaces/${draft.workspaceId}`, { headers: buildAuthHeaders(session.access_token) });
       const payload = await response.json().catch(() => ({}));
-      if (response.ok && active) { setPresence(payload.presence ?? []); setProfiles(payload.profiles ?? []); }
+      if (response.ok && active) { setPresence(payload.presence ?? []); setProfiles(payload.profiles ?? []); setRevisions(payload.revisions ?? []); setAuditEvents(payload.auditEvents ?? []); }
       await supabase.from("workspace_presence").upsert({ workspace_id: draft.workspaceId, user_id: userId, active_file_path: activePath, last_seen_at: new Date().toISOString() });
     };
     void loadPresence();
@@ -202,15 +246,22 @@ export function DraftCodeWorkspace({ draft, onClose }: { draft: DraftPatch; onCl
     if (token) await fetch(`/api/workspaces/${draft.workspaceId}`, { method: "POST", headers: buildAuthHeaders(token, { "Content-Type": "application/json" }), body: JSON.stringify({ action, path: activePath }) });
   };
   const collaboratorName = (userId: string) => { const profile = profiles.find((item) => item.id === userId); return profile?.full_name ?? profile?.username ?? "Team member"; };
+  const selectedRevisions = selectedCollaborator ? revisions.filter((revision) => revision.actor_id === selectedCollaborator) : [];
+  const selectedEvents = selectedCollaborator ? auditEvents.filter((event) => event.actor_id === selectedCollaborator && event.action !== "file.modified") : [];
   const publish = async (mode: "branch" | "pull_request" | "main") => {
     const session = (await supabase.auth.getSession()).data.session;
-    if (!session?.access_token || !session.provider_token) { toast.error("Reconnect GitHub before publishing."); return; }
+    if (!session?.access_token) { toast.error("Sign in before publishing."); return; }
     if (saveState !== "saved") { toast.error("Wait for the current file to finish saving."); return; }
     setPublishing(mode);
-    const response = await fetch(`/api/workspaces/${draft.workspaceId}/publish`, { method: "POST", headers: buildAuthHeaders(session.access_token, { "Content-Type": "application/json" }), body: JSON.stringify({ mode, commitMessage, providerToken: session.provider_token }) });
+    const response = await fetch(`/api/workspaces/${draft.workspaceId}/publish`, { method: "POST", headers: buildAuthHeaders(session.access_token, { "Content-Type": "application/json" }), body: JSON.stringify({ mode, commitMessage, providerToken: session.provider_token ?? null }) });
     const payload = await response.json().catch(() => ({}));
     setPublishing(null);
-    if (!response.ok) { toast.error(payload.error ?? "Publishing failed."); return; }
+    if (!response.ok) {
+      if (payload.branchCreated && payload.url) toast.error(payload.error ?? "Pull request creation failed.", { action: { label: "Open branch", onClick: () => window.open(payload.url, "_blank", "noopener,noreferrer") } });
+      else if (String(payload.error ?? "").toLowerCase().includes("reconnect github")) toast.error(payload.error, { action: { label: "Reconnect", onClick: () => { window.location.href = "/settings?section=integrations"; } } });
+      else toast.error(payload.error ?? "Publishing failed.");
+      return;
+    }
     toast.success(mode === "pull_request" ? "Pull request created." : mode === "main" ? "Published to the default branch." : "Branch published.", { action: payload.url ? { label: "Open GitHub", onClick: () => window.open(payload.url, "_blank", "noopener,noreferrer") } : undefined });
   };
   const exportZip = async () => {
@@ -252,13 +303,24 @@ export function DraftCodeWorkspace({ draft, onClose }: { draft: DraftPatch; onCl
           <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as WorkspaceTab)} className="gap-0">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b px-3 py-2">
               <Toolbar ariaLabel="Draft workspace tools" selected={activeTab} onSelect={(value) => setActiveTab(value as WorkspaceTab)} items={workspaceTabs} className="max-w-full" />
-              <span className="text-xs text-muted-foreground">{saveState === "saving" ? "Saving…" : saveState === "conflict" ? "Save conflict" : saveState === "error" ? "Save failed" : "Saved"}</span>
+              <span className="text-xs text-muted-foreground">{saveState === "dirty" ? "Unsaved changes…" : saveState === "saving" ? "Saving…" : saveState === "conflict" ? "Save conflict" : saveState === "error" ? "Save failed" : "Saved"}</span>
             </div>
-            <TabsContent value="edit" className="mt-0"><textarea value={current.content} onChange={(event) => setOpenedFiles((files) => ({ ...files, [activePath]: { ...current, content: event.target.value } }))} spellCheck={false} aria-label={`Edit ${activePath}`} className={cn("w-full resize-none border-0 bg-zinc-950 p-5 font-mono text-[13px] leading-6 text-zinc-100 outline-none", focusMode ? "h-[calc(100svh-155px)]" : "min-h-[620px]")} /></TabsContent>
+            <TabsContent value="edit" className="mt-0"><textarea value={current.content} onChange={(event) => { setOpenedFiles((files) => ({ ...files, [activePath]: { ...current, content: event.target.value } })); setSaveState("dirty"); }} spellCheck={false} aria-label={`Edit ${activePath}`} className={cn("w-full resize-none border-0 bg-zinc-950 p-5 font-mono text-[13px] leading-6 text-zinc-100 outline-none", focusMode ? "h-[calc(100svh-155px)]" : "min-h-[620px]")} /></TabsContent>
             <TabsContent value="changed" className="mt-0 min-h-[620px] p-5"><div className="divide-y divide-border border-y border-border">{changedFiles.map((file) => <button key={file.path} type="button" onClick={() => void openFile(file.path)} className="flex w-full items-center gap-3 py-4 text-left"><FileCode2 className="size-5 text-sky-500" /><span className="min-w-0 flex-1 truncate font-medium">{file.path}</span><Badge variant="outline">Modified</Badge></button>)}{!changedFiles.length ? <p className="py-12 text-center text-sm text-muted-foreground">No changed files yet.</p> : null}</div></TabsContent>
             <TabsContent value="diff" className="mt-0">{patch ? <pre className="min-h-[620px] max-h-[72svh] overflow-auto bg-zinc-950 p-5 font-mono text-xs leading-6 text-zinc-100"><code>{patch}</code></pre> : <div className="grid min-h-[620px] place-items-center text-sm text-muted-foreground">Your workspace diff will appear after the first edit.</div>}</TabsContent>
-            <TabsContent value="preview" className="mt-0">{canPreview ? <iframe title={`Preview of ${activePath}`} sandbox="" srcDoc={current.content} className="min-h-[620px] w-full bg-white" /> : <div className="grid min-h-[620px] place-items-center p-8 text-center text-sm text-muted-foreground">HTML and SVG files can be previewed safely here. Application execution still requires an isolated runner.</div>}</TabsContent>
-            <TabsContent value="collaborators" className="mt-0 min-h-[620px] p-5"><h3 className="font-semibold">Viewing this workspace</h3><div className="mt-5 max-w-xl divide-y divide-border border-y">{presence.map((viewer) => <div key={viewer.user_id} className="flex items-center gap-3 py-3"><span className="grid size-9 place-items-center rounded-full bg-muted text-xs font-semibold">{collaboratorName(viewer.user_id).slice(0, 2).toUpperCase()}</span><div className="min-w-0"><p className="truncate text-sm font-medium">{collaboratorName(viewer.user_id)}</p><p className="truncate text-xs text-muted-foreground">{viewer.active_file_path ?? "Browsing workspace"}</p></div><span className="ml-auto size-2 rounded-full bg-emerald-500" /></div>)}{!presence.length ? <p className="py-8 text-center text-sm text-muted-foreground">No active collaborators detected.</p> : null}</div></TabsContent>
+            <TabsContent value="preview" className="mt-0 min-h-[620px]">
+              <div className="flex flex-wrap items-center gap-2 border-b border-border p-3">
+                <Input aria-label="Application preview URL" value={previewUrl} onChange={(event) => setPreviewUrl(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") runPreview(); }} placeholder="http://localhost:3000" className="min-w-64 flex-1 font-mono text-xs" />
+                <Button size="sm" onClick={runPreview}><Play />Run preview</Button>
+                <Button size="sm" variant="outline" onClick={() => { const url = previewAddress(previewUrl); if (url) window.open(url, "_blank", "noopener,noreferrer"); else toast.error("Enter a valid preview URL."); }}><ExternalLink />Open tab</Button>
+              </div>
+              {runningPreviewUrl ? <iframe title={`Application preview at ${runningPreviewUrl}`} src={runningPreviewUrl} className="min-h-[565px] w-full bg-white" /> : canPreview ? <iframe title={`Mockup preview of ${activePath}`} sandbox="" srcDoc={current.content} className="min-h-[565px] w-full bg-white" /> : <div className="grid min-h-[565px] place-items-center p-8 text-center"><div className="max-w-lg"><p className="font-medium">Run your codebase locally, then enter its URL above.</p><p className="mt-2 text-sm leading-6 text-muted-foreground">Local Krythiq can embed localhost here. From the production site, browsers block insecure localhost frames, so the same button opens your app in a new tab. HTML and SVG files also render here as safe mockups.</p></div></div>}
+            </TabsContent>
+            <TabsContent value="collaborators" className="mt-0 min-h-[620px] p-5">
+              <h3 className="font-semibold">Active collaborators</h3><p className="mt-1 text-sm text-muted-foreground">Select a collaborator to inspect exactly what they changed and when.</p>
+              <div className="mt-5 max-w-2xl divide-y divide-border border-y">{presence.map((viewer) => <button key={viewer.user_id} type="button" onClick={() => setSelectedCollaborator(viewer.user_id)} className={cn("flex w-full items-center gap-3 py-3 text-left", selectedCollaborator === viewer.user_id && "bg-muted/50")}><span className="grid size-9 place-items-center rounded-full bg-muted text-xs font-semibold">{collaboratorName(viewer.user_id).slice(0, 2).toUpperCase()}</span><span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium">{collaboratorName(viewer.user_id)}</span><span className="block truncate text-xs text-muted-foreground">{viewer.active_file_path ?? "Browsing workspace"} · active {new Date(viewer.last_seen_at).toLocaleTimeString()}</span></span><span className="size-2 rounded-full bg-emerald-500" /></button>)}{!presence.length ? <p className="py-8 text-center text-sm text-muted-foreground">No active collaborators detected.</p> : null}</div>
+              {selectedCollaborator ? <section className="mt-8 max-w-4xl"><div className="flex items-center justify-between gap-3"><div><h4 className="font-semibold">{collaboratorName(selectedCollaborator)}’s activity</h4><p className="mt-1 text-xs text-muted-foreground">Newest activity first · up to 200 recent workspace events</p></div><Button size="xs" variant="ghost" onClick={() => setSelectedCollaborator(null)}><X />Close</Button></div><div className="mt-4 space-y-3">{selectedRevisions.map((revision) => <details key={revision.id} className="border border-border bg-muted/10"><summary className="cursor-pointer list-none p-3"><span className="block text-sm font-medium">Edited {revision.path}</span><span className="mt-1 block text-xs text-muted-foreground">Version {revision.from_version} → {revision.to_version} · {new Date(revision.created_at).toLocaleString()}</span></summary><pre className="max-h-96 overflow-auto border-t border-border bg-zinc-950 p-4 font-mono text-xs leading-5 text-zinc-100"><code>{filePatch({ path: revision.path, original_content: revision.before_content, content: revision.after_content, version: revision.to_version })}</code></pre></details>)}{selectedEvents.map((event) => <div key={event.id} className="border border-border p-3"><p className="text-sm font-medium">{event.action.replaceAll(".", " ")}</p><p className="mt-1 text-xs text-muted-foreground">{typeof event.metadata?.path === "string" ? `${event.metadata.path} · ` : ""}{new Date(event.created_at).toLocaleString()}</p></div>)}{!selectedRevisions.length && !selectedEvents.length ? <p className="border-y border-border py-8 text-center text-sm text-muted-foreground">No recorded edits from this collaborator yet. Exact diffs are recorded after the workspace revision migration is deployed.</p> : null}</div></section> : null}
+            </TabsContent>
             <TabsContent value="publish" className="mt-0 min-h-[620px] p-5"><div className="max-w-2xl space-y-5"><div><h3 className="font-semibold">Publish reviewed changes</h3><p className="mt-1 text-sm text-muted-foreground">Krythiq verifies the saved base commit and GitHub permissions before publishing.</p></div><Input value={commitMessage} maxLength={200} onChange={(event) => setCommitMessage(event.target.value)} /><div className="grid gap-3 sm:grid-cols-2"><Button variant="outline" disabled={publishing !== null || !changedFiles.length} onClick={() => void publish("branch")}>{publishing === "branch" ? <Loader2 className="animate-spin" /> : <GitBranch />}Create branch</Button><Button disabled={publishing !== null || !changedFiles.length} onClick={() => void publish("pull_request")}>{publishing === "pull_request" ? <Loader2 className="animate-spin" /> : <GitBranch />}Create branch + PR</Button></div><Button variant="destructive" disabled={selectedTeam?.role !== "owner" || publishing !== null || !changedFiles.length} onClick={() => void publish("main")}>{publishing === "main" ? <Loader2 className="animate-spin" /> : <Check />}Push to {draft.baseBranch}</Button></div></TabsContent>
           </Tabs>
           <footer className="flex flex-wrap items-center gap-2 border-t p-3">
@@ -266,8 +328,8 @@ export function DraftCodeWorkspace({ draft, onClose }: { draft: DraftPatch; onCl
             <Button size="sm" onClick={() => { download(activePath.split("/").at(-1) ?? "file.txt", current.content); void audit("file.downloaded"); }}><Download />Download file</Button>
             <Button size="sm" variant="outline" disabled={!changedFiles.length} onClick={() => { download(`${draft.repository.replace("/", "-")}.diff`, patch, "text/x-diff"); void audit("patch.exported"); }}><GitBranch />Export patch</Button>
             <Button size="sm" variant="outline" disabled={exportingZip || saveState !== "saved"} onClick={() => void exportZip()}>{exportingZip ? <Loader2 className="animate-spin" /> : <Download />}Export ZIP</Button>
-            <Button size="sm" variant="ghost" disabled={current.content === current.original_content} onClick={() => setOpenedFiles((files) => ({ ...files, [activePath]: { ...current, content: current.original_content } }))}><RotateCcw />Reset file</Button>
-            <Button className="ml-auto" size="sm" variant="outline" disabled title="Requires an isolated runner integration"><Play />Run workspace</Button>
+            <Button size="sm" variant="ghost" disabled={current.content === current.original_content} onClick={() => { setOpenedFiles((files) => ({ ...files, [activePath]: { ...current, content: current.original_content } })); setSaveState("dirty"); }}><RotateCcw />Reset file</Button>
+            <Button className="ml-auto" size="sm" variant="outline" onClick={runPreview}><Play />Run / preview</Button>
           </footer>
         </div>
       </div>

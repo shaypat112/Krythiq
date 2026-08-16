@@ -18,11 +18,23 @@ async function profilesFor(ids: string[]) {
 export async function GET(request: Request) {
   try {
     const { userId } = await requireVerifiedRequestAuth(request);
-    const response = await adminSupabaseFetch(`social_connections?addressee_id=eq.${userId}&status=eq.pending&select=id,requester_id,addressee_id,status,created_at&order=created_at.desc&limit=50`);
-    if (!response.ok) return NextResponse.json({ error: "Social connections are unavailable. Apply the latest migration." }, { status: 503 });
-    const requests = await response.json() as Connection[];
-    const profiles = await profilesFor(requests.map((item) => item.requester_id));
-    return NextResponse.json({ requests: requests.map((item) => ({ ...item, profile: profiles.get(item.requester_id) ?? null })) });
+    const [requestsResponse, acceptedResponse] = await Promise.all([
+      adminSupabaseFetch(`social_connections?addressee_id=eq.${userId}&status=eq.pending&select=id,requester_id,addressee_id,status,created_at&order=created_at.desc&limit=50`),
+      adminSupabaseFetch(`social_connections?or=(requester_id.eq.${userId},addressee_id.eq.${userId})&status=eq.accepted&select=id,requester_id,addressee_id,status,created_at&order=updated_at.desc&limit=100`),
+    ]);
+    if (!requestsResponse.ok || !acceptedResponse.ok) return NextResponse.json({ error: "Social connections are unavailable. Apply the latest migration." }, { status: 503 });
+    const requests = await requestsResponse.json() as Connection[];
+    const accepted = await acceptedResponse.json() as Connection[];
+    const peerId = (item: Connection) => item.requester_id === userId ? item.addressee_id : item.requester_id;
+    const profiles = await profilesFor([...requests.map((item) => item.requester_id), ...accepted.map(peerId)]);
+    const connectionIds = accepted.map((item) => item.id);
+    const unreadResponse = connectionIds.length ? await adminSupabaseFetch(`social_messages?connection_id=in.(${connectionIds.join(",")})&sender_id=neq.${userId}&read_at=is.null&select=connection_id`) : null;
+    const unreadRows = unreadResponse?.ok ? await unreadResponse.json() as Array<{ connection_id: string }> : [];
+    const unread = unreadRows.reduce<Record<string, number>>((counts, message) => ({ ...counts, [message.connection_id]: (counts[message.connection_id] ?? 0) + 1 }), {});
+    return NextResponse.json({
+      requests: requests.map((item) => ({ ...item, profile: profiles.get(item.requester_id) ?? null })),
+      friends: accepted.map((item) => ({ ...item, userId: peerId(item), profile: profiles.get(peerId(item)) ?? null, unreadCount: unread[item.id] ?? 0 })),
+    });
   } catch (error) {
     if (error instanceof RequestAuthError) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     return NextResponse.json({ error: "Unable to load follow requests." }, { status: 500 });

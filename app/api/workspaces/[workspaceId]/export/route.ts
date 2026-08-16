@@ -5,6 +5,7 @@ import { auditWorkspace, requireWorkspaceRequest, type WorkspaceFile } from "@/a
 import { scannerPolicy } from "@/app/lib/scanner/rules/registry";
 import { RequestAuthError } from "@/app/lib/server/supabaseRest";
 import { deliverWorkspaceWebhook } from "@/app/lib/server/webhooks";
+import { resolveGitHubToken } from "@/app/lib/server/githubConnection";
 
 export const runtime = "nodejs";
 type Context = { params: Promise<{ workspaceId: string }> };
@@ -14,7 +15,8 @@ export async function POST(request: Request, { params }: Context) {
     const { workspaceId } = await params;
     const { workspace, userId, accessToken } = await requireWorkspaceRequest(request, workspaceId);
     const body = await request.json();
-    const providerToken = typeof body?.providerToken === "string" ? body.providerToken : "";
+    const suppliedProviderToken = typeof body?.providerToken === "string" ? body.providerToken : undefined;
+    const providerToken = await resolveGitHubToken(userId, suppliedProviderToken);
     const headers: HeadersInit = { Accept: "application/vnd.github+json", "User-Agent": "krythiq-workspaces", "X-GitHub-Api-Version": "2022-11-28", ...(providerToken ? { Authorization: `Bearer ${providerToken}` } : {}) };
     const github = async <T>(path: string) => {
       const response = await fetch(`https://api.github.com${path}`, { headers, cache: "no-store" });

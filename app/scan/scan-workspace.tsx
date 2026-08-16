@@ -195,9 +195,7 @@ export function ScanWorkspace() {
       redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent("/scan")}`,
       scopes: "repo read:user user:email",
     };
-    const result = githubStatus === "disconnected"
-      ? await supabase.auth.linkIdentity({ provider: "github", options })
-      : await supabase.auth.signInWithOAuth({ provider: "github", options });
+    const result = await supabase.auth.signInWithOAuth({ provider: "github", options });
     if (result.error) {
       setError(result.error.message);
       setConnectingGitHub(false);

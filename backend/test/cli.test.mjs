@@ -19,6 +19,7 @@ test("help starts without requiring a writable credential store", () => {
   const result = run(["--help"]);
   assert.equal(result.status, 0);
   assert.match(result.stdout, /Commands:/);
+  assert.match(result.stdout, /connect/);
 });
 
 test("CLI starts through a package-manager-style binary symlink", async () => {
@@ -27,7 +28,7 @@ test("CLI starts through a package-manager-style binary symlink", async () => {
   await symlink(cli, binary);
   const result = spawnSync(binary, ["--version"], { encoding: "utf8" });
   assert.equal(result.status, 0, result.stderr);
-  assert.equal(result.stdout.trim(), "0.1.1");
+  assert.equal(result.stdout.trim(), "0.2.0");
 });
 
 test("scan emits valid JSON and custom-rule findings", async () => {

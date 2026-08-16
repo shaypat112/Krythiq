@@ -8,6 +8,7 @@ import { glob } from "glob";
 
 import { summarizeFindings as mistralSummarizeFindings } from "../lib/mistral";
 import { loadConfig } from "../config.js";
+import { dashboardToken, loadDashboardAccount, publishDashboardScan } from "../utils/dashboard.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -149,6 +150,20 @@ export async function scanCommand(
       : null;
 
   outputResults(deduped, options, aiSummary ? JSON.stringify(aiSummary) : null);
+
+  if (dashboardToken()) {
+    const repo = await inferRepoSlug(resolved);
+    const summary = summarizeFindings(deduped);
+    try {
+      await publishDashboardScan({ repository: repo, severity: summary.severity, score: summary.avgScore, findings: deduped });
+      if (options.format === "text" || options.format === "markdown") {
+        const account = await loadDashboardAccount();
+        console.log(`${chalk.green("✓")} Synced to Krythiq Dashboard${account ? ` · ${account.balance.toLocaleString()} Tokens` : ""}\n`);
+      }
+    } catch (error) {
+      if (options.format === "text" || options.format === "markdown") console.error(chalk.yellow(`Dashboard sync skipped: ${error instanceof Error ? error.message : "upload failed"}\n`));
+    }
+  }
 
   if (publishEnabled) {
     await publishScanSummary(deduped);

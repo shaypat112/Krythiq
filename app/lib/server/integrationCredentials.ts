@@ -1,11 +1,17 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
 
 function encryptionKey() {
-  const secret = process.env.INTEGRATION_ENCRYPTION_KEY;
+  const configuredSecret = process.env.INTEGRATION_ENCRYPTION_KEY?.trim();
+  const secret = configuredSecret || process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
   if (!secret || secret.length < 32) {
     throw new Error("Integration credential storage is not configured.");
   }
-  return createHash("sha256").update(secret).digest();
+  // Preserve compatibility with credentials encrypted before the service-role
+  // fallback existed. Only the fallback needs domain separation.
+  return createHash("sha256")
+    .update(configuredSecret ? "" : "krythiq:integration-credentials:v1\0")
+    .update(secret)
+    .digest();
 }
 
 export function encryptIntegrationCredential(value: string) {

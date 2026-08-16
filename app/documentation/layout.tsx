@@ -48,6 +48,14 @@ export default function DocsLayout({
                 </li>
                 <li>
                   <Link
+                    href="/documentation/connect-cli"
+                    className="text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    Connect CLI to website
+                  </Link>
+                </li>
+                <li>
+                  <Link
                     href="/documentation/project-structure"
                     className="text-muted-foreground transition-colors hover:text-foreground"
                   >
@@ -68,6 +76,14 @@ export default function DocsLayout({
                     Commands
                   </h5>
                   <ul className="mt-2 space-y-2 text-xs text-zinc-500">
+                    <li>
+                      <Link
+                        href="/documentation/connect-cli"
+                        className="hover:text-foreground"
+                      >
+                        krythiq connect — link dashboard
+                      </Link>
+                    </li>
                     <li>
                       <Link
                         href="/documentation/commands"
@@ -154,6 +170,7 @@ export default function DocsLayout({
             ["/documentation", "Start"],
             ["/documentation/navigate-site", "Navigate site"],
             ["/documentation/quickstart", "Quick start"],
+            ["/documentation/connect-cli", "Connect CLI"],
             ["/documentation/project-structure", "Structure"],
             ["/documentation/commands", "CLI"],
             ["/documentation/ai-detection", "AI analysis"],

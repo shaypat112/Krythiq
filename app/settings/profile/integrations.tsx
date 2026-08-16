@@ -42,12 +42,15 @@ export function IntegrationsSection() {
       const token = data.session?.access_token;
       if (!token) throw new Error("Sign in to manage integrations.");
       const hasGithubIdentity = data.session?.user.app_metadata?.provider === "github" || data.session?.user.identities?.some((identity) => identity.provider === "github") === true;
-      setGithubStatus(hasGithubIdentity ? (data.session?.provider_token ? "connected" : "expired") : "disconnected");
       const response = await fetch("/api/integrations", { headers: buildTeamAuthHeaders(token, selectedTeamId) });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload?.error ?? "Unable to load integrations.");
       setProviders(payload.providers ?? []);
       setConnections(payload.connections ?? []);
+      const githubConnection = (payload.connections as IntegrationConnection[] | undefined)?.find((connection) => connection.providerId === "github");
+      setGithubStatus(githubConnection?.status === "connected" || data.session?.provider_token
+        ? "connected"
+        : hasGithubIdentity ? "expired" : "disconnected");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Unable to load integrations.");
     } finally {
@@ -64,9 +67,7 @@ export function IntegrationsSection() {
       redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent("/settings?section=integrations")}`,
       scopes: "repo read:user user:email",
     };
-    const result = githubStatus === "disconnected"
-      ? await supabase.auth.linkIdentity({ provider: "github", options })
-      : await supabase.auth.signInWithOAuth({ provider: "github", options });
+    const result = await supabase.auth.signInWithOAuth({ provider: "github", options });
     const oauthError = result.error;
     if (oauthError) {
       setError(oauthError.message);

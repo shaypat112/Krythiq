@@ -5,6 +5,7 @@ import { adminSupabaseFetch } from "@/app/lib/server/admin";
 import { auditWorkspace, requireSelectedWorkspaceTeam, resolveGitHubFile } from "@/app/lib/server/repository-workspaces";
 import { RequestAuthError } from "@/app/lib/server/supabaseRest";
 import { deliverWorkspaceWebhook } from "@/app/lib/server/webhooks";
+import { resolveGitHubToken } from "@/app/lib/server/githubConnection";
 
 export const runtime = "nodejs";
 
@@ -24,13 +25,14 @@ export async function POST(request: Request) {
   const body = await request.clone().json().catch(() => ({}));
   const repository = cleanRepository(body?.repository);
   const suggestionIndex = Number(body?.suggestionIndex);
-  const providerToken = typeof body?.providerToken === "string" ? body.providerToken : undefined;
+  const suppliedProviderToken = typeof body?.providerToken === "string" ? body.providerToken : undefined;
   if (!repository || !Number.isSafeInteger(suggestionIndex)) {
     return NextResponse.json({ error: "Choose a valid repository and fix." }, { status: 400 });
   }
 
   try {
     const { userId, teamId, accessToken } = await requireSelectedWorkspaceTeam(request);
+    const providerToken = await resolveGitHubToken(userId, suppliedProviderToken);
     const scans = await loadOwnedWorkflowScans(request, repository);
     const suggestion = readSuggestion(scans, suggestionIndex);
     if (!suggestion?.file || !suggestion.currentCode || !suggestion.replacementCode) {

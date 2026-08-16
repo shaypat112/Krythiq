@@ -40,6 +40,25 @@ krythiq run "npm test" --no-ai
 
 `init` creates `krythiq.config.mjs`, creates `.krythiq/`, and adds `.krythiq/` to `.gitignore` unless `--skip-gitignore` is set.
 
+## `krythiq connect`
+
+```bash
+npx krythiq connect
+```
+
+The CLI opens a short-lived browser authorization page. After approval, future
+`krythiq scan` results sync to the signed-in dashboard automatically and the CLI
+shows the account's Token balance. The browser session and Supabase credentials
+are never copied into the terminal.
+
+```bash
+npx krythiq connect --status
+npx krythiq connect --disconnect
+```
+
+Use `KRYTHIQ_DASHBOARD_URL=http://localhost:3000` when testing against a local
+Krythiq web app. Use `--no-browser` on remote or headless machines.
+
 ## `krythiq scan [path]`
 
 The scan command accepts a directory (default `.`) and discovers `ts`, `tsx`, `js`, `jsx`, `py`, `go`, `rs`, `java`, `cs`, and `php` files. It combines:

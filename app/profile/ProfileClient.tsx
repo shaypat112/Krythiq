@@ -136,48 +136,20 @@ export default function ProfileClient({ initialTab = "scans" }: { initialTab?: T
     if (!supabase) return;
     const { data: sessionData } = await supabase.auth.getSession();
     const accessToken = sessionData.session?.access_token;
-    const providerToken = sessionData.session?.provider_token;
 
     if (!accessToken) {
       setError("Sign in before connecting GitHub.");
       return;
     }
-    if (!providerToken) {
-      setError(null);
-      const hasGitHubIdentity = sessionData.session?.user.identities?.some((identity) => identity.provider === "github") === true;
-      const options = {
+    setError(null);
+    const { error: oauthError } = await supabase.auth.signInWithOAuth({
+      provider: "github",
+      options: {
         redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent("/settings?section=account")}`,
         scopes: "repo read:user user:email",
-      };
-      const result = hasGitHubIdentity
-        ? await supabase.auth.signInWithOAuth({ provider: "github", options })
-        : await supabase.auth.linkIdentity({ provider: "github", options });
-      if (result.error) setError(result.error.message);
-      return;
-    }
-
-    setError(null);
-    try {
-      const res = await fetch("/api/github/repos", {
-        method: "POST",
-        headers: buildTeamAuthHeaders(
-          accessToken,
-          selectedTeamId,
-          { "Content-Type": "application/json" },
-        ),
-        body: JSON.stringify({ providerToken }),
-      });
-
-      if (!res.ok) {
-        const { error: message } = await res.json().catch(() => ({ error: null }));
-        throw new Error(message ?? "Your GitHub projects could not be loaded.");
-      }
-
-      const { repos: synced } = await res.json();
-      setRepos(synced ?? []);
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Your GitHub projects could not be loaded.");
-    }
+      },
+    });
+    if (oauthError) setError(oauthError.message);
   };
 
   const runRepoScan = async (repo: ConnectedRepo) => {
@@ -191,12 +163,6 @@ export default function ProfileClient({ initialTab = "scans" }: { initialTab?: T
 
     if (!accessToken) {
       setError("Please sign in to scan repositories.");
-      setScanningRepo(null);
-      return;
-    }
-
-    if (repo.private && !providerToken) {
-      setError("GitHub authorization is required for private repositories.");
       setScanningRepo(null);
       return;
     }
@@ -286,6 +252,7 @@ export default function ProfileClient({ initialTab = "scans" }: { initialTab?: T
       </Card>
 
       {activeTab === "scans" && <ScanTable scans={scans} />}
+
 
       {activeTab === "integrations" && (
         <div className="space-y-3">

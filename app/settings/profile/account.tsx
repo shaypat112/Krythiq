@@ -31,7 +31,7 @@ export function AccountSection() {
   useEffect(() => { void supabase.auth.getUser().then(({ data }) => setIdentities(data.user?.identities?.map((identity) => identity.provider) ?? [])); }, [supabase]);
   const link = async (provider: Provider, scopes: string) => {
     setLinking(provider);
-    const { error } = await supabase.auth.linkIdentity({ provider, options: { scopes, redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent("/settings?section=account")}` } });
+    const { error } = await supabase.auth.signInWithOAuth({ provider, options: { scopes, redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent("/settings?section=account")}` } });
     if (error) { setLinking(null); setError(error.message); }
   };
 
@@ -97,8 +97,6 @@ export function AccountSection() {
     <SectionCard title="Connected sign-in methods" description="Link identities for convenient sign-in. This does not grant repository, server-admin, posting, or company-page permissions.">
       {[
         { provider: "github" as Provider, label: "GitHub", scopes: "read:user user:email" },
-        { provider: "discord" as Provider, label: "Discord", scopes: "identify email" },
-        { provider: "linkedin_oidc" as Provider, label: "LinkedIn", scopes: "openid profile email" },
       ].map((item) => { const connected = identities.includes(item.provider); return <div key={item.provider} className="flex items-center justify-between gap-3 rounded-lg border border-border p-3"><div><p className="text-sm font-medium">{item.label}</p><p className="text-xs text-muted-foreground">{connected ? "Linked to this Krythiq account" : "Not connected"}</p></div>{connected ? <Badge variant="outline">Connected</Badge> : <Button size="sm" variant="outline" disabled={linking !== null} onClick={() => void link(item.provider, item.scopes)}>{linking === item.provider ? <Loader2 className="animate-spin" /> : null}Link</Button>}</div>; })}
     </SectionCard>
     <RepositoryConnections /></div>

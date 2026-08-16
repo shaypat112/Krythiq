@@ -13,16 +13,18 @@ import { purgeUserData } from "@/app/lib/server/retention";
 import { aiScanner } from "@/app/services/aiScanner";
 import { runPaidAiAction } from "@/app/lib/server/tokenLedger";
 import { readScanTier, scanTierCatalog } from "@/app/lib/tokens";
+import { resolveGitHubToken } from "@/app/lib/server/githubConnection";
 
 export const runtime = "nodejs";
 
 type ErrorWithStatus = Error & { status?: number };
 async function executeScan(request: Request) {
   const body = await request.json();
-  const providerToken =
+  const suppliedProviderToken =
     (body?.providerToken as string | null | undefined) ?? undefined;
   const repoFullName = body?.repo as string | undefined;
   const { accessToken, userId } = requireRequestAuth(request);
+  const providerToken = await resolveGitHubToken(userId, suppliedProviderToken).catch(() => undefined);
   const repoForFailure = repoFullName;
   const authForFailure = { accessToken, userId };
   const selectedTeamId = extractSelectedTeamId(request);

@@ -6,24 +6,19 @@ import {
   supabaseFetch,
 } from "@/app/lib/server/supabaseRest";
 import { createNotification } from "@/app/lib/server/notifications";
+import { resolveGitHubToken } from "@/app/lib/server/githubConnection";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const providerToken = body?.providerToken as string | undefined;
+    const suppliedProviderToken = body?.providerToken as string | undefined;
     const { accessToken, userId } = requireRequestAuth(request);
-
-    if (!providerToken) {
-      return NextResponse.json(
-        { error: "Missing providerToken" },
-        { status: 400 }
-      );
-    }
+    const providerToken = await resolveGitHubToken(userId, suppliedProviderToken);
     const env = getSupabaseEnv();
 
-    const ghRes = await fetch("https://api.github.com/user/repos?per_page=100", {
+    const ghRes = await fetch("https://api.github.com/user/repos?per_page=100&sort=full_name", {
       headers: {
         Authorization: `Bearer ${providerToken}`,
         Accept: "application/vnd.github+json",
@@ -43,6 +38,16 @@ export async function POST(request: Request) {
       full_name: string;
       private: boolean;
     }>;
+
+    // GitHub paginates at 100. Follow Link headers so larger accounts do not
+    // randomly lose repositories from the local connection list.
+    let next = ghRes.headers.get("link")?.match(/<([^>]+)>; rel="next"/)?.[1] ?? null;
+    while (next) {
+      const page = await fetch(next, { headers: { Authorization: `Bearer ${providerToken}`, Accept: "application/vnd.github+json" } });
+      if (!page.ok) break;
+      repos.push(...await page.json() as typeof repos);
+      next = page.headers.get("link")?.match(/<([^>]+)>; rel="next"/)?.[1] ?? null;
+    }
 
     const payload = repos.map((repo) => ({
       user_id: userId,

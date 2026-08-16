@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowLeft, BadgeCheck, BriefcaseBusiness, Building2, Clock3, GitFork, Loader2, MessageCircle, ScanSearch, UsersRound, UserCheck, UserPlus } from "lucide-react";
+import { ArrowLeft, BadgeCheck, BriefcaseBusiness, Building2, Check, Clock3, GitFork, Loader2, MessageCircle, ScanSearch, UsersRound, UserCheck, UserPlus, X } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/app/lib/supabase";
 import { buildAuthHeaders } from "@/app/lib/http";
@@ -17,6 +17,7 @@ type ProfilePayload = {
   posts: Array<{ id: string; body: string; post_type: string; scan_repository?: string | null; scan_severity?: string | null; scan_score?: number | null; scan_issues?: number | null; created_at: string }>;
   projects: Array<{ id: string; name: string; repository: string; team_name: string; verification_status: string; scan_score?: number | null; scan_issues?: number | null }>;
   connection: { id: string; requester_id: string; addressee_id: string; status: string } | null;
+  unreadCount: number;
   viewerId: string;
   isSelf: boolean;
 };
@@ -47,6 +48,16 @@ export function DiscoverProfileClient({ userId }: { userId: string }) {
     setWorking(false);
   };
 
+  const respondToRequest = async (action: "accept" | "decline") => {
+    if (!data?.connection?.id) return;
+    setWorking(true);
+    const accessToken = await token();
+    const response = await fetch("/api/social/connections", { method: "PATCH", headers: buildAuthHeaders(accessToken, { "Content-Type": "application/json" }), body: JSON.stringify({ connectionId: data.connection.id, action }) });
+    const payload = await response.json().catch(() => ({}));
+    if (response.ok) { toast.success(action === "accept" ? "Friend request accepted. You can message each other now." : "Friend request declined."); await load(); } else toast.error(payload.error ?? "Unable to update request.");
+    setWorking(false);
+  };
+
   if (loading) return <div className="grid min-h-[60vh] place-items-center"><Loader2 className="animate-spin text-muted-foreground" /></div>;
   if (!data) return <div className="mx-auto max-w-4xl rounded-3xl border border-border p-12 text-center">Profile unavailable.</div>;
   const name = data.profile.full_name ?? data.profile.username ?? "Krythiq builder";
@@ -57,7 +68,7 @@ export function DiscoverProfileClient({ userId }: { userId: string }) {
 
   return <div className="mx-auto max-w-5xl space-y-6">
     <Button variant="ghost" asChild><Link href="/discover"><ArrowLeft />Back to Discover</Link></Button>
-    <Card className="overflow-hidden rounded-3xl"><div className="h-28 bg-[radial-gradient(circle_at_20%_20%,rgba(56,189,248,.25),transparent_35%),radial-gradient(circle_at_80%_30%,rgba(217,70,239,.2),transparent_35%),var(--muted)]" /><CardContent className="relative p-6 pt-0"><Avatar className="-mt-12 size-24 border-4 border-card"><AvatarImage src={data.profile.avatar_url ?? undefined} alt="" /><AvatarFallback className="text-xl">{initials(name)}</AvatarFallback></Avatar><div className="mt-4 flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><h1 className="text-3xl font-semibold tracking-tight">{name}</h1>{data.profile.username ? <p className="mt-1 text-sm text-muted-foreground">@{data.profile.username}</p> : null}<p className="mt-3 max-w-xl text-sm leading-6 text-muted-foreground">Public build activity, verified team projects, and safe scan summaries shared by this user.</p></div>{!data.isSelf ? <div className="flex flex-wrap gap-2">{accepted ? <><Button variant="outline" disabled><UserCheck />Following</Button><Button asChild><Link href={`/discover/messages/${userId}`}><MessageCircle />Message</Link></Button></> : pendingMine ? <Button variant="outline" disabled><Clock3 />Request sent</Button> : pendingTheirs ? <Button asChild><Link href="/discover/requests"><UserPlus />Review request</Link></Button> : <Button onClick={() => void requestFollow()} disabled={working}>{working ? <Loader2 className="animate-spin" /> : <UserPlus />}Request to follow</Button>}</div> : null}</div></CardContent></Card>
+    <Card className="overflow-hidden rounded-3xl"><div className="h-28 bg-[radial-gradient(circle_at_20%_20%,rgba(56,189,248,.25),transparent_35%),radial-gradient(circle_at_80%_30%,rgba(217,70,239,.2),transparent_35%),var(--muted)]" /><CardContent className="relative p-6 pt-0"><Avatar className="-mt-12 size-24 border-4 border-card"><AvatarImage src={data.profile.avatar_url ?? undefined} alt="" /><AvatarFallback className="text-xl">{initials(name)}</AvatarFallback></Avatar><div className="mt-4 flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><h1 className="text-3xl font-semibold tracking-tight">{name}</h1>{data.profile.username ? <p className="mt-1 text-sm text-muted-foreground">@{data.profile.username}</p> : null}<p className="mt-3 max-w-xl text-sm leading-6 text-muted-foreground">Public build activity, verified team projects, and safe scan summaries shared by this user.</p></div>{!data.isSelf ? <div className="flex flex-wrap gap-2">{accepted ? <><Button variant="outline" disabled><UserCheck />Friends</Button><Button asChild><Link href={`/discover/messages/${userId}`}><MessageCircle />Message{data.unreadCount ? <Badge className="ml-1">{data.unreadCount} unread</Badge> : null}</Link></Button></> : pendingMine ? <><Button variant="outline" disabled><Clock3 />Friend request sent</Button><Button asChild variant="ghost"><Link href="/discover"><UserPlus />Find people</Link></Button></> : pendingTheirs ? <><Button onClick={() => void respondToRequest("accept")} disabled={working}>{working ? <Loader2 className="animate-spin" /> : <Check />}Accept request</Button><Button variant="outline" onClick={() => void respondToRequest("decline")} disabled={working}><X />Decline</Button></> : <><Button onClick={() => void requestFollow()} disabled={working}>{working ? <Loader2 className="animate-spin" /> : <UserPlus />}Add friend</Button><Button asChild variant="outline"><Link href="/discover"><UsersRound />Find people</Link></Button></>}</div> : null}</div></CardContent></Card>
     {hasProfessionalInfo ? <Card className="overflow-hidden rounded-3xl"><CardHeader><CardTitle className="flex items-center gap-2"><BriefcaseBusiness className="size-5 text-violet-500" />Professional profile</CardTitle></CardHeader><CardContent><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{data.professional.headline ? <ProfileDetail label="Headline" value={data.professional.headline} icon={BriefcaseBusiness} wide /> : null}{data.professional.role ? <ProfileDetail label="Role" value={data.professional.role} icon={BadgeCheck} /> : null}{data.professional.organization ? <ProfileDetail label="Organization" value={data.professional.organization} icon={Building2} /> : null}{data.professional.companySize ? <ProfileDetail label="Company size" value={companySizeLabel(data.professional.companySize)} icon={UsersRound} /> : null}{data.professional.community ? <ProfileDetail label="Community" value={data.professional.community} icon={UsersRound} /> : null}</div></CardContent></Card> : null}
     <div className="grid gap-6 lg:grid-cols-[1fr_.8fr]">
       <Card className="rounded-3xl"><CardHeader><CardTitle className="flex items-center gap-2"><ScanSearch className="size-5 text-sky-500" />Public activity</CardTitle></CardHeader><CardContent className="space-y-3">{data.posts.map((post) => <Link key={post.id} href={`/discover/${post.id}`} className="block rounded-2xl border border-border p-4 transition hover:bg-muted/50"><p className="line-clamp-3 text-sm leading-6">{post.body}</p>{post.scan_repository ? <div className="mt-3 flex flex-wrap items-center gap-2"><Badge variant="outline">{post.scan_repository}</Badge><span className="text-xs text-muted-foreground">{post.scan_issues ?? 0} issues · score {post.scan_score ?? 0}</span></div> : null}<p className="mt-3 text-xs text-muted-foreground">{new Date(post.created_at).toLocaleDateString()}</p></Link>)}{!data.posts.length ? <p className="py-8 text-center text-sm text-muted-foreground">No public posts yet.</p> : null}</CardContent></Card>

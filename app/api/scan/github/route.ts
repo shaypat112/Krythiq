@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { resolveGitHubToken } from "@/app/lib/server/githubConnection";
 import { handleGitHubScan } from "@/app/routes/scan";
 import {
   extractSelectedTeamId,
@@ -57,8 +58,9 @@ export async function POST(request: Request) {
     if (!scanTier) {
       return NextResponse.json({ error: "Choose a valid scan tier.", code: "INVALID_SCAN_TIER" }, { status: 400 });
     }
-    const providerToken = typeof body?.providerToken === "string" ? body.providerToken : undefined;
+    const suppliedProviderToken = typeof body?.providerToken === "string" ? body.providerToken : undefined;
     const { accessToken, userId } = requireRequestAuth(request);
+    const providerToken = await resolveGitHubToken(userId, suppliedProviderToken).catch(() => undefined);
     accessTokenForFailure = accessToken;
     const selectedTeamId = extractSelectedTeamId(request);
 

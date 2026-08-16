@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { Provider } from "@supabase/supabase-js";
 import { Check, FolderGit2, Globe2, Loader2, Lock, Search } from "lucide-react";
 import { createClient } from "@/app/lib/supabase";
 import { buildTeamAuthHeaders } from "@/app/lib/http";
@@ -28,11 +27,10 @@ export function RepositoryConnections() {
     try {
       const session = (await supabase.auth.getSession()).data.session;
       if (!session?.access_token) throw new Error("Unable to fetch repositories: you are not signed in.");
-      if (!session.provider_token) throw new Error("Unable to fetch repositories: GitHub is not connected. Sign in with GitHub to continue.");
       const response = await fetch("/api/github/repos", {
         method: "POST",
         headers: buildTeamAuthHeaders(session.access_token, selectedTeamId, { "Content-Type": "application/json" }),
-        body: JSON.stringify({ providerToken: session.provider_token }),
+        body: JSON.stringify({ providerToken: session.provider_token ?? null }),
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error ?? "Unable to fetch repositories from GitHub.");
@@ -60,10 +58,7 @@ export function RepositoryConnections() {
     const session = (await supabase.auth.getSession()).data.session;
     if (!session?.access_token) { setError("Unable to fetch repositories: you are not signed in."); return; }
     const options = { redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent("/settings?section=account")}`, scopes: "repo read:user user:email" };
-    const hasGitHubIdentity = session.user.identities?.some((identity) => identity.provider === "github") === true;
-    const result = hasGitHubIdentity
-      ? await supabase.auth.signInWithOAuth({ provider: "github", options })
-      : await supabase.auth.linkIdentity({ provider: "github" as Provider, options });
+    const result = await supabase.auth.signInWithOAuth({ provider: "github", options });
     if (result.error) setError(result.error.message);
   };
 

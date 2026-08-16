@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { adminSupabaseFetch } from "@/app/lib/server/admin";
+import { saveGitHubConnection } from "@/app/lib/server/githubConnection";
 
 function safeNextPath(value: string | null) {
   return value?.startsWith("/") && !value.startsWith("//")
@@ -44,11 +45,11 @@ export async function GET(request: NextRequest) {
 
   const supportedTokenTypes = ["signup", "magiclink", "recovery", "invite", "email_change"] as const;
   const verifiedType = supportedTokenTypes.find((type) => type === tokenType);
-  const { error } = code
+  const { data: authData, error } = code
     ? await supabase.auth.exchangeCodeForSession(code)
     : verifiedType && tokenHash
       ? await supabase.auth.verifyOtp({ token_hash: tokenHash, type: verifiedType })
-      : { error: new Error("Unsupported authentication callback.") };
+      : { data: { session: null, user: null }, error: new Error("Unsupported authentication callback.") };
   if (error) {
     return redirectWithCookies(
       response,
@@ -72,6 +73,10 @@ export async function GET(request: NextRequest) {
     headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
     body: JSON.stringify({ id: data.user.id, ...(fullName ? { full_name: String(fullName).trim().slice(0, 200) } : {}), ...(avatarUrl ? { avatar_url: String(avatarUrl).slice(0, 2000) } : {}), updated_at: new Date().toISOString() }),
   }).catch(() => undefined);
+
+  if (authData.session?.provider_token && data.user.identities?.some((identity) => identity.provider === "github")) {
+    await saveGitHubConnection(data.user.id, authData.session.provider_token).catch(() => undefined);
+  }
 
   if (referralCode) {
     await adminSupabaseFetch("rpc/claim_referral", {

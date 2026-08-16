@@ -14,6 +14,7 @@ import {
   BellRing,
   Mail,
   Coins,
+  Terminal,
 } from "lucide-react";
 import { cn } from "../lib/utils";
 import { SettingsProvider, useSettings } from "./profile/context";
@@ -25,6 +26,7 @@ const NAV_SECTIONS = [
   { id: "retention", label: "Data", icon: Database },
   { id: "teams", label: "Teams", icon: Users },
   { id: "integrations", label: "Integrations", icon: Plug },
+  { id: "cli", label: "CLI", icon: Terminal },
   { id: "email", label: "Email", icon: Mail },
   { id: "tokens", label: "Tokens", icon: Coins },
   { id: "notifications", label: "Notifications", icon: BellRing },
@@ -33,12 +35,13 @@ const NAV_SECTIONS = [
 export type SectionId = (typeof NAV_SECTIONS)[number]["id"];
 
 function Sidebar({ active }: { active: SectionId }) {
-  const { save, saving } = useSettings();
+  const { save, saving, hasCliConnection } = useSettings();
+  const sections = NAV_SECTIONS.filter((section) => section.id !== "cli" || hasCliConnection);
 
   return (
     <aside className="hidden w-56 shrink-0 flex-col border-r border-border bg-background sm:flex">
       <nav className="flex-1 overflow-y-auto py-3 px-2">
-        {NAV_SECTIONS.map(({ id, label, icon: Icon }) => (
+        {sections.map(({ id, label, icon: Icon }) => (
           <Link
             key={id}
             href={`/settings?section=${id}`}
@@ -91,12 +94,13 @@ function Sidebar({ active }: { active: SectionId }) {
 }
 
 function MobileSettingsNav({ active }: { active: SectionId }) {
-  const { save, saving } = useSettings();
+  const { save, saving, hasCliConnection } = useSettings();
+  const sections = NAV_SECTIONS.filter((section) => section.id !== "cli" || hasCliConnection);
 
   return (
     <div className="border-b border-border bg-background p-3 sm:hidden">
       <div className="flex gap-2 overflow-x-auto pb-2" aria-label="Settings sections">
-        {NAV_SECTIONS.map(({ id, label, icon: Icon }) => (
+        {sections.map(({ id, label, icon: Icon }) => (
           <Link
             key={id}
             href={`/settings?section=${id}`}
@@ -127,10 +131,10 @@ function MobileSettingsNav({ active }: { active: SectionId }) {
 
 function SettingsInner({ children }: { children: React.ReactNode }) {
   const searchParams = useSearchParams();
-  const { loading } = useSettings();
+  const { loading, hasCliConnection } = useSettings();
 
   const requestedSection = searchParams?.get("section");
-  const active = NAV_SECTIONS.some((section) => section.id === requestedSection)
+  const active = NAV_SECTIONS.some((section) => section.id === requestedSection) && (requestedSection !== "cli" || hasCliConnection)
     ? requestedSection as SectionId
     : "account";
 

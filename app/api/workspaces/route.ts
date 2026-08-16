@@ -3,6 +3,7 @@ import { adminSupabaseFetch } from "@/app/lib/server/admin";
 import { auditWorkspace, requireSelectedWorkspaceTeam, resolveGitHubStarterFile } from "@/app/lib/server/repository-workspaces";
 import { RequestAuthError } from "@/app/lib/server/supabaseRest";
 import { deliverWorkspaceWebhook } from "@/app/lib/server/webhooks";
+import { resolveGitHubToken } from "@/app/lib/server/githubConnection";
 
 export const runtime = "nodejs";
 
@@ -24,8 +25,9 @@ export async function POST(request: Request) {
     const { userId, teamId, accessToken } = await requireSelectedWorkspaceTeam(request);
     const body = await request.json();
     const repository = typeof body?.repository === "string" ? body.repository.trim() : "";
-    const providerToken = typeof body?.providerToken === "string" ? body.providerToken : undefined;
+    const suppliedProviderToken = typeof body?.providerToken === "string" ? body.providerToken : undefined;
     if (!/^[\w.-]+\/[\w.-]+$/.test(repository)) return NextResponse.json({ error: "Choose a valid repository." }, { status: 400 });
+    const providerToken = await resolveGitHubToken(userId, suppliedProviderToken);
     const starter = await resolveGitHubStarterFile({ repository, providerToken });
     const workspaceResponse = await adminSupabaseFetch("repository_workspaces", { method: "POST", headers: { Prefer: "return=representation" }, body: JSON.stringify({ team_id: teamId, repository, base_branch: starter.baseBranch, base_commit_sha: starter.baseCommitSha, title: `${repository.split("/").at(-1)} workspace`, created_by: userId }) });
     if (!workspaceResponse.ok) return NextResponse.json({ error: "Unable to create the workspace. Apply the latest database migration." }, { status: 503 });
