@@ -8,7 +8,6 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-
 const REPOSITORY = /^[\w.-]+\/[\w.-]+$/;
 const SHA = /^[0-9a-f]{40}$/i;
 const protectedPath = /(^|\/)(\.env(?:\..*)?|\.github\/workflows)(\/|$)/i;
-const secretLike = /(-----BEGIN [A-Z ]+PRIVATE KEY-----|(?:api[_-]?key|secret|token|password)\s*[:=]\s*["'][^"']{8,})/i;
 const supportedWorkspaceFile = /(?:^|\/)(?:readme(?:\.[a-z0-9]+)?|dockerfile|makefile|package\.json|tsconfig(?:\.[\w.-]+)?\.json|requirements\.txt|go\.mod|cargo\.toml)$|\.(?:md|mdx|txt|json|jsonc|ya?ml|toml|ini|conf|js|jsx|mjs|cjs|ts|tsx|css|scss|sass|less|html?|svg|vue|svelte|py|rb|go|rs|java|kt|kts|swift|cs|php|c|cc|cpp|h|hpp|sh|bash|zsh|fish|sql|graphql|gql|proto|tf|tfvars|xml)$/i;
 const ignoredWorkspaceDirectories = new Set([".git", ".next", "node_modules", "dist", "build", "coverage", "vendor", ".turbo", ".cache"]);
 const MAX_REPOSITORY_FILES = 20_000;
@@ -58,7 +57,6 @@ export function normalizeWorkspacePath(value: unknown) {
 
 export function validateWorkspaceContent(value: unknown) {
   if (typeof value !== "string" || Buffer.byteLength(value, "utf8") > 1_048_576) return null;
-  if (secretLike.test(value)) return null;
   return value;
 }
 

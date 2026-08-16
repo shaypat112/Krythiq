@@ -40,7 +40,9 @@ export async function PATCH(request: Request, { params }: Context) {
     const path = normalizeWorkspacePath(body?.path);
     const content = validateWorkspaceContent(body?.content);
     const expectedVersion = Number(body?.expectedVersion);
-    if (!path || content === null || !Number.isSafeInteger(expectedVersion) || expectedVersion < 1) return NextResponse.json({ error: "Invalid workspace file update." }, { status: 400 });
+    if (!path) return NextResponse.json({ error: "This file path cannot be edited in a workspace." }, { status: 400 });
+    if (content === null) return NextResponse.json({ error: "This file is larger than the 1 MB workspace editing limit." }, { status: 413 });
+    if (!Number.isSafeInteger(expectedVersion) || expectedVersion < 1) return NextResponse.json({ error: "The local file version is invalid. Reload the workspace and try again." }, { status: 400 });
     const previousResponse = await adminSupabaseFetch(`workspace_files?workspace_id=eq.${workspace.id}&path=eq.${encodeURIComponent(path)}&version=eq.${expectedVersion}&select=id,content&limit=1`);
     const previous = previousResponse.ok ? (await previousResponse.json() as Array<{ id: string; content: string }>)[0] : null;
     const response = await adminSupabaseFetch(`workspace_files?workspace_id=eq.${workspace.id}&path=eq.${encodeURIComponent(path)}&version=eq.${expectedVersion}`, { method: "PATCH", headers: { Prefer: "return=representation" }, body: JSON.stringify({ content, last_edited_by: userId, version: expectedVersion + 1, updated_at: new Date().toISOString() }) });

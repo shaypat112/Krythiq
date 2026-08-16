@@ -57,9 +57,11 @@ export async function loadGitHubConnection(userId: string) {
   }
 }
 
-export async function resolveGitHubToken(userId: string, providerToken?: string | null) {
-  if (providerToken?.trim()) return saveGitHubConnection(userId, providerToken);
+export async function resolveGitHubToken(userId: string, _providerToken?: string | null) {
+  // Browser session provider tokens can be stale and must never replace the
+  // credential captured by the explicit OAuth callback.
+  void _providerToken;
   const stored = await loadGitHubConnection(userId);
-  if (!stored) throw new Error("Reconnect GitHub to continue.");
-  return stored;
+  if (stored) return stored;
+  throw new Error("Reconnect GitHub to continue.");
 }

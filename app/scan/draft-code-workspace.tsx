@@ -145,7 +145,7 @@ export function DraftCodeWorkspace({ draft, onClose }: { draft: DraftPatch; onCl
       const headers = buildAuthHeaders(session.access_token, { "Content-Type": "application/json" });
       const [workspaceResponse, treeResponse] = await Promise.all([
         fetch(`/api/workspaces/${draft.workspaceId}`, { headers }),
-        fetch(`/api/workspaces/${draft.workspaceId}`, { method: "POST", headers, body: JSON.stringify({ action: "repository.tree", providerToken: session.provider_token ?? null }) }),
+        fetch(`/api/workspaces/${draft.workspaceId}`, { method: "POST", headers, body: JSON.stringify({ action: "repository.tree" }) }),
       ]);
       const workspacePayload = await workspaceResponse.json().catch(() => ({}));
       const treePayload = await treeResponse.json().catch(() => ({}));
@@ -232,7 +232,7 @@ export function DraftCodeWorkspace({ draft, onClose }: { draft: DraftPatch; onCl
     setOpeningPath(path);
     const session = (await supabase.auth.getSession()).data.session;
     if (!session) { setOpeningPath(null); return; }
-    const response = await fetch(`/api/workspaces/${draft.workspaceId}`, { method: "POST", headers: buildAuthHeaders(session.access_token, { "Content-Type": "application/json" }), body: JSON.stringify({ action: "file.open", path, providerToken: session.provider_token ?? null }) });
+    const response = await fetch(`/api/workspaces/${draft.workspaceId}`, { method: "POST", headers: buildAuthHeaders(session.access_token, { "Content-Type": "application/json" }), body: JSON.stringify({ action: "file.open", path }) });
     const payload = await response.json().catch(() => ({}));
     setOpeningPath(null);
     if (!response.ok) { toast.error(payload.error ?? "Unable to open this file."); return; }
@@ -253,7 +253,7 @@ export function DraftCodeWorkspace({ draft, onClose }: { draft: DraftPatch; onCl
     if (!session?.access_token) { toast.error("Sign in before publishing."); return; }
     if (saveState !== "saved") { toast.error("Wait for the current file to finish saving."); return; }
     setPublishing(mode);
-    const response = await fetch(`/api/workspaces/${draft.workspaceId}/publish`, { method: "POST", headers: buildAuthHeaders(session.access_token, { "Content-Type": "application/json" }), body: JSON.stringify({ mode, commitMessage, providerToken: session.provider_token ?? null }) });
+    const response = await fetch(`/api/workspaces/${draft.workspaceId}/publish`, { method: "POST", headers: buildAuthHeaders(session.access_token, { "Content-Type": "application/json" }), body: JSON.stringify({ mode, commitMessage }) });
     const payload = await response.json().catch(() => ({}));
     setPublishing(null);
     if (!response.ok) {
@@ -268,7 +268,7 @@ export function DraftCodeWorkspace({ draft, onClose }: { draft: DraftPatch; onCl
     const session = (await supabase.auth.getSession()).data.session;
     if (!session?.access_token) return;
     setExportingZip(true);
-    const response = await fetch(`/api/workspaces/${draft.workspaceId}/export`, { method: "POST", headers: buildAuthHeaders(session.access_token, { "Content-Type": "application/json" }), body: JSON.stringify({ providerToken: session.provider_token ?? null }) });
+    const response = await fetch(`/api/workspaces/${draft.workspaceId}/export`, { method: "POST", headers: buildAuthHeaders(session.access_token, { "Content-Type": "application/json" }), body: JSON.stringify({}) });
     if (!response.ok) { const payload = await response.json().catch(() => ({})); toast.error(payload.error ?? "ZIP export failed."); setExportingZip(false); return; }
     const filename = (response.headers.get("content-disposition") ?? "").match(/filename="([^"]+)"/)?.[1] ?? `${draft.repository.replace("/", "-")}.zip`;
     const url = URL.createObjectURL(await response.blob()); const link = document.createElement("a"); link.href = url; link.download = filename; link.click(); URL.revokeObjectURL(url);

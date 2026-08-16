@@ -66,6 +66,7 @@ export function IntegrationsSection() {
     const options = {
       redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent("/settings?section=integrations")}`,
       scopes: "repo read:user user:email",
+      queryParams: { prompt: "consent" },
     };
     const result = await supabase.auth.signInWithOAuth({ provider: "github", options });
     const oauthError = result.error;

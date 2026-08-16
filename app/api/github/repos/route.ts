@@ -117,6 +117,6 @@ export async function POST(request: Request) {
     if (error instanceof RequestAuthError) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    return NextResponse.json({ error: "Unexpected server error." }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Unable to fetch repositories from GitHub." }, { status: 502 });
   }
 }

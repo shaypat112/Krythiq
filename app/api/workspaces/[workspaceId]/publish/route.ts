@@ -34,6 +34,8 @@ export async function POST(request: Request, { params }: Context) {
         const sso = response.headers.get("x-github-sso");
         if (response.status === 401) throw new Error("Your GitHub session expired. Reconnect GitHub, then try again.");
         if (response.status === 403) throw new Error(sso ? `Your organization requires GitHub SSO authorization. ${githubMessage}` : `GitHub denied repository write access. Reconnect GitHub and authorize repository access. ${githubMessage}`);
+        if (response.status === 404 && init.method && init.method !== "GET") throw new Error("Your GitHub connection can read this repository but cannot write to it. Reconnect GitHub and approve repository access, then try again.");
+        if (response.status === 422) throw new Error(`GitHub rejected the ${init.method ?? "request"} operation: ${githubMessage}`);
         throw new Error(githubMessage);
       }
       return payload as T;

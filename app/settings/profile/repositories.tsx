@@ -30,7 +30,7 @@ export function RepositoryConnections() {
       const response = await fetch("/api/github/repos", {
         method: "POST",
         headers: buildTeamAuthHeaders(session.access_token, selectedTeamId, { "Content-Type": "application/json" }),
-        body: JSON.stringify({ providerToken: session.provider_token ?? null }),
+        body: JSON.stringify({}),
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error ?? "Unable to fetch repositories from GitHub.");
@@ -57,7 +57,7 @@ export function RepositoryConnections() {
   const connectGitHub = async () => {
     const session = (await supabase.auth.getSession()).data.session;
     if (!session?.access_token) { setError("Unable to fetch repositories: you are not signed in."); return; }
-    const options = { redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent("/settings?section=account")}`, scopes: "repo read:user user:email" };
+    const options = { redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent("/settings?section=account")}`, scopes: "repo read:user user:email", queryParams: { prompt: "consent" } };
     const result = await supabase.auth.signInWithOAuth({ provider: "github", options });
     if (result.error) setError(result.error.message);
   };
