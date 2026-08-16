@@ -31,6 +31,7 @@
     "fflate": "^0.8.2",
     "framer-motion": "^12.38.0",
     "glob": "^13.0.6",
+    "krythiq": "^0.1.1",
     "lucide-react": "^0.577.0",
     "motion": "^12.42.2",
     "next": "16.2.11",

@@ -41,7 +41,7 @@
       "category": "secrets",
       "message": "Possible hardcoded credential",
       "suggestion": "Move secrets to environment variables.",
-      "validator": "non_placeholder_secret"
+
     },
     {
       "id": "WEAK_CRYPTO",
