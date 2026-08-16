@@ -7,6 +7,7 @@ import { scanCommand } from "./commands/scan.js";
 import { authCommand } from "./commands/auth.js";
 import { connectCommand } from "./commands/connect.js";
 import { whoamiCommand } from "./commands/whoami.js";
+import { tokenCommand } from "./commands/token.js";
 import { checkUpdate } from "./utils/update.js";
 
 export function runCli() {
@@ -52,6 +53,7 @@ export function runCli() {
     .addOption(new Option("--format <fmt>", "output format").choices(["text", "json", "markdown", "sarif"]).default("text"))
     .option("--ignore <patterns...>", "glob patterns to ignore")
     .option("--rules <path>", "path to custom rules JSON (default: .krythiq/rules.json)")
+    .option("--save", "save this free static scan to Krythiq.dev Recent Scans")
     .option("--publish", "publish scan summary to Supabase scan_history")
     .option("--ai", "enable a Mistral remediation summary")
     .option("--ai-model <model>", "Mistral model name", "mistral-large-latest")
@@ -70,6 +72,11 @@ export function runCli() {
     .command("whoami")
     .description("show which Krythiq.dev account this terminal is signed in to")
     .action(whoamiCommand);
+
+  program
+    .command("token")
+    .description("show the Token balance for the signed-in Krythiq.dev account")
+    .action(tokenCommand);
 
   program
     .command("auth")

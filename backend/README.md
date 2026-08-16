@@ -46,14 +46,15 @@ krythiq run "npm test" --no-ai
 npx krythiq connect
 ```
 
-The CLI opens a short-lived browser authorization page. After approval, future
-`krythiq scan` results sync to the signed-in dashboard automatically and the CLI
-shows the account's Token balance. The browser session and Supabase credentials
-are never copied into the terminal.
+The CLI opens a short-lived browser authorization page. After approval, use
+`krythiq scan --save` when you want a local scan to appear in Recent Scans. A
+static terminal scan and saving it both cost 0 Tokens. The browser session and
+Supabase credentials are never copied into the terminal.
 
 ```bash
 npx krythiq connect --status
 npx krythiq whoami
+npx krythiq token
 npx krythiq connect --disconnect
 ```
 
@@ -61,6 +62,8 @@ npx krythiq connect --disconnect
 signed-in account, dashboard address, Token balance, CLI scan count, and scan
 Tokens used. A missing, expired, or revoked session exits with an error and a
 reconnect instruction.
+
+`krythiq token` performs a live Token balance check for the connected account.
 
 Use `KRYTHIQ_DASHBOARD_URL=http://localhost:3000` when testing against a local
 Krythiq web app. Use `--no-browser` on remote or headless machines.
@@ -77,6 +80,7 @@ Semgrep and npm-audit failures are warnings: the other available engines still r
 
 ```bash
 krythiq scan ./src
+krythiq scan ./src --save
 krythiq scan --format json
 krythiq scan --format markdown
 krythiq scan --format sarif
@@ -84,6 +88,9 @@ krythiq scan --ci --fail-on high
 krythiq scan --ignore "generated/**" "fixtures/**"
 krythiq scan --rules ./security-rules.json
 ```
+
+Scans remain local by default. Add `--save` to put the result in Krythiq.dev
+Recent Scans. This requires `krythiq connect` and costs 0 Tokens.
 
 Supported severities are `low`, `medium`, `high`, and `critical`. With `--ci`, the process exits 1 when a finding meets or exceeds `--fail-on`; an invalid option is rejected, and a missing/non-directory scan path exits 2. Otherwise a completed scan exits 0, even when findings exist.
 

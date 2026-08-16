@@ -21,6 +21,7 @@ test("help starts without requiring a writable credential store", () => {
   assert.match(result.stdout, /Commands:/);
   assert.match(result.stdout, /connect/);
   assert.match(result.stdout, /whoami/);
+  assert.match(result.stdout, /token/);
 });
 
 test("whoami is registered as a standalone command", () => {
@@ -35,7 +36,16 @@ test("CLI starts through a package-manager-style binary symlink", async () => {
   await symlink(cli, binary);
   const result = spawnSync(binary, ["--version"], { encoding: "utf8" });
   assert.equal(result.status, 0, result.stderr);
-  assert.equal(result.stdout.trim(), "0.2.1");
+  assert.equal(result.stdout.trim(), "0.2.2");
+});
+
+test("scan save and token commands are registered", () => {
+  const scanHelp = run(["scan", "--help"]);
+  assert.equal(scanHelp.status, 0, scanHelp.stderr);
+  assert.match(scanHelp.stdout, /--save/);
+  const tokenHelp = run(["token", "--help"]);
+  assert.equal(tokenHelp.status, 0, tokenHelp.stderr);
+  assert.match(tokenHelp.stdout, /show the Token balance/);
 });
 
 test("scan emits valid JSON and custom-rule findings", async () => {

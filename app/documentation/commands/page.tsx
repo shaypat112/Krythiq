@@ -4,9 +4,10 @@ import { DocumentationCodeBlock } from "../documentation-code-block";
 const commands = [
   { name: "init", usage: "krythiq init [--skip-gitignore]", body: "Creates .krythiq/, writes krythiq.config.mjs unless a config already exists, detects a small set of project markers, and normally adds .krythiq/ to .gitignore." },
   { name: "run", usage: "krythiq run <command> [--no-ai] [--model <model>] [--verbose]", body: "Runs a trusted command through the operating-system shell, streams both output channels, preserves its exit code, and optionally explains recognized stack traces from stderr with Anthropic." },
-  { name: "scan", usage: "krythiq scan [path] [--ci] [--fail-on <severity>] [--format <format>] [--ignore <patterns...>] [--rules <path>] [--publish] [--ai] [--ai-model <model>]", body: "Scans a directory with custom regex rules, optional Semgrep, and npm audit when a package lock exists. Formats are text, json, markdown, and sarif; severities are low, medium, high, and critical." },
+  { name: "scan", usage: "krythiq scan [path] [--save] [--ci] [--fail-on <severity>] [--format <format>] [--ignore <patterns...>] [--rules <path>] [--publish] [--ai] [--ai-model <model>]", body: "Runs a free local static scan with custom regex rules, optional Semgrep, and npm audit. Add --save to store the result in Krythiq.dev Recent Scans at zero Token cost. Without --save, the result stays local." },
   { name: "connect", usage: "krythiq connect [--status] [--disconnect] [--no-browser]", body: "Connects this terminal to Krythiq.dev through a short browser approval flow, checks the connection and Token balance, or removes the local connection." },
   { name: "whoami", usage: "krythiq whoami", body: "Checks the saved CLI session with Krythiq.dev and shows the signed-in account, dashboard, Token balance, CLI scan count, and scan Tokens used. It exits with an error when the session is missing, expired, or revoked." },
+  { name: "token", usage: "krythiq token", body: "Checks the live Token balance for the connected Krythiq.dev account and shows Tokens used by saved CLI scans. Static scans and --save cost zero Tokens." },
   { name: "auth", usage: "krythiq auth [--clear]", body: "Validates and stores an Anthropic key in the current user's OS configuration directory, or removes it. ANTHROPIC_API_KEY takes precedence over stored data." },
 ];
 

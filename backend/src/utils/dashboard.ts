@@ -41,8 +41,8 @@ export async function loadDashboardAccount() {
 
 export async function publishDashboardScan(payload: { repository: string; severity: string; score: number; findings: unknown[] }) {
   const token = dashboardToken();
-  if (!token) return null;
-  const response = await fetch(`${dashboardUrl()}/api/cli/scans`, { method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({ ...payload, cliVersion: "0.2.1" }), signal: AbortSignal.timeout(20_000) });
+  if (!token) throw new Error("Not connected. Run krythiq connect first.");
+  const response = await fetch(`${dashboardUrl()}/api/cli/scans`, { method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({ ...payload, cliVersion: "0.2.2" }), signal: AbortSignal.timeout(20_000) });
   if (!response.ok) throw new Error(response.status === 401 ? "CLI connection expired. Run krythiq connect again." : `Dashboard upload returned HTTP ${response.status}.`);
   return response.json();
 }
