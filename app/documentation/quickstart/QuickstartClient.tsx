@@ -3,105 +3,12 @@
 import { useState } from "react";
 import {
   ArrowRight,
-  Copy,
-  Check,
   Zap,
   Info,
 } from "lucide-react";
 import { cn } from "@/app/lib/utils";
 import Link from "next/link";
-
-function CodeBlock({
-  code,
-  label,
-  highlight,
-}: {
-  code: string;
-  label?: string;
-  highlight?: string[];
-}) {
-  const [copied, setCopied] = useState(false);
-
-  const copy = async () => {
-    await navigator.clipboard.writeText(code);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  const lines = code.split("\n");
-
-  return (
-    <div className="group rounded-lg border border-zinc-800 bg-zinc-950 overflow-hidden">
-      {label && (
-        <div className="flex items-center justify-between px-4 py-2 border-b border-zinc-800 bg-zinc-900/50">
-          <span className="text-[11px] text-zinc-500 font-mono">{label}</span>
-          <button
-            onClick={copy}
-            className="flex items-center gap-1.5 text-[11px] text-zinc-500 hover:text-zinc-300 transition-colors opacity-0 group-hover:opacity-100"
-          >
-            {copied ? (
-              <>
-                <Check size={11} className="text-zinc-200" />
-                <span className="text-zinc-200">Copied</span>
-              </>
-            ) : (
-              <>
-                <Copy size={11} />
-                <span>Copy</span>
-              </>
-            )}
-          </button>
-        </div>
-      )}
-      <div className="relative px-4 py-3.5">
-        {lines.length === 1 ? (
-          <div className="flex items-center gap-3">
-            <span className="text-zinc-600 font-mono text-sm select-none">
-              $
-            </span>
-            <code className="text-zinc-200 font-mono text-sm flex-1">
-              {code}
-            </code>
-            {!label && (
-              <button
-                onClick={copy}
-                className="shrink-0 text-zinc-600 hover:text-zinc-400 transition-colors opacity-0 group-hover:opacity-100"
-              >
-                {copied ? (
-                  <Check size={14} className="text-zinc-200" />
-                ) : (
-                  <Copy size={14} />
-                )}
-              </button>
-            )}
-          </div>
-        ) : (
-          <pre className="text-sm font-mono overflow-x-auto">
-            {lines.map((line, i) => (
-              <div
-                key={i}
-                className={cn(
-                  "leading-6",
-                  line.startsWith("#")
-                    ? "text-zinc-600"
-                    : line.startsWith("→") ||
-                        line.startsWith("✓") ||
-                        line.startsWith("●")
-                      ? "text-zinc-200"
-                      : highlight?.some((h) => line.includes(h))
-                        ? "text-amber-300"
-                        : "text-zinc-300",
-                )}
-              >
-                {line || " "}
-              </div>
-            ))}
-          </pre>
-        )}
-      </div>
-    </div>
-  );
-}
+import { DocumentationCodeBlock as CodeBlock } from "../documentation-code-block";
 
 const steps = [
   {

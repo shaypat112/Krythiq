@@ -50,7 +50,11 @@ export async function PUT(request: Request) {
       headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
       body: JSON.stringify(normalized),
     });
-    if (!response.ok) return NextResponse.json({ error: "Unable to save notification preferences." }, { status: 500 });
+    if (!response.ok) {
+      const databaseError = await response.text();
+      console.error("Notification preference upsert failed", { status: response.status, databaseError });
+      return NextResponse.json({ error: "Unable to save notification preferences." }, { status: 503 });
+    }
     return NextResponse.json({ ok: true });
   } catch (error) {
     if (error instanceof RequestAuthError) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

@@ -2,13 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, CheckCircle2, ExternalLink, Terminal } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { DocumentationCodeBlock } from "../documentation-code-block";
 
 export const metadata: Metadata = {
   title: "Connect the CLI to Krythiq",
   description: "Connect Krythiq CLI scans to your web dashboard.",
 };
 
-const Command = ({ children }: { children: string }) => <pre className="overflow-x-auto border border-border bg-zinc-950 p-4 text-sm text-zinc-100"><code>{children}</code></pre>;
+const Command = ({ children }: { children: string }) => <DocumentationCodeBlock code={children} />;
 
 export default function ConnectCliDocsPage() {
   return <article className="space-y-10">

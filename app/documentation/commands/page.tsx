@@ -1,4 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { DocumentationCodeBlock } from "../documentation-code-block";
 
 const commands = [
   { name: "init", usage: "krythiq init [--skip-gitignore]", body: "Creates .krythiq/, writes krythiq.config.mjs unless a config already exists, detects a small set of project markers, and normally adds .krythiq/ to .gitignore." },
@@ -10,7 +11,7 @@ const commands = [
 export default function CommandsPage() {
   return <article className="space-y-8">
     <header><h1 className="text-3xl font-semibold">CLI command reference</h1><p className="mt-3 text-muted-foreground">These are the commands and options registered by the published executable.</p></header>
-    {commands.map((command) => <Card key={command.name}><CardHeader><CardTitle><code>krythiq {command.name}</code></CardTitle></CardHeader><CardContent className="space-y-4"><pre className="overflow-x-auto rounded-lg bg-zinc-950 p-4 text-sm text-zinc-100"><code>{command.usage}</code></pre><p className="text-sm leading-6 text-muted-foreground">{command.body}</p></CardContent></Card>)}
+    {commands.map((command) => <Card key={command.name}><CardHeader><CardTitle><code>krythiq {command.name}</code></CardTitle></CardHeader><CardContent className="space-y-4"><DocumentationCodeBlock code={command.usage} /><p className="text-sm leading-6 text-muted-foreground">{command.body}</p></CardContent></Card>)}
     <Card><CardHeader><CardTitle>Exit and error behavior</CardTitle></CardHeader><CardContent className="space-y-2 text-sm text-muted-foreground"><p><code>scan --ci</code> exits 1 only when a finding meets the selected threshold. A missing/non-directory scan path exits 2. Commander rejects unsupported formats and severities.</p><p>Semgrep, npm-audit, Mistral, and publish failures are warnings and currently do not fail an otherwise completed scan.</p><p>There is no <code>fix</code> command, <code>--fix</code>, <code>--watch</code>, or <code>--sandbox</code> option.</p></CardContent></Card>
   </article>;
 }

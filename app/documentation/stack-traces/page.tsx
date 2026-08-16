@@ -1,20 +1,6 @@
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertCircle, Zap } from "lucide-react";
-
-function CodeBlock({ code, label }: { code: string; label?: string }) {
-  return (
-    <div className="group rounded-lg border border-zinc-800 bg-zinc-950 overflow-hidden my-4">
-      {label && (
-        <div className="px-4 py-2 border-b border-zinc-800 bg-zinc-900/50">
-          <span className="text-xs text-zinc-500 font-mono">{label}</span>
-        </div>
-      )}
-      <pre className="px-4 py-3.5 text-zinc-200 font-mono text-sm overflow-x-auto">
-        <code>{code}</code>
-      </pre>
-    </div>
-  );
-}
+import { DocumentationCodeBlock as CodeBlock } from "../documentation-code-block";
 
 export default function StackTraces() {
   return (
