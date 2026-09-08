@@ -3,6 +3,7 @@ import { extractModuleFacts, isSupportedModule } from "./extract.ts";
 import { buildDependencyGraph, traverseReachable } from "./graph.ts";
 import { normalizeProjectPath } from "./paths.ts";
 import { buildModuleResolutionIndex } from "./resolution.ts";
+import { findingFingerprint } from "./report.ts";
 import type { AnalysisDiagnostic, CodeGraphOptions, ReachabilityAnalysis, SourceInput } from "./types.ts";
 
 export function analyzeFileReachability(files: SourceInput[], options: CodeGraphOptions = {}): ReachabilityAnalysis {
@@ -57,6 +58,8 @@ export function analyzeFileReachability(files: SourceInput[], options: CodeGraph
         "No package or framework entry-point registration was recognized for this file.",
       ];
       return {
+        schemaVersion: 1 as const,
+        fingerprint: findingFingerprint("UNUSED_FILE_CANDIDATE", fact.path),
         file: fact.path,
         line: 1,
         severity: "low" as const,

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { analyzeFileReachability } from "./analyze.ts";
+import { findingFingerprint, toPersistedCodeGraphReport } from "./report.ts";
 
 const file = (path, content = "export const value = 1") => ({ path, content });
 
@@ -108,6 +109,27 @@ test("marks capped inventories uncertain and excludes generated files", () => {
   assert.deepEqual(result.findings.map((finding) => finding.file), ["unused.ts"]);
   assert.equal(result.findings[0].confidence, "medium");
   assert.equal(result.diagnostics.at(-1).code, "incomplete-inventory");
+});
+
+test("creates stable fingerprints and a deterministic persisted report", () => {
+  const inputs = [
+    file("package.json", JSON.stringify({ main: "./index.ts" })),
+    file("index.ts", "import './used'"),
+    file("used.ts"),
+    file("orphan.ts"),
+  ];
+  const first = analyzeFileReachability(inputs);
+  const second = analyzeFileReachability([...inputs].reverse());
+  const firstReport = toPersistedCodeGraphReport(first, true);
+  const secondReport = toPersistedCodeGraphReport(second, true);
+
+  assert.equal(first.findings[0].fingerprint, findingFingerprint("UNUSED_FILE_CANDIDATE", "orphan.ts"));
+  assert.deepEqual(firstReport, secondReport);
+  assert.equal(firstReport.schemaVersion, 1);
+  assert.deepEqual(firstReport.summary, {
+    modules: 3, reachable: 2, unreachable: 1, unresolvedImports: 0,
+    parseErrors: 0, unknownDynamicImports: 0, coverageComplete: true,
+  });
 });
 
 test("keeps malformed-source candidates but lowers confidence", () => {

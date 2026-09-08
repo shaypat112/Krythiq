@@ -58,6 +58,8 @@ export type DependencyGraph = {
 export type FindingConfidence = "high" | "medium" | "low";
 
 export type ReachabilityFinding = {
+  schemaVersion: 1;
+  fingerprint: string;
   file: string;
   line: number;
   severity: "low";
@@ -81,6 +83,34 @@ export type ReachabilityAnalysis = {
   reachable: Set<string>;
   findings: ReachabilityFinding[];
   diagnostics: AnalysisDiagnostic[];
+};
+
+export type PersistedCodeGraphReport = {
+  schemaVersion: 1;
+  analyzer: "krythiq-file-reachability";
+  entryPoints: EntryPointEvidence[];
+  diagnostics: AnalysisDiagnostic[];
+  modules: Array<{
+    file: string;
+    reachable: boolean;
+    generated: boolean;
+    parseComplete: boolean;
+    outgoing: Array<{
+      to: string | null;
+      specifier: string | null;
+      kind: ModuleEdgeKind;
+      line: number;
+    }>;
+  }>;
+  summary: {
+    modules: number;
+    reachable: number;
+    unreachable: number;
+    unresolvedImports: number;
+    parseErrors: number;
+    unknownDynamicImports: number;
+    coverageComplete: boolean;
+  };
 };
 
 export type CodeGraphOptions = {

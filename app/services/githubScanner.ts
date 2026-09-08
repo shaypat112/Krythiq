@@ -2,7 +2,7 @@ import path from "path";
 import { scannerPolicy, securityRuleRegistry } from "@/app/lib/scanner/rules/registry";
 import { scanLevelConfig, type ScanTier } from "@/app/lib/scanner/scan-levels";
 import type { ScanScope } from "@/app/lib/ai-settings";
-import { analyzeFileReachability } from "@/app/lib/code-intelligence";
+import { analyzeFileReachability, toPersistedCodeGraphReport, type PersistedCodeGraphReport } from "@/app/lib/code-intelligence";
 
 export type Severity = "low" | "medium" | "high" | "critical";
 
@@ -18,6 +18,8 @@ export type ScanOptions = {
 };
 
 export type Finding = {
+  schemaVersion?: number;
+  fingerprint?: string;
   file: string;
   line: number;
   severity: Severity;
@@ -565,11 +567,14 @@ export async function runGitHubScanWithToken(
       scanScope === "frontend"
         ? []
         : await scanKnownDependencies(files, onProgress);
-    const graphFindings = scanScope === "all"
-      ? analyzeFileReachability(analysisFiles, {
-          coverageComplete: blobs.length === eligibleBlobs.length,
-        }).findings
-      : [];
+    const coverageComplete = blobs.length === eligibleBlobs.length;
+    const graphAnalysis = scanScope === "all"
+      ? analyzeFileReachability(analysisFiles, { coverageComplete })
+      : null;
+    const graphFindings = graphAnalysis?.findings ?? [];
+    const codeGraph: PersistedCodeGraphReport | null = graphAnalysis
+      ? toPersistedCodeGraphReport(graphAnalysis, coverageComplete)
+      : null;
     const findings = [...dependencyFindings, ...await scanFiles(analysisFiles, options, onProgress), ...graphFindings]
       .sort((a, b) => b.score - a.score);
     const profile = buildRepositoryProfile({ repository, tree: tree.tree, files, manifests, languageBytes });
@@ -586,6 +591,7 @@ export async function runGitHubScanWithToken(
         path: file.path,
         content: file.content,
       })),
+      codeGraph,
     };
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
