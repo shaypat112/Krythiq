@@ -2,6 +2,7 @@ import path from "path";
 import { scannerPolicy, securityRuleRegistry } from "@/app/lib/scanner/rules/registry";
 import { scanLevelConfig, type ScanTier } from "@/app/lib/scanner/scan-levels";
 import type { ScanScope } from "@/app/lib/ai-settings";
+import { analyzeFileReachability } from "@/app/lib/code-intelligence";
 
 export type Severity = "low" | "medium" | "high" | "critical";
 
@@ -25,11 +26,15 @@ export type Finding = {
   message: string;
   snippet?: string;
   suggestion?: string;
-  source: "regex" | "ai";
+  source: "regex" | "ai" | "code-graph";
   category?: "code" | "secrets";
-  confidence?: "high";
+  confidence?: "high" | "medium" | "low";
   advisoryId?: string;
   technicalDetails?: string;
+  evidence?: string[];
+  caveats?: string[];
+  suggestedAction?: string;
+  autoFixSafe?: boolean;
 };
 
 export type RepositoryProfile = {
@@ -559,7 +564,12 @@ export async function runGitHubScanWithToken(
       scanScope === "frontend"
         ? []
         : await scanKnownDependencies(files, onProgress);
-    const findings = [...dependencyFindings, ...await scanFiles(analysisFiles, options, onProgress)]
+    const graphFindings = scanScope === "all"
+      ? analyzeFileReachability(analysisFiles, {
+          coverageComplete: blobs.length === eligibleBlobs.length,
+        }).findings
+      : [];
+    const findings = [...dependencyFindings, ...await scanFiles(analysisFiles, options, onProgress), ...graphFindings]
       .sort((a, b) => b.score - a.score);
     const profile = buildRepositoryProfile({ repository, tree: tree.tree, files, manifests, languageBytes });
     const systemDesign = buildSystemDesignAssessment(files, tree.tree, manifests);

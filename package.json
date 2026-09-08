@@ -14,6 +14,7 @@
     "test:oauth": "node --test app/lib/oauth-onboarding-security.test.mjs",
     "test:tokens": "node --experimental-strip-types --test app/lib/token-referral-security.test.mjs",
     "test:social": "node --test app/lib/social-security.test.mjs",
+    "test:code-graph": "node --experimental-strip-types --test app/lib/code-intelligence/code-graph.test.mjs",
     "build:backend": "cd backend && npm run build",
     "install:backend": "cd backend && npm install && npm run build"
   },
