@@ -2,6 +2,7 @@ import { resolveEntryPoints } from "./entry-points.ts";
 import { extractModuleFacts, isSupportedModule } from "./extract.ts";
 import { buildDependencyGraph, traverseReachable } from "./graph.ts";
 import { normalizeProjectPath } from "./paths.ts";
+import { buildModuleResolutionIndex } from "./resolution.ts";
 import type { AnalysisDiagnostic, CodeGraphOptions, ReachabilityAnalysis, SourceInput } from "./types.ts";
 
 export function analyzeFileReachability(files: SourceInput[], options: CodeGraphOptions = {}): ReachabilityAnalysis {
@@ -10,7 +11,8 @@ export function analyzeFileReachability(files: SourceInput[], options: CodeGraph
     .filter((file) => isSupportedModule(file.path))
     .map(extractModuleFacts)
     .sort((a, b) => a.path.localeCompare(b.path));
-  const graph = buildDependencyGraph(facts);
+  const resolution = buildModuleResolutionIndex(normalizedFiles);
+  const graph = buildDependencyGraph(facts, resolution);
   const entryPoints = resolveEntryPoints({
     modules: graph.modules,
     files: normalizedFiles,

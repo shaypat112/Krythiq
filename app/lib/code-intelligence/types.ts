@@ -87,3 +87,21 @@ export type CodeGraphOptions = {
   explicitEntryPoints?: string[];
   coverageComplete?: boolean;
 };
+
+export type PathAliasRule = {
+  configFile: string;
+  scopeDirectory: string;
+  pattern: string;
+  targets: string[];
+};
+
+export type WorkspacePackage = {
+  name: string;
+  directory: string;
+  publicEntryPoints: string[];
+};
+
+export type ModuleResolutionIndex = {
+  aliases: PathAliasRule[];
+  workspacePackages: Map<string, WorkspacePackage>;
+};

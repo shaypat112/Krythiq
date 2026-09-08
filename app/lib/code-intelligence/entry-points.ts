@@ -1,8 +1,8 @@
 import { normalizeProjectPath } from "./paths.ts";
 import type { EntryPointEvidence, ModuleFacts, SourceInput } from "./types.ts";
 
-const nextConvention = /^(?:src\/)?app\/(?:.+\/)?(?:page|layout|route|loading|error|not-found|template|default|global-error|sitemap|robots|manifest)\.[cm]?[jt]sx?$/;
-const pagesConvention = /^(?:src\/)?pages\/(?!.*(?:\.test|\.spec)\.)[^/]+(?:\/[^/]+)*\.[cm]?[jt]sx?$/;
+const nextConvention = /(?:^|\/)(?:src\/)?app\/(?:.+\/)?(?:page|layout|route|loading|error|not-found|template|default|global-error|sitemap|robots|manifest)\.[cm]?[jt]sx?$/;
+const pagesConvention = /(?:^|\/)(?:src\/)?pages\/(?!.*(?:\.test|\.spec)\.)[^/]+(?:\/[^/]+)*\.[cm]?[jt]sx?$/;
 const toolingConvention = /^(?:next\.config|vite\.config|vitest\.config|jest\.config|playwright\.config|eslint\.config|tailwind\.config|postcss\.config|middleware|proxy)\.[cm]?[jt]s$/;
 const testConvention = /(?:^|\/)(?:__tests__\/.*|.*\.(?:test|spec)\.[cm]?[jt]sx?)$/;
 

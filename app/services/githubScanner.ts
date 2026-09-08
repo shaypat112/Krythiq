@@ -532,11 +532,12 @@ export async function runGitHubScanWithToken(
     const scanScope = options.scanScope ?? "all";
     const eligibleBlobs = tree.tree.filter((entry) => {
       const isManifest = manifests.includes(entry.path);
+      const isResolutionConfig = /(?:^|\/)(?:package\.json|tsconfig(?:\.[^/]+)?\.json|jsconfig(?:\.[^/]+)?\.json)$/i.test(entry.path);
       const sizeLimit = isManifest ? Math.min(5 * 1024 * 1024, scannerPolicy.limits.maxScanBytes) : scannerPolicy.limits.maxFileBytes;
       return entry.type === "blob" &&
         (entry.size ?? sizeLimit + 1) <= sizeLimit &&
-        (shouldScanFile(entry.path, ignore) || isManifest) &&
-        (isManifest || shouldIncludeInScope(entry.path, scanScope));
+        (shouldScanFile(entry.path, ignore) || isManifest || isResolutionConfig) &&
+        (isManifest || isResolutionConfig || shouldIncludeInScope(entry.path, scanScope));
     });
     const blobs: typeof eligibleBlobs = [];
     let selectedBytes = 0;

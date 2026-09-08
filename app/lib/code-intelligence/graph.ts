@@ -1,14 +1,7 @@
-import path from "node:path";
+import { isPotentialProjectSpecifier, resolveModuleSpecifier } from "./resolution.ts";
+import type { DependencyGraph, ModuleFacts, ModuleResolutionIndex, ResolvedModuleEdge } from "./types.ts";
 
-import { normalizeProjectPath } from "./paths.ts";
-import type { DependencyGraph, ModuleFacts, ResolvedModuleEdge } from "./types.ts";
-
-const resolutionSuffixes = [
-  "", ".ts", ".tsx", ".mts", ".cts", ".js", ".jsx", ".mjs", ".cjs",
-  "/index.ts", "/index.tsx", "/index.mts", "/index.cts", "/index.js", "/index.jsx", "/index.mjs", "/index.cjs",
-];
-
-export function buildDependencyGraph(facts: ModuleFacts[]): DependencyGraph {
+export function buildDependencyGraph(facts: ModuleFacts[], resolution: ModuleResolutionIndex): DependencyGraph {
   const modules = new Map(facts.map((fact) => [fact.path, fact]));
   const outgoing = new Map<string, ResolvedModuleEdge[]>();
   const incoming = new Map<string, ResolvedModuleEdge[]>();
@@ -16,8 +9,8 @@ export function buildDependencyGraph(facts: ModuleFacts[]): DependencyGraph {
 
   for (const fact of facts) {
     const resolvedEdges = fact.edges.map((edge): ResolvedModuleEdge => {
-      const to = resolveProjectModule(fact.path, edge.specifier, modules);
-      if (edge.specifier && isProjectSpecifier(edge.specifier) && !to) {
+      const to = resolveModuleSpecifier({ from: fact.path, specifier: edge.specifier, modules, index: resolution });
+      if (edge.specifier && isPotentialProjectSpecifier(edge.specifier, resolution) && !to) {
         diagnostics.push({
           code: "unresolved-import",
           file: fact.path,
@@ -37,22 +30,6 @@ export function buildDependencyGraph(facts: ModuleFacts[]): DependencyGraph {
   }
 
   return { modules, outgoing, incoming, diagnostics };
-}
-
-function isProjectSpecifier(specifier: string) {
-  return specifier.startsWith(".") || specifier.startsWith("@/");
-}
-
-function resolveProjectModule(from: string, specifier: string | null, modules: Map<string, ModuleFacts>) {
-  if (!specifier || !isProjectSpecifier(specifier)) return null;
-  const base = specifier.startsWith("@/")
-    ? normalizeProjectPath(specifier.slice(2))
-    : normalizeProjectPath(path.posix.join(path.posix.dirname(from), specifier));
-  for (const suffix of resolutionSuffixes) {
-    const candidate = `${base}${suffix}`;
-    if (modules.has(candidate)) return candidate;
-  }
-  return null;
 }
 
 export function traverseReachable(graph: DependencyGraph, roots: Iterable<string>) {

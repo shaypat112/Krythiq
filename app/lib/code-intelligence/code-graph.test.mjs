@@ -26,6 +26,7 @@ test("walks imports, re-exports, type imports, dynamic imports, and cycles", () 
 
 test("treats Next routes, tests, and config files as independent roots", () => {
   const result = analyzeFileReachability([
+    file("tsconfig.json", JSON.stringify({ compilerOptions: { paths: { "@/*": ["./*"] } } })),
     file("app/page.tsx", "import Widget from '@/components/widget'; export default () => <Widget />"),
     file("components/widget.tsx", "export default () => null"),
     file("app/api/users/route.ts"),
@@ -36,6 +37,32 @@ test("treats Next routes, tests, and config files as independent roots", () => {
 
   assert.equal(result.findings.length, 0);
   assert.equal(result.entryPoints.length, 4);
+});
+
+test("resolves tsconfig path aliases", () => {
+  const result = analyzeFileReachability([
+    file("tsconfig.json", JSON.stringify({ compilerOptions: { baseUrl: ".", paths: { "@/*": ["./*"] } } })),
+    file("app/page.tsx", "import Widget from '@/components/widget'; export default () => <Widget />"),
+    file("components/widget.tsx", "export default () => null"),
+  ]);
+
+  assert.deepEqual([...result.reachable].sort(), ["app/page.tsx", "components/widget.tsx"]);
+  assert.equal(result.diagnostics.length, 0);
+});
+
+test("resolves workspace package names and subpaths in a monorepo", () => {
+  const result = analyzeFileReachability([
+    file("apps/web/app/page.tsx", "import { api } from '@acme/core'; import { helper } from '@acme/core/helper'; export default () => api(helper)"),
+    file("packages/core/package.json", JSON.stringify({ name: "@acme/core", private: true, exports: "./src/index.ts" })),
+    file("packages/core/src/index.ts", "export const api = (value) => value"),
+    file("packages/core/helper.ts", "export const helper = 1"),
+    file("packages/unused/src/index.ts"),
+  ]);
+
+  assert.deepEqual([...result.reachable].sort(), [
+    "apps/web/app/page.tsx", "packages/core/helper.ts", "packages/core/src/index.ts",
+  ]);
+  assert.deepEqual(result.findings.map((finding) => finding.file), ["packages/unused/src/index.ts"]);
 });
 
 test("reports unresolved and non-literal dynamic imports as uncertainty", () => {
