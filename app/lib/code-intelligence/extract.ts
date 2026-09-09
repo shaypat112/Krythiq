@@ -1,7 +1,8 @@
 import ts from "typescript";
+import { createHash } from "node:crypto";
 
 import { lineAt, normalizeProjectPath } from "./paths.ts";
-import type { AnalysisDiagnostic, ExportFact, ModuleEdgeFact, ModuleFacts, SourceInput } from "./types.ts";
+import type { AnalysisDiagnostic, ExportFact, FunctionFact, ModuleEdgeFact, ModuleFacts, SourceInput } from "./types.ts";
 
 const supportedExtensions = /\.(?:[cm]?[jt]sx?)$/i;
 
@@ -15,6 +16,7 @@ export function extractModuleFacts(input: SourceInput): ModuleFacts {
   const sourceFile = ts.createSourceFile(filePath, input.content, ts.ScriptTarget.Latest, true, scriptKind);
   const edges: ModuleEdgeFact[] = [];
   const exports: ExportFact[] = [];
+  const functions: FunctionFact[] = [];
   const parseDiagnostics = (sourceFile as ts.SourceFile & { parseDiagnostics: ts.Diagnostic[] }).parseDiagnostics;
   const diagnostics: AnalysisDiagnostic[] = parseDiagnostics.map((diagnostic) => ({
     code: "parse-error",
@@ -50,6 +52,19 @@ export function extractModuleFacts(input: SourceInput): ModuleFacts {
   };
 
   const visit = (node: ts.Node) => {
+    const functionName = namedFunction(node);
+    if (functionName) {
+      const normalized = normalizedFunctionTokens(node.getText(sourceFile), scriptKind);
+      if (normalized.tokenCount >= 12) {
+        functions.push({
+          name: functionName,
+          line: sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile)).line + 1,
+          endLine: sourceFile.getLineAndCharacterOfPosition(node.getEnd()).line + 1,
+          structuralHash: createHash("sha256").update(normalized.value).digest("hex"),
+          tokenCount: normalized.tokenCount,
+        });
+      }
+    }
     if (ts.isImportDeclaration(node)) {
       const typeOnly = node.importClause?.isTypeOnly === true ||
         (node.importClause?.namedBindings && ts.isNamedImports(node.importClause.namedBindings) &&
@@ -81,10 +96,34 @@ export function extractModuleFacts(input: SourceInput): ModuleFacts {
     path: filePath,
     edges,
     exports: dedupeExports(exports),
+    functions,
     parseComplete: diagnostics.every((diagnostic) => diagnostic.code !== "parse-error"),
     generated: /(?:^|\/)(?:generated|__generated__)(?:\/|$)|\.generated\.[cm]?[jt]sx?$/i.test(filePath),
     diagnostics,
   };
+}
+
+function namedFunction(node: ts.Node) {
+  if (ts.isFunctionDeclaration(node) && node.name) return node.name.text;
+  if (ts.isMethodDeclaration(node) && node.name && ts.isIdentifier(node.name)) return node.name.text;
+  if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer &&
+    (ts.isArrowFunction(node.initializer) || ts.isFunctionExpression(node.initializer))) return node.name.text;
+  return null;
+}
+
+function normalizedFunctionTokens(source: string, scriptKind: ts.ScriptKind) {
+  const languageVariant = scriptKind === ts.ScriptKind.JSX || scriptKind === ts.ScriptKind.TSX
+    ? ts.LanguageVariant.JSX
+    : ts.LanguageVariant.Standard;
+  const scanner = ts.createScanner(ts.ScriptTarget.Latest, true, languageVariant, source);
+  const tokens: string[] = [];
+  for (let token = scanner.scan(); token !== ts.SyntaxKind.EndOfFileToken; token = scanner.scan()) {
+    if (token === ts.SyntaxKind.Identifier) tokens.push("$id");
+    else if (token === ts.SyntaxKind.StringLiteral || token === ts.SyntaxKind.NoSubstitutionTemplateLiteral) tokens.push("$str");
+    else if (token === ts.SyntaxKind.NumericLiteral || token === ts.SyntaxKind.BigIntLiteral) tokens.push("$num");
+    else tokens.push(ts.tokenToString(token) ?? scanner.getTokenText());
+  }
+  return { value: tokens.join(" "), tokenCount: tokens.length };
 }
 
 function importBindings(clause: ts.ImportClause | undefined): ModuleEdgeFact["bindings"] {

@@ -20,6 +20,7 @@ export function toPersistedCodeGraphReport(
       generated: module.generated,
       parseComplete: module.parseComplete,
       exports: module.exports,
+      functions: module.functions,
       outgoing: (analysis.graph.outgoing.get(module.path) ?? []).map((edge) => ({
         to: edge.to,
         specifier: edge.specifier,

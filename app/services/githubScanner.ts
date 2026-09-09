@@ -40,6 +40,7 @@ export type Finding = {
   suggestedAction?: string;
   autoFixSafe?: boolean;
   changeStatus?: "new" | "existing" | "not-compared";
+  relatedLocations?: Array<{ file: string; symbol: string; line: number }>;
 };
 
 export type RepositoryProfile = {

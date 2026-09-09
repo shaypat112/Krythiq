@@ -5,4 +5,5 @@ export { resolveEntryPoints } from "./entry-points";
 export { buildModuleResolutionIndex, resolveModuleSpecifier } from "./resolution";
 export { findingFingerprint, toPersistedCodeGraphReport } from "./report";
 export { detectUnusedExports } from "./symbols";
+export { detectStructuralDuplicates } from "./duplicates";
 export type * from "./types";

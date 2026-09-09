@@ -167,3 +167,19 @@ test("namespace consumers conservatively retain every export", () => {
   ]);
   assert.equal(result.findings.length, 0);
 });
+
+test("groups deterministic structural function duplicates without enabling fixes", () => {
+  const result = analyzeFileReachability([
+    file("package.json", JSON.stringify({ main: "./index.ts" })),
+    file("index.ts", "import { first } from './first'; import { second } from './second'; console.log(first(2), second(3))"),
+    file("first.ts", "export function first(input) { const adjusted = input + 1; return adjusted * 2; }"),
+    file("second.ts", "export function second(value) { const result = value + 9; return result * 4; }"),
+  ]);
+  const duplicates = result.findings.filter((finding) => finding.type === "DUPLICATE_IMPLEMENTATION_CANDIDATE");
+
+  assert.equal(duplicates.length, 1);
+  assert.equal(duplicates[0].file, "second.ts");
+  assert.equal(duplicates[0].confidence, "medium");
+  assert.equal(duplicates[0].autoFixSafe, false);
+  assert.deepEqual(duplicates[0].relatedLocations, [{ file: "first.ts", symbol: "first", line: 1 }]);
+});

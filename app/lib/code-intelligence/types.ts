@@ -24,6 +24,14 @@ export type ExportFact = {
   kind: "value" | "type" | "default";
 };
 
+export type FunctionFact = {
+  name: string;
+  line: number;
+  endLine: number;
+  structuralHash: string;
+  tokenCount: number;
+};
+
 export type AnalysisDiagnostic = {
   code:
     | "parse-error"
@@ -42,6 +50,7 @@ export type ModuleFacts = {
   parseComplete: boolean;
   generated: boolean;
   exports: ExportFact[];
+  functions: FunctionFact[];
   diagnostics: AnalysisDiagnostic[];
 };
 
@@ -98,11 +107,26 @@ export type UnusedExportFinding = Omit<ReachabilityFinding,
 
 export type CodeGraphFinding = ReachabilityFinding | UnusedExportFinding;
 
+export type DuplicateImplementationFinding = Omit<ReachabilityFinding,
+  "score" | "type" | "message" | "suggestion" | "suggestedAction" | "confidence"
+> & {
+  score: 30;
+  type: "DUPLICATE_IMPLEMENTATION_CANDIDATE";
+  symbol: string;
+  confidence: "medium";
+  message: string;
+  suggestion: string;
+  suggestedAction: "review-for-consolidation";
+  relatedLocations: Array<{ file: string; symbol: string; line: number }>;
+};
+
+export type DeterministicFinding = ReachabilityFinding | UnusedExportFinding | DuplicateImplementationFinding;
+
 export type ReachabilityAnalysis = {
   graph: DependencyGraph;
   entryPoints: EntryPointEvidence[];
   reachable: Set<string>;
-  findings: CodeGraphFinding[];
+  findings: DeterministicFinding[];
   diagnostics: AnalysisDiagnostic[];
 };
 
@@ -117,6 +141,7 @@ export type PersistedCodeGraphReport = {
     generated: boolean;
     parseComplete: boolean;
     exports: ExportFact[];
+    functions: FunctionFact[];
     outgoing: Array<{
       to: string | null;
       specifier: string | null;

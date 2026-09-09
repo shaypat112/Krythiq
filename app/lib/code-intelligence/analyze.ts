@@ -5,6 +5,7 @@ import { normalizeProjectPath } from "./paths.ts";
 import { buildModuleResolutionIndex } from "./resolution.ts";
 import { findingFingerprint } from "./report.ts";
 import { detectUnusedExports } from "./symbols.ts";
+import { detectStructuralDuplicates } from "./duplicates.ts";
 import type { AnalysisDiagnostic, CodeGraphOptions, ReachabilityAnalysis, SourceInput } from "./types.ts";
 
 export function analyzeFileReachability(files: SourceInput[], options: CodeGraphOptions = {}): ReachabilityAnalysis {
@@ -80,5 +81,6 @@ export function analyzeFileReachability(files: SourceInput[], options: CodeGraph
     });
 
   const exportFindings = entryPoints.length === 0 ? [] : detectUnusedExports({ graph, entryPoints, reachable, diagnostics });
-  return { graph, entryPoints, reachable, findings: [...fileFindings, ...exportFindings], diagnostics };
+  const duplicateFindings = entryPoints.length === 0 ? [] : detectStructuralDuplicates({ graph, reachable, diagnostics });
+  return { graph, entryPoints, reachable, findings: [...fileFindings, ...exportFindings, ...duplicateFindings], diagnostics };
 }
