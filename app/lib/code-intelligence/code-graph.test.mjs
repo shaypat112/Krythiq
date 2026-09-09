@@ -20,7 +20,7 @@ test("walks imports, re-exports, type imports, dynamic imports, and cycles", () 
   assert.deepEqual([...result.reachable].sort(), [
     "src/a.ts", "src/b.ts", "src/index.ts", "src/lazy.ts", "src/types.ts",
   ]);
-  assert.deepEqual(result.findings.map((finding) => finding.file), ["src/orphan.ts"]);
+  assert.deepEqual(result.findings.filter((finding) => finding.type === "UNUSED_FILE_CANDIDATE").map((finding) => finding.file), ["src/orphan.ts"]);
   assert.equal(result.findings[0].confidence, "high");
   assert.equal(result.findings[0].autoFixSafe, false);
 });
@@ -32,7 +32,7 @@ test("treats Next routes, tests, and config files as independent roots", () => {
     file("components/widget.tsx", "export default () => null"),
     file("app/api/users/route.ts"),
     file("src/value.test.ts", "import './helper'"),
-    file("src/helper.ts"),
+    file("src/helper.ts", ""),
     file("next.config.ts"),
   ]);
 
@@ -63,7 +63,7 @@ test("resolves workspace package names and subpaths in a monorepo", () => {
   assert.deepEqual([...result.reachable].sort(), [
     "apps/web/app/page.tsx", "packages/core/helper.ts", "packages/core/src/index.ts",
   ]);
-  assert.deepEqual(result.findings.map((finding) => finding.file), ["packages/unused/src/index.ts"]);
+  assert.deepEqual(result.findings.filter((finding) => finding.type === "UNUSED_FILE_CANDIDATE").map((finding) => finding.file), ["packages/unused/src/index.ts"]);
 });
 
 test("reports unresolved and non-literal dynamic imports as uncertainty", () => {
@@ -106,7 +106,7 @@ test("marks capped inventories uncertain and excludes generated files", () => {
     file("generated/client.generated.ts"),
   ], { coverageComplete: false });
 
-  assert.deepEqual(result.findings.map((finding) => finding.file), ["unused.ts"]);
+  assert.deepEqual(result.findings.filter((finding) => finding.type === "UNUSED_FILE_CANDIDATE").map((finding) => finding.file), ["unused.ts"]);
   assert.equal(result.findings[0].confidence, "medium");
   assert.equal(result.diagnostics.at(-1).code, "incomplete-inventory");
 });
@@ -142,4 +142,28 @@ test("keeps malformed-source candidates but lowers confidence", () => {
   assert.ok(result.diagnostics.some((diagnostic) => diagnostic.code === "parse-error"));
   assert.equal(result.findings[0].confidence, "low");
   assert.equal(result.findings[0].autoFixSafe, false);
+});
+
+test("finds unused exports and propagates named demand through barrels", () => {
+  const result = analyzeFileReachability([
+    file("package.json", JSON.stringify({ main: "./src/index.ts" })),
+    file("src/index.ts", "import { used } from './barrel'; console.log(used)"),
+    file("src/barrel.ts", "export { used, abandoned as renamed } from './utilities'"),
+    file("src/utilities.ts", "export const used = 1; export const abandoned = 2; export type Shape = string"),
+  ]);
+  const unused = result.findings.filter((finding) => finding.type === "UNUSED_EXPORT_CANDIDATE");
+
+  assert.deepEqual(unused.map((finding) => `${finding.file}:${finding.symbol}`), [
+    "src/utilities.ts:abandoned", "src/utilities.ts:Shape",
+  ]);
+  assert.ok(unused.every((finding) => finding.autoFixSafe === false));
+});
+
+test("namespace consumers conservatively retain every export", () => {
+  const result = analyzeFileReachability([
+    file("package.json", JSON.stringify({ main: "./index.ts" })),
+    file("index.ts", "import * as utilities from './utilities'; console.log(utilities)"),
+    file("utilities.ts", "export const one = 1; export const two = 2"),
+  ]);
+  assert.equal(result.findings.length, 0);
 });

@@ -19,6 +19,7 @@ export function toPersistedCodeGraphReport(
       reachable: analysis.reachable.has(module.path),
       generated: module.generated,
       parseComplete: module.parseComplete,
+      exports: module.exports,
       outgoing: (analysis.graph.outgoing.get(module.path) ?? []).map((edge) => ({
         to: edge.to,
         specifier: edge.specifier,

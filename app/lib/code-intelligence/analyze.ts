@@ -4,6 +4,7 @@ import { buildDependencyGraph, traverseReachable } from "./graph.ts";
 import { normalizeProjectPath } from "./paths.ts";
 import { buildModuleResolutionIndex } from "./resolution.ts";
 import { findingFingerprint } from "./report.ts";
+import { detectUnusedExports } from "./symbols.ts";
 import type { AnalysisDiagnostic, CodeGraphOptions, ReachabilityAnalysis, SourceInput } from "./types.ts";
 
 export function analyzeFileReachability(files: SourceInput[], options: CodeGraphOptions = {}): ReachabilityAnalysis {
@@ -34,7 +35,7 @@ export function analyzeFileReachability(files: SourceInput[], options: CodeGraph
   }
 
   const reachable = traverseReachable(graph, entryPoints.map((entry) => entry.file));
-  const findings = entryPoints.length === 0 ? [] : facts
+  const fileFindings = entryPoints.length === 0 ? [] : facts
     .filter((fact) => !fact.generated && !reachable.has(fact.path))
     .map((fact) => {
       const directImporters = graph.incoming.get(fact.path) ?? [];
@@ -78,5 +79,6 @@ export function analyzeFileReachability(files: SourceInput[], options: CodeGraph
       };
     });
 
-  return { graph, entryPoints, reachable, findings, diagnostics };
+  const exportFindings = entryPoints.length === 0 ? [] : detectUnusedExports({ graph, entryPoints, reachable, diagnostics });
+  return { graph, entryPoints, reachable, findings: [...fileFindings, ...exportFindings], diagnostics };
 }

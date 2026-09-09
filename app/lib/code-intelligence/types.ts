@@ -15,6 +15,13 @@ export type ModuleEdgeFact = {
   kind: ModuleEdgeKind;
   line: number;
   isLiteral: boolean;
+  bindings: Array<{ imported: string; exposedAs?: string }>;
+};
+
+export type ExportFact = {
+  name: string;
+  line: number;
+  kind: "value" | "type" | "default";
 };
 
 export type AnalysisDiagnostic = {
@@ -34,6 +41,7 @@ export type ModuleFacts = {
   edges: ModuleEdgeFact[];
   parseComplete: boolean;
   generated: boolean;
+  exports: ExportFact[];
   diagnostics: AnalysisDiagnostic[];
 };
 
@@ -77,11 +85,24 @@ export type ReachabilityFinding = {
   technicalDetails: string;
 };
 
+export type UnusedExportFinding = Omit<ReachabilityFinding,
+  "score" | "type" | "message" | "suggestion" | "suggestedAction"
+> & {
+  score: 20;
+  type: "UNUSED_EXPORT_CANDIDATE";
+  symbol: string;
+  message: string;
+  suggestion: string;
+  suggestedAction: "review-export-surface";
+};
+
+export type CodeGraphFinding = ReachabilityFinding | UnusedExportFinding;
+
 export type ReachabilityAnalysis = {
   graph: DependencyGraph;
   entryPoints: EntryPointEvidence[];
   reachable: Set<string>;
-  findings: ReachabilityFinding[];
+  findings: CodeGraphFinding[];
   diagnostics: AnalysisDiagnostic[];
 };
 
@@ -95,6 +116,7 @@ export type PersistedCodeGraphReport = {
     reachable: boolean;
     generated: boolean;
     parseComplete: boolean;
+    exports: ExportFact[];
     outgoing: Array<{
       to: string | null;
       specifier: string | null;

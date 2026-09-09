@@ -25,6 +25,7 @@ export type Finding = {
   severity: Severity;
   score: number;
   type: string;
+  symbol?: string;
   message: string;
   snippet?: string;
   suggestion?: string;
