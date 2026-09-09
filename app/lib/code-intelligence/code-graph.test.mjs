@@ -3,6 +3,7 @@ import test from "node:test";
 
 import { analyzeFileReachability } from "./analyze.ts";
 import { findingFingerprint, toPersistedCodeGraphReport } from "./report.ts";
+import { detectEngineeringResidue } from "./residue.ts";
 
 const file = (path, content = "export const value = 1") => ({ path, content });
 
@@ -182,4 +183,20 @@ test("groups deterministic structural function duplicates without enabling fixes
   assert.equal(duplicates[0].confidence, "medium");
   assert.equal(duplicates[0].autoFixSafe, false);
   assert.deepEqual(duplicates[0].relatedLocations, [{ file: "first.ts", symbol: "first", line: 1 }]);
+});
+
+test("composes Git and static evidence without claiming AI authorship", () => {
+  const source = {
+    fingerprint: "static-finding", file: "src/new-helper.ts", line: 1,
+    type: "UNUSED_FILE_CANDIDATE", changeStatus: "new",
+  };
+  const findings = detectEngineeringResidue([source], [
+    { file: "src/new-helper.ts", status: "added", additions: 40, deletions: 0 },
+  ]);
+
+  assert.equal(findings.length, 1);
+  assert.equal(findings[0].type, "POSSIBLE_ABANDONED_CHANGE_RESIDUE");
+  assert.equal(findings[0].autoFixSafe, false);
+  assert.doesNotMatch(findings[0].message, /chatgpt|authored by ai/i);
+  assert.deepEqual(findings[0].relatedFindingFingerprints, ["static-finding"]);
 });

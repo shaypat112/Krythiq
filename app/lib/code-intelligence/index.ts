@@ -6,4 +6,6 @@ export { buildModuleResolutionIndex, resolveModuleSpecifier } from "./resolution
 export { findingFingerprint, toPersistedCodeGraphReport } from "./report";
 export { detectUnusedExports } from "./symbols";
 export { detectStructuralDuplicates } from "./duplicates";
+export { detectEngineeringResidue } from "./residue";
+export type { ChangedFileEvidence, ResidueSignalInput } from "./residue";
 export type * from "./types";

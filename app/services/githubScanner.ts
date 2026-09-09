@@ -2,7 +2,7 @@ import path from "path";
 import { scannerPolicy, securityRuleRegistry } from "@/app/lib/scanner/rules/registry";
 import { scanLevelConfig, type ScanTier } from "@/app/lib/scanner/scan-levels";
 import type { ScanScope } from "@/app/lib/ai-settings";
-import { analyzeFileReachability, findingFingerprint, toPersistedCodeGraphReport, type PersistedCodeGraphReport } from "@/app/lib/code-intelligence";
+import { analyzeFileReachability, detectEngineeringResidue, findingFingerprint, toPersistedCodeGraphReport, type PersistedCodeGraphReport } from "@/app/lib/code-intelligence";
 
 export type Severity = "low" | "medium" | "high" | "critical";
 
@@ -41,6 +41,7 @@ export type Finding = {
   autoFixSafe?: boolean;
   changeStatus?: "new" | "existing" | "not-compared";
   relatedLocations?: Array<{ file: string; symbol: string; line: number }>;
+  relatedFindingFingerprints?: string[];
 };
 
 export type RepositoryProfile = {
@@ -602,6 +603,13 @@ export async function runGitHubScanWithToken(
           ? existing.has(finding.fingerprint!) ? "existing" : "new"
           : "not-compared";
       }
+      const residueFindings = detectEngineeringResidue(
+        findings.filter((finding): finding is Finding & { fingerprint: string } => Boolean(finding.fingerprint)),
+        comparison.changedFiles,
+      );
+      findings.push(...residueFindings);
+      comparison.newFindingFingerprints.push(...residueFindings.map((finding) => finding.fingerprint));
+      comparison.newFindingFingerprints.sort();
       findings.sort((a, b) => changeRank(a.changeStatus) - changeRank(b.changeStatus) || b.score - a.score);
     }
     const profile = buildRepositoryProfile({ repository, tree: tree.tree, files, manifests, languageBytes });
@@ -668,7 +676,7 @@ async function compareWithBase(input: {
 }) {
   const comparison = await input.githubRequest<{
     base_commit: { sha: string };
-    files?: Array<{ filename: string }>;
+    files?: Array<{ filename: string; status: string; additions: number; deletions: number }>;
   }>(`/repos/${input.owner}/${input.repo}/compare/${encodeURIComponent(input.baseRef)}...${encodeURIComponent(input.headRef)}`);
   const baseTree = await input.githubRequest<{
     truncated: boolean;
@@ -713,7 +721,12 @@ async function compareWithBase(input: {
     baseRef: input.baseRef,
     baseSha: comparison.base_commit.sha,
     headSha: input.headRef,
-    changedFiles: (comparison.files ?? []).map((file) => file.filename).sort(),
+    changedFiles: (comparison.files ?? []).map((file) => ({
+      file: file.filename,
+      status: file.status,
+      additions: file.additions,
+      deletions: file.deletions,
+    })).sort((a, b) => a.file.localeCompare(b.file)),
     existingFindingFingerprints,
     newFindingFingerprints: input.currentFindings
       .filter((finding) => (finding.source === "regex" || finding.source === "code-graph") && !existing.has(finding.fingerprint!))

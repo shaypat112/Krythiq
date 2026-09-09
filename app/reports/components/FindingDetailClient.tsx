@@ -33,6 +33,7 @@ type Finding = {
   caveats?: string[];
   suggestedAction?: string;
   autoFixSafe?: boolean;
+  relatedFindingFingerprints?: string[];
 };
 
 type Scan = {
