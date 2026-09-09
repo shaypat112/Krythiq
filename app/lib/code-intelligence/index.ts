@@ -8,4 +8,6 @@ export { detectUnusedExports } from "./symbols";
 export { detectStructuralDuplicates } from "./duplicates";
 export { detectEngineeringResidue } from "./residue";
 export type { ChangedFileEvidence, ResidueSignalInput } from "./residue";
+export { parseSemanticAssessments } from "./semantic";
+export type { SemanticSimilarityAssessment } from "./semantic";
 export type * from "./types";

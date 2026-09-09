@@ -7,6 +7,7 @@ import { logActivity } from "@/app/lib/server/activity";
 import { generateScanIntelligence } from "@/app/lib/server/mistral-scan";
 import type { AiSettings, ScanScope } from "@/app/lib/ai-settings";
 import { generateGrokUiReview } from "@/app/lib/server/grok-ui-review";
+import { generateSemanticSimilarityReview } from "@/app/lib/server/semantic-similarity";
 
 function summarizeFindings(findings: Finding[]) {
   const total = findings.length;
@@ -41,7 +42,7 @@ export async function handleGitHubScan(input: {
       ? "Finalizing static findings without an AI request."
       : "Generating the configured bounded AI review.",
   );
-  const [intelligence, aiReview] = await Promise.all([
+  const [intelligence, aiReview, semanticSimilarity] = await Promise.all([
     input.aiSettings.aiUsageLevel !== "minimal" && input.scanScope !== "frontend"
       ? generateScanIntelligence({
           repoName: result.repoName,
@@ -59,7 +60,14 @@ export async function handleGitHubScan(input: {
       files: result.aiFiles,
       scanTier: input.options?.scanTier ?? "mid",
     }),
+    input.aiSettings.aiUsageLevel !== "minimal"
+      ? generateSemanticSimilarityReview({ findings: result.findings, files: result.aiFiles, model: input.options?.aiModel })
+      : Promise.resolve([]),
   ]);
+  const semanticByFingerprint = new Map(semanticSimilarity.map((assessment) => [assessment.candidateFingerprint, assessment]));
+  for (const finding of result.findings) {
+    if (finding.fingerprint && semanticByFingerprint.has(finding.fingerprint)) finding.semanticReview = semanticByFingerprint.get(finding.fingerprint);
+  }
 
   const scanPayload: Record<string, unknown> = {
     repo: result.repoName,
@@ -67,7 +75,7 @@ export async function handleGitHubScan(input: {
     severity,
     issues: total,
     score: avgScore,
-    findings: { schema_version: 2, list: result.findings, all_findings: result.findings, report_selected_keys: result.findings.map((finding) => finding.fingerprint ?? `${finding.file}:${finding.line}:${finding.type}`), code_graph: result.codeGraph, revision: result.revision, comparison: result.comparison, profile: result.profile, systemDesign: result.systemDesign, intelligence, aiReview, scanScope: input.scanScope, team_id: input.teamId ?? null },
+    findings: { schema_version: 2, list: result.findings, all_findings: result.findings, report_selected_keys: result.findings.map((finding) => finding.fingerprint ?? `${finding.file}:${finding.line}:${finding.type}`), code_graph: result.codeGraph, revision: result.revision, comparison: result.comparison, semantic_similarity: semanticSimilarity, profile: result.profile, systemDesign: result.systemDesign, intelligence, aiReview, scanScope: input.scanScope, team_id: input.teamId ?? null },
   };
 
   if (userId && accessToken) scanPayload.user_id = userId;
@@ -86,7 +94,7 @@ export async function handleGitHubScan(input: {
       severity,
       issues: total,
       score: avgScore,
-      findings: { schema_version: 2, list: result.findings, all_findings: result.findings, report_selected_keys: result.findings.map((finding) => finding.fingerprint ?? `${finding.file}:${finding.line}:${finding.type}`), code_graph: result.codeGraph, revision: result.revision, comparison: result.comparison, profile: result.profile, systemDesign: result.systemDesign, intelligence, aiReview, scanScope: input.scanScope, team_id: input.teamId ?? null },
+      findings: { schema_version: 2, list: result.findings, all_findings: result.findings, report_selected_keys: result.findings.map((finding) => finding.fingerprint ?? `${finding.file}:${finding.line}:${finding.type}`), code_graph: result.codeGraph, revision: result.revision, comparison: result.comparison, semantic_similarity: semanticSimilarity, profile: result.profile, systemDesign: result.systemDesign, intelligence, aiReview, scanScope: input.scanScope, team_id: input.teamId ?? null },
     };
     scanInsertRes = await supabaseFetch(env, "scan_history", {
       method: "POST",

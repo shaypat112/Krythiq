@@ -34,6 +34,15 @@ type Finding = {
   suggestedAction?: string;
   autoFixSafe?: boolean;
   relatedFindingFingerprints?: string[];
+  semanticReview?: {
+    status: "unverified";
+    relationship: string;
+    similarityBand: string;
+    rationale: string;
+    behavioralRisks: string[];
+    refactorRecommendation: string;
+    autoFixSafe: false;
+  };
 };
 
 type Scan = {
@@ -98,9 +107,10 @@ export function FindingDetailClient({ repo, findingId }: { repo: string; finding
       </section>
 
       <Tabs defaultValue="overview" className="space-y-5">
-        <TabsList className="h-auto w-full justify-start overflow-x-auto rounded-xl border border-border bg-card p-1"><TabsTrigger value="overview">Overview</TabsTrigger>{hasGraphEvidence ? <TabsTrigger value="evidence">Why is this unused?</TabsTrigger> : null}<TabsTrigger value="code">Code evidence</TabsTrigger><TabsTrigger value="risk">Risk analysis</TabsTrigger><TabsTrigger value="fix">Recommended fix</TabsTrigger><TabsTrigger value="ai">AI feedback</TabsTrigger></TabsList>
+        <TabsList className="h-auto w-full justify-start overflow-x-auto rounded-xl border border-border bg-card p-1"><TabsTrigger value="overview">Overview</TabsTrigger>{hasGraphEvidence ? <TabsTrigger value="evidence">Why is this unused?</TabsTrigger> : null}{finding.semanticReview ? <TabsTrigger value="semantic">Semantic review</TabsTrigger> : null}<TabsTrigger value="code">Code evidence</TabsTrigger><TabsTrigger value="risk">Risk analysis</TabsTrigger><TabsTrigger value="fix">Recommended fix</TabsTrigger><TabsTrigger value="ai">AI feedback</TabsTrigger></TabsList>
         <TabsContent value="overview"><Card><CardHeader><CardTitle className="flex items-center gap-2"><FileCode2 className="h-5 w-5 text-sky-400" />What was detected</CardTitle></CardHeader><CardContent><p className="text-sm leading-7 text-muted-foreground">{finding.description ?? finding.message ?? "The scanner identified a risky pattern in this file. Review its runtime context before release."}</p><div className="mt-5 grid gap-3 sm:grid-cols-3"><Fact label="Repository" value={repo} /><Fact label="File" value={file} /><Fact label="Exact line" value={finding.line ? String(finding.line) : "Not recorded"} /></div></CardContent></Card></TabsContent>
         {hasGraphEvidence ? <TabsContent value="evidence"><UnusedEvidence finding={finding} /></TabsContent> : null}
+        {finding.semanticReview ? <TabsContent value="semantic"><Card className="border-violet-500/20"><CardHeader><CardTitle className="flex items-center gap-2"><Sparkles className="h-5 w-5 text-violet-400" />Unverified semantic assessment</CardTitle></CardHeader><CardContent className="space-y-4"><div className="flex flex-wrap gap-2"><Badge variant="outline">{finding.semanticReview.relationship}</Badge><Badge variant="outline">{finding.semanticReview.similarityBand} similarity</Badge><Badge variant="outline">human review required</Badge></div><p className="text-sm leading-7 text-muted-foreground">{finding.semanticReview.rationale}</p>{finding.semanticReview.behavioralRisks.length ? <div><p className="text-sm font-medium">Behavioral risks to verify</p><ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-muted-foreground">{finding.semanticReview.behavioralRisks.map((risk) => <li key={risk}>{risk}</li>)}</ul></div> : null}<p className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 text-xs leading-5 text-muted-foreground">Model output is advisory and cannot prove equivalence or refactor safety. Automatic changes remain disabled.</p></CardContent></Card></TabsContent> : null}
         <TabsContent value="code"><CodeEvidence finding={finding} file={file} /></TabsContent>
         <TabsContent value="risk"><Card className="border-orange-500/20"><CardHeader><CardTitle className="flex items-center gap-2"><ShieldAlert className="h-5 w-5 text-orange-400" />Why this is a risk</CardTitle></CardHeader><CardContent className="space-y-4"><p className="text-sm leading-7 text-muted-foreground">{finding.technicalDetails ?? finding.description ?? finding.message ?? "This pattern may weaken the repository’s security or reliability if it is reachable in production."}</p><div className="rounded-2xl border border-orange-500/20 bg-orange-500/5 p-4"><p className="text-sm font-medium">Review priority</p><p className="mt-1 text-sm text-muted-foreground">{severity === "critical" || severity === "high" ? "Address before the next release and verify the affected execution path." : "Plan remediation and validate whether compensating controls already exist."}</p></div></CardContent></Card></TabsContent>
         <TabsContent value="fix"><Card className="border-emerald-500/20"><CardHeader><CardTitle className="flex items-center gap-2"><Wrench className="h-5 w-5 text-emerald-400" />Generated remediation</CardTitle></CardHeader><CardContent>{fix ? <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-5"><p className="text-sm leading-7">{fix}</p></div> : <p className="text-sm text-muted-foreground">No generated fix was stored for this finding. Review the affected code and replace the flagged pattern with a validated alternative.</p>}<p className="mt-4 flex gap-2 text-xs leading-5 text-muted-foreground"><Lightbulb className="mt-0.5 h-4 w-4 shrink-0" />Validate generated guidance in tests and code review before merging.</p></CardContent></Card></TabsContent>

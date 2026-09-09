@@ -4,6 +4,7 @@ import test from "node:test";
 import { analyzeFileReachability } from "./analyze.ts";
 import { findingFingerprint, toPersistedCodeGraphReport } from "./report.ts";
 import { detectEngineeringResidue } from "./residue.ts";
+import { parseSemanticAssessments } from "./semantic.ts";
 
 const file = (path, content = "export const value = 1") => ({ path, content });
 
@@ -199,4 +200,15 @@ test("composes Git and static evidence without claiming AI authorship", () => {
   assert.equal(findings[0].autoFixSafe, false);
   assert.doesNotMatch(findings[0].message, /chatgpt|authored by ai/i);
   assert.deepEqual(findings[0].relatedFindingFingerprints, ["static-finding"]);
+});
+
+test("validates semantic assessments against known deterministic candidates", () => {
+  const assessments = parseSemanticAssessments({ assessments: [
+    { candidateFingerprint: "known", relationship: "same-purpose", similarityBand: "strong", rationale: "Both format the same domain value.", behavioralRisks: ["Timezone behavior differs"], refactorRecommendation: "consider-consolidation" },
+    { candidateFingerprint: "invented", relationship: "same-purpose" },
+  ] }, new Set(["known"]));
+
+  assert.equal(assessments.length, 1);
+  assert.equal(assessments[0].status, "unverified");
+  assert.equal(assessments[0].autoFixSafe, false);
 });

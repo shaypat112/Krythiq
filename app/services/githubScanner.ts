@@ -2,6 +2,7 @@ import path from "path";
 import { scannerPolicy, securityRuleRegistry } from "@/app/lib/scanner/rules/registry";
 import { scanLevelConfig, type ScanTier } from "@/app/lib/scanner/scan-levels";
 import type { ScanScope } from "@/app/lib/ai-settings";
+import type { SemanticSimilarityAssessment } from "@/app/lib/code-intelligence";
 import { analyzeFileReachability, detectEngineeringResidue, findingFingerprint, toPersistedCodeGraphReport, type PersistedCodeGraphReport } from "@/app/lib/code-intelligence";
 
 export type Severity = "low" | "medium" | "high" | "critical";
@@ -42,6 +43,7 @@ export type Finding = {
   changeStatus?: "new" | "existing" | "not-compared";
   relatedLocations?: Array<{ file: string; symbol: string; line: number }>;
   relatedFindingFingerprints?: string[];
+  semanticReview?: SemanticSimilarityAssessment;
 };
 
 export type RepositoryProfile = {
