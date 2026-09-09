@@ -67,7 +67,7 @@ export async function handleGitHubScan(input: {
     severity,
     issues: total,
     score: avgScore,
-    findings: { schema_version: 2, list: result.findings, all_findings: result.findings, report_selected_keys: result.findings.map((finding) => finding.fingerprint ?? `${finding.file}:${finding.line}:${finding.type}`), code_graph: result.codeGraph, profile: result.profile, systemDesign: result.systemDesign, intelligence, aiReview, scanScope: input.scanScope, team_id: input.teamId ?? null },
+    findings: { schema_version: 2, list: result.findings, all_findings: result.findings, report_selected_keys: result.findings.map((finding) => finding.fingerprint ?? `${finding.file}:${finding.line}:${finding.type}`), code_graph: result.codeGraph, revision: result.revision, comparison: result.comparison, profile: result.profile, systemDesign: result.systemDesign, intelligence, aiReview, scanScope: input.scanScope, team_id: input.teamId ?? null },
   };
 
   if (userId && accessToken) scanPayload.user_id = userId;
@@ -86,7 +86,7 @@ export async function handleGitHubScan(input: {
       severity,
       issues: total,
       score: avgScore,
-      findings: { schema_version: 2, list: result.findings, all_findings: result.findings, report_selected_keys: result.findings.map((finding) => finding.fingerprint ?? `${finding.file}:${finding.line}:${finding.type}`), code_graph: result.codeGraph, profile: result.profile, systemDesign: result.systemDesign, intelligence, aiReview, scanScope: input.scanScope, team_id: input.teamId ?? null },
+      findings: { schema_version: 2, list: result.findings, all_findings: result.findings, report_selected_keys: result.findings.map((finding) => finding.fingerprint ?? `${finding.file}:${finding.line}:${finding.type}`), code_graph: result.codeGraph, revision: result.revision, comparison: result.comparison, profile: result.profile, systemDesign: result.systemDesign, intelligence, aiReview, scanScope: input.scanScope, team_id: input.teamId ?? null },
     };
     scanInsertRes = await supabaseFetch(env, "scan_history", {
       method: "POST",

@@ -44,6 +44,7 @@ type ScanFinding = {
   evidence?: string[];
   caveats?: string[];
   autoFixSafe?: boolean;
+  changeStatus?: "new" | "existing" | "not-compared";
 };
 
 type ScanRow = {
@@ -327,6 +328,7 @@ export function ReportDetailClient({ repo }: { repo: string }) {
                         <TriangleAlert className="h-4 w-4" />
                       )}
                       {(finding.severity ?? "low").toUpperCase()}
+                      {finding.changeStatus === "new" ? <Badge className="bg-sky-500/15 text-sky-300">New</Badge> : null}
                       {finding.confidence ? <Badge variant="outline" className="capitalize text-foreground">{finding.confidence} confidence</Badge> : null}
                     </div>
                   </div>

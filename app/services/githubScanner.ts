@@ -2,7 +2,7 @@ import path from "path";
 import { scannerPolicy, securityRuleRegistry } from "@/app/lib/scanner/rules/registry";
 import { scanLevelConfig, type ScanTier } from "@/app/lib/scanner/scan-levels";
 import type { ScanScope } from "@/app/lib/ai-settings";
-import { analyzeFileReachability, toPersistedCodeGraphReport, type PersistedCodeGraphReport } from "@/app/lib/code-intelligence";
+import { analyzeFileReachability, findingFingerprint, toPersistedCodeGraphReport, type PersistedCodeGraphReport } from "@/app/lib/code-intelligence";
 
 export type Severity = "low" | "medium" | "high" | "critical";
 
@@ -15,6 +15,7 @@ export type ScanOptions = {
   ignore?: string[];
   scanTier?: ScanTier;
   scanScope?: ScanScope;
+  baseRef?: string;
 };
 
 export type Finding = {
@@ -38,6 +39,7 @@ export type Finding = {
   caveats?: string[];
   suggestedAction?: string;
   autoFixSafe?: boolean;
+  changeStatus?: "new" | "existing" | "not-compared";
 };
 
 export type RepositoryProfile = {
@@ -514,6 +516,7 @@ export async function runGitHubScanWithToken(
     }>(`/repos/${owner}/${repo}`);
     const languageBytes = await githubRequest<Record<string, number>>(`/repos/${owner}/${repo}/languages`);
     const tree = await githubRequest<{
+      sha: string;
       truncated: boolean;
       tree: Array<{ path: string; type: string; sha: string; size?: number }>;
     }>(`/repos/${owner}/${repo}/git/trees/${encodeURIComponent(repository.default_branch)}?recursive=1`);
@@ -577,7 +580,29 @@ export async function runGitHubScanWithToken(
       ? toPersistedCodeGraphReport(graphAnalysis, coverageComplete)
       : null;
     const findings = [...dependencyFindings, ...await scanFiles(analysisFiles, options, onProgress), ...graphFindings]
+      .map(ensureFindingFingerprint)
       .sort((a, b) => b.score - a.score);
+    const comparison = options.baseRef
+      ? await compareWithBase({
+          baseRef: options.baseRef,
+          headRef: tree.sha,
+          owner,
+          repo,
+          options,
+          scanScope,
+          githubRequest,
+          currentFindings: findings,
+        })
+      : null;
+    if (comparison) {
+      const existing = new Set(comparison.existingFindingFingerprints);
+      for (const finding of findings) {
+        finding.changeStatus = finding.source === "code-graph" || finding.source === "regex"
+          ? existing.has(finding.fingerprint!) ? "existing" : "new"
+          : "not-compared";
+      }
+      findings.sort((a, b) => changeRank(a.changeStatus) - changeRank(b.changeStatus) || b.score - a.score);
+    }
     const profile = buildRepositoryProfile({ repository, tree: tree.tree, files, manifests, languageBytes });
     const systemDesign = buildSystemDesignAssessment(files, tree.tree, manifests);
     onProgress?.("recommendations", "Ranking findings and generating remediation guidance.");
@@ -593,6 +618,8 @@ export async function runGitHubScanWithToken(
         content: file.content,
       })),
       codeGraph,
+      revision: { headSha: tree.sha, baseSha: comparison?.baseSha ?? null, mode: comparison ? "change" as const : "full" as const },
+      comparison,
     };
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
@@ -612,4 +639,85 @@ export async function runGitHubScanWithToken(
     if (message.includes("too large")) throw error;
     throw new Error("Scan failed.");
   }
+}
+
+function ensureFindingFingerprint(finding: Finding): Finding {
+  return finding.fingerprint ? finding : {
+    ...finding,
+    schemaVersion: 1,
+    fingerprint: findingFingerprint(finding.type, finding.file, `${finding.line}`),
+  };
+}
+
+function changeRank(status: Finding["changeStatus"]) {
+  if (status === "new") return 0;
+  if (status === "not-compared") return 1;
+  return 2;
+}
+
+async function compareWithBase(input: {
+  baseRef: string;
+  headRef: string;
+  owner: string;
+  repo: string;
+  options: ScanOptions;
+  scanScope: ScanScope;
+  githubRequest: <T>(endpoint: string) => Promise<T>;
+  currentFindings: Finding[];
+}) {
+  const comparison = await input.githubRequest<{
+    base_commit: { sha: string };
+    files?: Array<{ filename: string }>;
+  }>(`/repos/${input.owner}/${input.repo}/compare/${encodeURIComponent(input.baseRef)}...${encodeURIComponent(input.headRef)}`);
+  const baseTree = await input.githubRequest<{
+    truncated: boolean;
+    tree: Array<{ path: string; type: string; sha: string; size?: number }>;
+  }>(`/repos/${input.owner}/${input.repo}/git/trees/${comparison.base_commit.sha}?recursive=1`);
+  if (baseTree.truncated) throw new Error("Base repository snapshot is too large to compare safely.");
+  const ignore = new Set([...scannerPolicy.defaultIgnoreDirectories, ...(input.options.ignore ?? [])]);
+  const eligible = baseTree.tree.filter((entry) => {
+    const resolutionConfig = /(?:^|\/)(?:package\.json|tsconfig(?:\.[^/]+)?\.json|jsconfig(?:\.[^/]+)?\.json)$/i.test(entry.path);
+    return entry.type === "blob" &&
+      (entry.size ?? scannerPolicy.limits.maxFileBytes + 1) <= scannerPolicy.limits.maxFileBytes &&
+      (shouldScanFile(entry.path, ignore) || resolutionConfig) &&
+      (resolutionConfig || shouldIncludeInScope(entry.path, input.scanScope));
+  });
+  const selected: typeof eligible = [];
+  let selectedBytes = 0;
+  const fileLimit = Math.min(scanLevelConfig[input.options.scanTier ?? "mid"].maxFiles, scannerPolicy.limits.maxFiles);
+  for (const blob of eligible) {
+    const bytes = blob.size ?? 0;
+    if (selected.length >= fileLimit || selectedBytes + bytes > scannerPolicy.limits.maxScanBytes) break;
+    selected.push(blob);
+    selectedBytes += bytes;
+  }
+  const files: RepositoryFile[] = [];
+  for (let index = 0; index < selected.length; index += 10) {
+    const loaded = await Promise.all(selected.slice(index, index + 10).map(async (blob) => {
+      const data = await input.githubRequest<{ content: string; encoding: string }>(`/repos/${input.owner}/${input.repo}/git/blobs/${blob.sha}`);
+      return data.encoding === "base64"
+        ? { path: blob.path, content: Buffer.from(data.content.replace(/\n/g, ""), "base64").toString("utf8") }
+        : null;
+    }));
+    files.push(...loaded.filter((file): file is RepositoryFile => file !== null));
+  }
+  const baseRegex = (await scanFiles(files, input.options)).map(ensureFindingFingerprint);
+  const baseGraph = input.scanScope === "all"
+    ? analyzeFileReachability(files, { coverageComplete: selected.length === eligible.length }).findings.map(ensureFindingFingerprint)
+    : [];
+  const existingFindingFingerprints = [...new Set([...baseRegex, ...baseGraph].map((finding) => finding.fingerprint!))].sort();
+  const existing = new Set(existingFindingFingerprints);
+  return {
+    schemaVersion: 1 as const,
+    baseRef: input.baseRef,
+    baseSha: comparison.base_commit.sha,
+    headSha: input.headRef,
+    changedFiles: (comparison.files ?? []).map((file) => file.filename).sort(),
+    existingFindingFingerprints,
+    newFindingFingerprints: input.currentFindings
+      .filter((finding) => (finding.source === "regex" || finding.source === "code-graph") && !existing.has(finding.fingerprint!))
+      .map((finding) => finding.fingerprint!)
+      .sort(),
+    baseCoverageComplete: selected.length === eligible.length,
+  };
 }
