@@ -24,6 +24,12 @@ type ScanFinding = {
   suggestion?: string;
   type?: string;
   technicalDetails?: string;
+  fingerprint?: string;
+  confidence?: "high" | "medium" | "low";
+  evidence?: string[];
+  caveats?: string[];
+  suggestedAction?: string;
+  autoFixSafe?: boolean;
 };
 
 type ScanRow = {
@@ -33,9 +39,11 @@ type ScanRow = {
   issues: number;
   score: number;
   findings?: {
+    schema_version?: number;
     ai_summary?: string;
     list?: ScanFinding[] | null;
     team_id?: string | null;
+    code_graph?: unknown;
   } | null;
 };
 

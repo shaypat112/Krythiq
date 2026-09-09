@@ -40,6 +40,10 @@ type ScanFinding = {
   suggestion?: string;
   type?: string;
   technicalDetails?: string;
+  confidence?: "high" | "medium" | "low";
+  evidence?: string[];
+  caveats?: string[];
+  autoFixSafe?: boolean;
 };
 
 type ScanRow = {
@@ -316,13 +320,14 @@ export function ReportDetailClient({ repo }: { repo: string }) {
                         </Link>
                       ) : null}
                     </div>
-                    <div className={`flex items-center gap-2 text-sm font-medium ${tone(finding.severity ?? "low")}`}>
+                    <div className={`flex flex-wrap items-center justify-end gap-2 text-sm font-medium ${tone(finding.severity ?? "low")}`}>
                       {(finding.severity === "critical" || finding.severity === "high") ? (
                         <ShieldAlert className="h-4 w-4" />
                       ) : (
                         <TriangleAlert className="h-4 w-4" />
                       )}
                       {(finding.severity ?? "low").toUpperCase()}
+                      {finding.confidence ? <Badge variant="outline" className="capitalize text-foreground">{finding.confidence} confidence</Badge> : null}
                     </div>
                   </div>
                   {(finding.description || finding.message) ? (
