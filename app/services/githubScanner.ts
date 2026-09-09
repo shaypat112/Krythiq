@@ -44,6 +44,14 @@ export type Finding = {
   relatedLocations?: Array<{ file: string; symbol: string; line: number }>;
   relatedFindingFingerprints?: string[];
   semanticReview?: SemanticSimilarityAssessment;
+  runtimeEvidence?: {
+    status: "observed" | "not-observed" | "no-data";
+    executedLines: number;
+    totalLines: number;
+    invocations: number | null;
+    source: "coverage-upload";
+    revision: string;
+  };
 };
 
 export type RepositoryProfile = {

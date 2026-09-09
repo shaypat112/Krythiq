@@ -5,6 +5,7 @@ import { analyzeFileReachability } from "./analyze.ts";
 import { findingFingerprint, toPersistedCodeGraphReport } from "./report.ts";
 import { detectEngineeringResidue } from "./residue.ts";
 import { parseSemanticAssessments } from "./semantic.ts";
+import { mergeRuntimeEvidence } from "./runtime.ts";
 
 const file = (path, content = "export const value = 1") => ({ path, content });
 
@@ -211,4 +212,21 @@ test("validates semantic assessments against known deterministic candidates", ()
   assert.equal(assessments.length, 1);
   assert.equal(assessments[0].status, "unverified");
   assert.equal(assessments[0].autoFixSafe, false);
+});
+
+test("runtime evidence lowers confidence on observed static-dead candidates without proving negatives", () => {
+  const report = { schemaVersion: 1, revision: "abc1234", source: "coverage-upload", collectedAt: "2026-01-01T00:00:00.000Z", files: [
+    { file: "src/observed.ts", executedLines: 8, totalLines: 20, invocations: 3 },
+    { file: "src/cold.ts", executedLines: 0, totalLines: 20 },
+  ] };
+  const merged = mergeRuntimeEvidence([
+    { file: "src/observed.ts", confidence: "high", caveats: [], autoFixSafe: false },
+    { file: "src/cold.ts", confidence: "high", caveats: [], autoFixSafe: false },
+  ], report);
+
+  assert.equal(merged[0].runtimeEvidence.status, "observed");
+  assert.equal(merged[0].confidence, "low");
+  assert.equal(merged[1].runtimeEvidence.status, "not-observed");
+  assert.match(merged[1].caveats[0], /not proof/i);
+  assert.ok(merged.every((finding) => finding.autoFixSafe === false));
 });

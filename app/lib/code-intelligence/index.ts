@@ -10,4 +10,6 @@ export { detectEngineeringResidue } from "./residue";
 export type { ChangedFileEvidence, ResidueSignalInput } from "./residue";
 export { parseSemanticAssessments } from "./semantic";
 export type { SemanticSimilarityAssessment } from "./semantic";
+export { mergeRuntimeEvidence } from "./runtime";
+export type { FindingWithRuntime, RuntimeEvidenceReport, RuntimeFileEvidence } from "./runtime";
 export type * from "./types";
