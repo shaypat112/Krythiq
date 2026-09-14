@@ -24,7 +24,15 @@ export function Nav() {
           <Link className="transition hover:text-white" href="#product">Review</Link>
           <Link className="transition hover:text-white" href="#workflow">Agent workflow</Link>
         </nav>
-        <Link href="/scan" className="rounded-full border border-white/14 bg-white px-4 py-2 text-xs font-semibold text-black transition hover:bg-white/88">Scan a repository</Link>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/documentation"
+            className="rounded-full border border-white/14 px-4 py-2 text-xs font-semibold text-white transition hover:bg-white/10"
+          >
+            Docs
+          </Link>
+          <Link href="/scan" className="rounded-full border border-white/14 bg-white px-4 py-2 text-xs font-semibold text-black transition hover:bg-white/88">Scan a repository</Link>
+        </div>
       </div>
     </header>
   );

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, ScanSearch, Terminal, Wrench } from "lucide-react";
+import { ArrowRight, ExternalLink, ScanSearch, Terminal, Wrench } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { DocumentationCodeBlock } from "./documentation-code-block";
@@ -13,10 +13,18 @@ const features = [
 export default function MainDocsPage() {
   return <div className="space-y-10">
     <section className="space-y-5">
-      <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Krythiq CLI 0.1.1</p>
+      <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Krythiq CLI 0.2.2</p>
       <h1 className="max-w-3xl text-4xl font-semibold tracking-tight sm:text-5xl">Local scanning and optional trace analysis.</h1>
       <p className="max-w-3xl leading-7 text-muted-foreground">Krythiq is a Node.js command-line package. Its local scanner orchestrates available engines; its optional AI features require explicit third-party credentials and send bounded finding or trace context to the selected provider.</p>
-      <div className="flex gap-3"><Button asChild><Link href="/documentation/installation">Install <ArrowRight /></Link></Button><Button asChild variant="outline"><Link href="/documentation/commands">Command reference</Link></Button></div>
+      <div className="flex flex-wrap gap-3">
+        <Button asChild><Link href="/documentation/installation">Install <ArrowRight /></Link></Button>
+        <Button asChild variant="outline"><Link href="/documentation/commands">Command reference</Link></Button>
+        <Button asChild variant="outline">
+          <a href="https://npmx.dev/package/krythiq" target="_blank" rel="noreferrer">
+            View on npmx <ExternalLink />
+          </a>
+        </Button>
+      </div>
     </section>
     <DocumentationCodeBlock className="rounded-xl" code={"npm install --global krythiq\nkrythiq scan --format json"} />
     <section className="grid gap-4 sm:grid-cols-3">{features.map(({icon: Icon, title, description}) => <Card key={title}><CardHeader><Icon className="size-5"/><CardTitle>{title}</CardTitle><CardDescription>{description}</CardDescription></CardHeader></Card>)}</section>

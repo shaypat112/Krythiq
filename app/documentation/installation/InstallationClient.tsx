@@ -67,7 +67,15 @@ export default function InstallationPage() {
         </h1>
         <p className="text-zinc-400 text-base leading-relaxed max-w-xl">
           Krythiq is a global CLI published through npm. Install it once and use
-          it across projects on your machine.
+          it across projects on your machine. You can inspect the published package on{" "}
+          <a
+            href="https://npmx.dev/package/krythiq"
+            target="_blank"
+            rel="noreferrer"
+            className="text-zinc-200 underline underline-offset-4 hover:text-white"
+          >
+            npmx
+          </a>.
         </p>
       </div>
 
@@ -122,7 +130,7 @@ export default function InstallationPage() {
           </p>
           <CodeBlock code="krythiq --version" />
           <div className="mt-3 rounded-lg border border-zinc-800 bg-zinc-950 px-4 py-3 font-mono text-sm text-zinc-500">
-            <span className="text-zinc-600">→ </span>0.1.1
+            <span className="text-zinc-600">→ </span>0.2.2
           </div>
         </Step>
 

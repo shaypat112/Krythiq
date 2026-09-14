@@ -208,7 +208,7 @@ Environment overrides: `KRYTHIQ_TRACE_MODEL`, `KRYTHIQ_MODEL`, or `ANTHROPIC_MOD
 ## Links
 
 - Website and documentation: <https://krythiq.dev/documentation>
-- npm package: <https://www.npmjs.com/package/krythiq>
+- package details: <https://npmx.dev/package/krythiq>
 - Repository: <https://github.com/shaypat112/Krythiq>
 - Issues: <https://github.com/shaypat112/Krythiq/issues>
 
