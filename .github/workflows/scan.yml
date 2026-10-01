@@ -15,7 +15,7 @@ jobs:
   label-and-manage:
     runs-on: ubuntu-latest
 
-    ps:
+    steps:
       - name: Apply issue labels based on keywords
         uses: actions/github-script@v7
         with:
@@ -65,5 +65,5 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               pull_number: prNumber,
-              reviewers: ["shatpat112"]
+              reviewers: ["shaypat112"]
             });
