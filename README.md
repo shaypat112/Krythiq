@@ -100,13 +100,64 @@ public/                   # Static images and social metadata
 
 ## Local development
 
-### Requirements
+### Run everything locally with Docker
 
-- Node.js 20.9 or newer
-- npm
-- A Supabase project with the application schema and RLS policies
+Requirements: Docker Desktop (running), Node.js 24+, npm, and the Supabase CLI
+(`brew install supabase/tap/supabase` on macOS).
 
-The migrations in `supabase/migrations/` contain incremental schema additions. They are not a complete bootstrap of every table currently used by the application.
+```bash
+npm run local:up
+```
+
+This starts Docker containers for Postgres 17, Supabase Auth, REST, Realtime,
+Storage, Studio, Mailpit, and the Next.js frontend/API. The web backend is in
+`app/api/`; `backend/` is the independent CLI, not an HTTP service.
+
+- App: http://localhost:3000
+- Database dashboard: http://localhost:54323
+- Signup, magic-link, and password-reset emails: http://localhost:54324
+- Supabase API: http://localhost:54321
+- Postgres: `postgresql://postgres:postgres@localhost:54322/postgres`
+
+Sign up in the app and open the confirmation email in Mailpit. No hosted
+Supabase or email-provider account is needed. GitHub OAuth and external AI,
+billing, and repository integrations still require their provider credentials.
+Add optional API keys to the generated, gitignored `.env.docker`, then run
+`docker compose up -d --force-recreate frontend`. `local:up` regenerates that
+file with local-only defaults; it does not change your existing `.env.local`.
+
+```bash
+npm run local:status       # Container health and ports
+npm run test:local         # Schema, authenticated CRUD, signup, session, and API smoke tests
+npm run local:down         # Stop containers, retaining database volumes
+npm run local:up           # Start again; migrations apply on first initialization
+```
+
+Frontend source directories and the proxy are mounted for hot reload. Re-run
+`local:up` after dependency changes. Database volumes persist across stops.
+`supabase db reset` deletes local data and rebuilds the schema; use it only when
+you intentionally want a clean database. The Supabase CLI manages database
+services separately from `compose.yaml`, following its local Docker workflow.
+
+Run the CLI in its own container:
+
+```bash
+docker compose --profile cli build backend
+docker compose run --rm backend --help
+docker compose run --rm backend scan /workspace/app --format json
+```
+
+The repository is mounted read-only into the CLI container; authentication
+configuration uses a separate named volume. Optional Semgrep is not bundled.
+For `connect`, run the CLI on the host with
+`KRYTHIQ_DASHBOARD_URL=http://localhost:3000 node backend/dist/index.js connect`.
+
+The checked-in baseline migration plus feature migrations now bootstrap a
+fresh database, including the profile trigger and row-level security policies.
+
+### Run the app directly on the host
+
+Requirements: Node.js 24+, npm, and a Supabase project (hosted or local Docker).
 
 ### Install and run
 

@@ -2,7 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 
 import { isValidEmail, normalizeEmail } from "@/app/lib/auth-validation";
-import { sendPasswordResetEmail } from "@/app/lib/server/email";
+import { isEmailConfigured, sendPasswordResetEmail } from "@/app/lib/server/email";
 import { logServerError } from "@/app/lib/server/logger";
 
 export const runtime = "nodejs";
@@ -20,9 +20,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Enter a valid email address." }, { status: 400 });
     }
 
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+    const url = (process.env.SUPABASE_INTERNAL_URL || process.env.NEXT_PUBLIC_SUPABASE_URL)?.trim();
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
-    if (!url || !serviceRoleKey || !process.env.RESEND_API_KEY?.trim()) {
+    if (!url || !serviceRoleKey || !isEmailConfigured()) {
       logServerError("auth.password_reset_not_configured", new Error("Password reset environment is incomplete."));
       return NextResponse.json({ error: "Password recovery is temporarily unavailable." }, { status: 503 });
     }

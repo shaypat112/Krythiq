@@ -11,8 +11,8 @@ const teamRoute = await readFile(new URL("../api/teams/create/route.ts", import.
 test("uses current Supabase Discord and LinkedIn OIDC provider identifiers", () => {
   assert.match(authClient, /loginWithSocial\("discord", "discord", "identify email"\)/);
   assert.match(authClient, /loginWithSocial\("linkedin_oidc", "linkedin", "openid profile email"\)/);
-  assert.match(account, /provider: "discord" as Provider/);
-  assert.match(account, /provider: "linkedin_oidc" as Provider/);
+  assert.match(account, /provider: "github" as Provider/);
+  assert.doesNotMatch(account, /provider: "linkedin" as Provider/);
 });
 
 test("social sign-in does not request administrative provider permissions", () => {
@@ -27,7 +27,12 @@ test("OAuth callback copies only bounded display metadata into the profile", () 
   assert.match(callbackRoute, /full_name: String\(fullName\)\.trim\(\)\.slice\(0, 200\)/);
   assert.match(callbackRoute, /value\.startsWith\("https:\/\/"\)/);
   assert.match(callbackRoute, /avatar_url: String\(avatarUrl\)\.slice\(0, 2000\)/);
-  assert.doesNotMatch(callbackRoute, /provider_token/);
+  // Provider credentials may be stored by the encrypted server integration,
+  // but must never be copied into the public profile record.
+  const profileWrite = callbackRoute.match(/adminSupabaseFetch\("profiles[\s\S]*?\)\.catch/)?.[0];
+  assert.ok(profileWrite);
+  assert.doesNotMatch(profileWrite, /provider_token/);
+  assert.match(callbackRoute, /saveGitHubConnection\(data\.user\.id, authData\.session\.provider_token\)/);
 });
 
 test("organization onboarding is bounded and retry-safe", () => {

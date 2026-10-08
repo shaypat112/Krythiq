@@ -9,7 +9,17 @@ where coalesce(raw_user_meta_data ->> 'is_mock', 'false') = 'true'
    or lower(coalesce(email, '')) like '%@mock.krythiq.local'
    or lower(coalesce(email, '')) like '%@example.invalid';
 
-delete from storage.objects where bucket_id = 'social-media' and owner_id in (select id::text from mock_user_ids);
+-- Storage now rejects SQL deletes, even when the predicate matches no rows.
+-- Remove files through the Storage API before deleting accounts that own them.
+do $$
+begin
+  if exists (
+    select 1 from storage.objects
+    where bucket_id = 'social-media' and owner_id in (select id::text from mock_user_ids)
+  ) then
+    raise exception 'Remove mock users'' social-media objects through the Storage API before running this migration.';
+  end if;
+end $$;
 delete from auth.users where id in (select id from mock_user_ids);
 
 -- Profiles, posts, comments, reactions, and memberships cascade through their

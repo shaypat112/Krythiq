@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
   const referralCode = /^[A-Za-z0-9_-]{20,80}$/.test(request.nextUrl.searchParams.get("ref") ?? "")
     ? request.nextUrl.searchParams.get("ref")
     : null;
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const url = process.env.SUPABASE_INTERNAL_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey =
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -35,6 +35,9 @@ export async function GET(request: NextRequest) {
   }
 
   const supabase = createServerClient(url, anonKey, {
+    cookieOptions: {
+      name: `sb-${new URL(process.env.NEXT_PUBLIC_SUPABASE_URL || url).hostname.split(".")[0]}-auth-token`,
+    },
     cookies: {
       getAll: () => request.cookies.getAll(),
       setAll: (cookies) => {

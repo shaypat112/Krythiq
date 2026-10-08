@@ -1,0 +1,46 @@
+name: krythiq-local
+services:
+  frontend:
+    build: .
+    ports:
+      - "127.0.0.1:3000:3000"
+    env_file: .env.docker
+    environment:
+      SUPABASE_INTERNAL_URL: http://supabase_kong_krythiq:8000
+      MAILPIT_URL: http://supabase_inbucket_krythiq:8025
+      NEXT_TELEMETRY_DISABLED: "1"
+    volumes:
+      - ./app:/app/app
+      - ./components:/app/components
+      - ./lib:/app/lib
+      - ./public:/app/public
+      - ./next.config.ts:/app/next.config.ts
+      - ./proxy.ts:/app/proxy.ts
+    networks:
+      - supabase
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 10s
+      start_period: 90s
+      retries: 6
+  backend:
+    profiles: ["cli"]
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      KRYTHIQ_DASHBOARD_URL: http://frontend:3000
+      NO_UPDATE_NOTIFIER: "1"
+    volumes:
+      - .:/workspace:ro
+      - cli-config:/home/node/.config
+    networks:
+      - supabase
+networks:
+  supabase:
+    external: true
+    name: supabase_network_krythiq
+volumes:
+  cli-config:

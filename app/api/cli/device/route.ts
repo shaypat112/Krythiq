@@ -14,6 +14,6 @@ export async function POST(request: Request) {
   const expiresAt = new Date(Date.now() + 10 * 60_000).toISOString();
   const response = await adminSupabaseFetch("cli_device_codes", { method: "POST", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ device_code_hash: hashCliSecret(deviceCode), user_code: userCode, expires_at: expiresAt }) });
   if (!response.ok) return NextResponse.json({ error: "Unable to start CLI authorization." }, { status: 503 });
-  const origin = new URL(request.url).origin;
+  const origin = process.env.NEXT_PUBLIC_SITE_URL?.trim() || new URL(request.url).origin;
   return NextResponse.json({ deviceCode, userCode, verificationUrl: `${origin}/cli/connect?code=${encodeURIComponent(userCode)}`, expiresIn: 600, interval: 2 });
 }

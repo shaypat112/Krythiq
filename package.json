@@ -17,7 +17,11 @@
     "test:social": "node --test app/lib/social-security.test.mjs",
     "test:code-graph": "node --experimental-strip-types --test app/lib/code-intelligence/code-graph.test.mjs",
     "build:backend": "cd backend && npm run build",
-    "install:backend": "cd backend && npm install && npm run build"
+    "install:backend": "cd backend && npm install && npm run build",
+    "local:up": "node scripts/local-docker.mjs up",
+    "local:down": "node scripts/local-docker.mjs down",
+    "local:status": "node scripts/local-docker.mjs status",
+    "test:local": "node scripts/local-docker.mjs test"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",
@@ -70,6 +74,6 @@
     "nanoid": "3.3.18",
     "postcss": "8.5.26",
     "source-map-js": "^1.2.2",
-    "sharp": "^0.35.4"
+    "sharp": "^0.35.5"
   }
 }

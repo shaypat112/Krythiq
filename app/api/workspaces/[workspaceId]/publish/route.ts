@@ -40,7 +40,10 @@ export async function POST(request: Request, { params }: Context) {
       }
       return payload as T;
     };
-    const repository = await github<{ default_branch: string }>(`/repos/${workspace.repository}`);
+    const repository = await github<{ default_branch: string; permissions?: { push?: boolean } }>(`/repos/${workspace.repository}`);
+    if (repository.permissions?.push === false) {
+      return NextResponse.json({ error: "Your GitHub connection can read this repository but cannot write to it. Reconnect GitHub and approve repository access, then try again." }, { status: 403 });
+    }
     if (mode === "main") {
       if (repository.default_branch !== workspace.base_branch) return NextResponse.json({ error: "The repository default branch changed. Create a branch or pull request instead." }, { status: 409 });
       const currentRef = await github<{ object: { sha: string } }>(`/repos/${workspace.repository}/git/ref/heads/${encodeURIComponent(workspace.base_branch)}`);

@@ -24,7 +24,11 @@ function emailFrame(eyebrow: string, title: string, content: string) {
 }
 
 export function isEmailConfigured() {
-  return Boolean(process.env.RESEND_API_KEY?.trim());
+  return Boolean(process.env.RESEND_API_KEY?.trim() || localMailUrl());
+}
+
+function localMailUrl() {
+  return process.env.NODE_ENV !== "production" ? process.env.MAILPIT_URL?.trim() : undefined;
 }
 
 export async function sendKrythiqEmail(options: {
@@ -33,6 +37,21 @@ export async function sendKrythiqEmail(options: {
   html: string;
   text: string;
 }) {
+  const mailUrl = localMailUrl();
+  if (mailUrl) {
+    const response = await fetch(`${mailUrl}/api/v1/send`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        From: { Email: "notifications@krythiq.local", Name: "Krythiq Local" },
+        To: [{ Email: options.to }],
+        Subject: options.subject, HTML: options.html, Text: options.text,
+      }),
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!response.ok) throw new Error(`Local email delivery failed (${response.status}).`);
+    return response.json() as Promise<{ id: string }>;
+  }
   const apiKey = process.env.RESEND_API_KEY?.trim();
   if (!apiKey) throw new Error("RESEND_API_KEY is missing.");
 

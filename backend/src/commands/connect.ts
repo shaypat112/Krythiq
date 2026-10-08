@@ -3,7 +3,7 @@ import chalk from "chalk";
 import ora from "ora";
 import { clearDashboardConnection, dashboardUrl, loadDashboardAccount, saveDashboardConnection } from "../utils/dashboard.js";
 
-type ConnectOptions = { disconnect?: boolean; status?: boolean; noBrowser?: boolean };
+type ConnectOptions = { disconnect?: boolean; status?: boolean; browser?: boolean };
 
 function openBrowser(url: string) {
   const command = process.platform === "darwin" ? "open" : process.platform === "win32" ? "cmd" : "xdg-open";
@@ -39,7 +39,7 @@ export async function connectCommand(options: ConnectOptions) {
     if (!response.ok || !payload.deviceCode || !payload.userCode || !payload.verificationUrl) throw new Error(payload.error || `Dashboard returned HTTP ${response.status}.`);
     spinner.stop();
     console.log(`\n${chalk.bold("Connect Krythiq CLI")}\n\n  Code: ${chalk.cyan.bold(payload.userCode)}\n  Open: ${chalk.underline(payload.verificationUrl)}\n`);
-    if (!options.noBrowser) openBrowser(payload.verificationUrl);
+    if (options.browser !== false) openBrowser(payload.verificationUrl);
     const waiting = ora("Waiting for approval in your browser...").start();
     const deadline = Date.now() + (payload.expiresIn ?? 600) * 1000;
     while (Date.now() < deadline) {
@@ -50,7 +50,7 @@ export async function connectCommand(options: ConnectOptions) {
       if (!poll.ok || !result.accessToken) throw new Error(result.error === "expired_token" ? "The authorization code expired." : result.error || `Dashboard returned HTTP ${poll.status}.`);
       saveDashboardConnection(result.accessToken, baseUrl);
       waiting.succeed("Terminal connected to your dashboard");
-      console.log(`\n  Tokens: ${chalk.cyan(Number(result.balance ?? 0).toLocaleString())}\n  Future ${chalk.cyan("krythiq scan")} results will appear in your dashboard automatically.\n`);
+      console.log(`\n  Tokens: ${chalk.cyan(Number(result.balance ?? 0).toLocaleString())}\n  Use ${chalk.cyan("krythiq scan --save")} to save results to your dashboard.\n`);
       return;
     }
     waiting.fail("Authorization timed out");

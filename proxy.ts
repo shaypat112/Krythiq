@@ -32,13 +32,16 @@ function safeNextPath(value: string | null) {
 }
 
 async function authenticatedPageResponse(request: NextRequest) {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const url = process.env.SUPABASE_INTERNAL_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   let response = NextResponse.next({ request });
 
   if (!url || !anonKey) return response;
 
   const supabase = createServerClient(url, anonKey, {
+    cookieOptions: {
+      name: `sb-${new URL(process.env.NEXT_PUBLIC_SUPABASE_URL || url).hostname.split(".")[0]}-auth-token`,
+    },
     cookies: {
       getAll: () => request.cookies.getAll(),
       setAll: (cookies) => {
@@ -169,8 +172,8 @@ async function requestLimits(request: NextRequest) {
   const cached = limitCache.get(identity.userId);
   if (cached && cached.expiresAt > Date.now()) return { identity: identity.userId, limits: cached.limits, plan: cached.plan };
 
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const url = process.env.SUPABASE_INTERNAL_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !anonKey) return fallback;
   const headers = { apikey: anonKey, Authorization: `Bearer ${identity.token}` };
   try {
