@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/card";
 import { cn } from "@/app/lib/utils";
 
-export interface PaymentFailureProps extends React.HTMLAttributes<HTMLDivElement> {
+interface PaymentFailureProps extends React.HTMLAttributes<HTMLDivElement> {
   /**
    * Optional heading at the top.
    * @default "Payment Failed"

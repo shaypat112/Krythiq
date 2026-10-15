@@ -9,7 +9,12 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import type { ConnectedRepo } from "@/app/profile/components/RepoTable";
+type ConnectedRepo = {
+  id: string;
+  full_name: string;
+  private: boolean;
+  last_scanned_at: string | null;
+};
 
 export function RepositoryConnections() {
   const supabase = useMemo(() => createClient(), []);

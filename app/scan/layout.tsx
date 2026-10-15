@@ -4,18 +4,14 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   ChevronRight,
-  ClipboardCheck,
   FileClock,
   FileSearch,
   GitPullRequestArrow,
-  Rocket,
 } from "lucide-react";
 import { cn } from "@/app/lib/utils";
 
 const NAV_ITEMS = [
   { href: "/scan", label: "New scan", icon: FileSearch, exact: true },
-  { href: "/scan/readiness", label: "Launch readiness", icon: Rocket },
-  { href: "/scan/fixes", label: "Guided fixes", icon: ClipboardCheck },
   { href: "/scan/drafts", label: "Draft changes", icon: GitPullRequestArrow },
   { href: "/scan/history", label: "Scan history", icon: FileClock },
 ] as const;
@@ -38,8 +34,8 @@ export default function ScanLayout({ children }: { children: React.ReactNode }) 
     <div className="flex min-h-[calc(100svh-9rem)] items-start bg-background text-foreground">
       <aside className="sticky top-24 hidden h-[calc(100svh-7rem)] w-56 shrink-0 flex-col border-r border-border pr-3 sm:flex">
         <div className="px-3 pb-3 pt-1">
-          <p className="text-sm font-semibold">Launch workspace</p>
-          <p className="mt-1 text-xs text-muted-foreground">Scan, fix, and ship</p>
+          <p className="text-sm font-semibold">Scan workspace</p>
+          <p className="mt-1 text-xs text-muted-foreground">Scan, review, and edit</p>
         </div>
         <nav className="flex-1 space-y-0.5 overflow-y-auto py-2" aria-label="Scan workspace">
           {NAV_ITEMS.map((item) => {

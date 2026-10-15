@@ -10,7 +10,7 @@ export function dashboardUrl() {
   return (process.env.KRYTHIQ_DASHBOARD_URL || store().get("dashboardUrl") || "https://krythiq.dev").replace(/\/$/, "");
 }
 
-export function dashboardToken() {
+function dashboardToken() {
   return process.env.KRYTHIQ_CLI_TOKEN || store().get("dashboardToken");
 }
 

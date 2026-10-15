@@ -1,4 +1,4 @@
-export type IntegrationCategory =
+type IntegrationCategory =
   | "source"
   | "runtime"
   | "data"
@@ -8,9 +8,9 @@ export type IntegrationCategory =
   | "cloud"
   | "identity";
 
-export type IntegrationAuth = "oauth" | "api_key" | "connection_string" | "local" | "webhook";
-export type IntegrationAvailability = "available" | "configuration_required" | "coming_soon";
-export type IntegrationConnectionStatus = "connected" | "expired" | "error" | "disconnected";
+type IntegrationAuth = "oauth" | "api_key" | "connection_string" | "local" | "webhook";
+type IntegrationAvailability = "available" | "configuration_required" | "coming_soon";
+type IntegrationConnectionStatus = "connected" | "expired" | "error" | "disconnected";
 
 export type IntegrationProvider = {
   id: string;

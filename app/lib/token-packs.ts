@@ -22,7 +22,7 @@ export const TOKEN_PACKS = {
   },
 } as const;
 
-export type TokenPackId = keyof typeof TOKEN_PACKS;
+type TokenPackId = keyof typeof TOKEN_PACKS;
 
 export function isTokenPackId(value: unknown): value is TokenPackId {
   return typeof value === "string" && value in TOKEN_PACKS;

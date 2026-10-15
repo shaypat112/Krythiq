@@ -10,7 +10,7 @@ import { AnimatePresence, motion, type MotionProps } from "motion/react"
 
 import { cn } from "@/app/lib/utils"
 
-export function AnimatedListItem({ children }: { children: React.ReactNode }) {
+function AnimatedListItem({ children }: { children: React.ReactNode }) {
   const animations: MotionProps = {
     initial: { scale: 0, opacity: 0 },
     animate: { scale: 1, opacity: 1, originY: 0 },
@@ -25,7 +25,7 @@ export function AnimatedListItem({ children }: { children: React.ReactNode }) {
   )
 }
 
-export interface AnimatedListProps extends ComponentPropsWithoutRef<"div"> {
+interface AnimatedListProps extends ComponentPropsWithoutRef<"div"> {
   children: React.ReactNode
   delay?: number
 }

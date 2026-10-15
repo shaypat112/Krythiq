@@ -1,3 +1,5 @@
+> Historical product roadmap. Guided Fixes and Launch Readiness were retired in October 2026; descriptions below are not the current product scope.
+
 # Krythiq for AI App Builders
 
   ## Summary

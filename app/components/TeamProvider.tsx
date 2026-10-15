@@ -25,7 +25,7 @@ const TeamContext = createContext<TeamContextValue | undefined>(undefined);
 const SELECTED_TEAM_STORAGE_KEY = "krythiq-selected-team";
 const PERSONAL_WORKSPACE_VALUE = "__personal__";
 
-export function TeamProvider({ children }: { children: React.ReactNode }) {
+function TeamProvider({ children }: { children: React.ReactNode }) {
   const supabase = useMemo(() => createClient(), []);
   const storedSelection = useRef<string | null | undefined>(undefined);
   const [teams, setTeams] = useState<Team[]>([]);

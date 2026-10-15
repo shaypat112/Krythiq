@@ -1,6 +1,6 @@
 import { findingFingerprint } from "./report.ts";
 
-export type ResidueSignalInput = {
+type ResidueSignalInput = {
   fingerprint: string;
   file: string;
   line: number;
@@ -10,7 +10,7 @@ export type ResidueSignalInput = {
   evidence?: string[];
 };
 
-export type ChangedFileEvidence = {
+type ChangedFileEvidence = {
   file: string;
   status: string;
   additions: number;

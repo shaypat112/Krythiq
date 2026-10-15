@@ -2,12 +2,12 @@
 
 export interface RepositoryData {
   files: Array<{ path: string; content?: string; size: number }>;
-  packageJson?: any;
+  packageJson?: Record<string, unknown>;
   readme?: string;
   languages: string[];
 }
 
-export interface SecurityVulnerability {
+interface SecurityVulnerability {
   type: string;
   severity: "low" | "medium" | "high" | "critical";
   cwe: string;
@@ -19,12 +19,12 @@ export interface SecurityVulnerability {
   codeExample: string;
 }
 
-export interface SecurityAnalysisResult {
+interface SecurityAnalysisResult {
   vulnerabilities: SecurityVulnerability[];
   overallRisk: "low" | "medium" | "high" | "critical";
 }
 
-export interface AttackPathStage {
+interface AttackPathStage {
   stage: number;
   description: string;
   vulnerability: string;
@@ -32,24 +32,24 @@ export interface AttackPathStage {
   impact: string;
 }
 
-export interface AttackPath {
+interface AttackPath {
   entryPoint: string;
   stages: AttackPathStage[];
   finalImpact: string;
   mitigation: string;
 }
 
-export interface AttackPathResult {
+interface AttackPathResult {
   attackPaths: AttackPath[];
   overallRiskAssessment: string;
 }
 
-export interface ArchitectureCategory {
+interface ArchitectureCategory {
   score: number;
   issues: string[];
 }
 
-export interface ArchitectureHealthResult {
+interface ArchitectureHealthResult {
   overallScore: number;
   categories: {
     maintainability: ArchitectureCategory;
@@ -64,13 +64,13 @@ export interface ArchitectureHealthResult {
   recommendations: Array<{ priority: string; action: string }>;
 }
 
-export interface CodebaseContext {
+interface CodebaseContext {
   relevantFiles: Array<{ path: string; content: string }>;
   architecture: string;
   summary: string;
 }
 
-export interface RemediationPlan {
+interface RemediationPlan {
   id: string;
   title: string;
   severity: "low" | "medium" | "high" | "critical";
@@ -87,13 +87,13 @@ export interface RemediationPlan {
   validationChecklist: string[];
 }
 
-export interface RemediationResult {
+interface RemediationResult {
   plans: RemediationPlan[];
   priorityOrder: string[];
   totalEstimatedEffort: string;
 }
 
-export interface RepositoryIntelligence {
+interface RepositoryIntelligence {
   languages: string[];
   frameworks: string[];
   packageManagers: string[];
@@ -172,7 +172,7 @@ class AIService {
   }
 
   async simulateAttackPath(
-    vulnerabilities: any[],
+    vulnerabilities: unknown[],
     repositoryContext: string,
     model?: string
   ): Promise<AttackPathResult | null> {
@@ -252,7 +252,7 @@ class AIService {
   }
 
   async generateRemediationPlan(
-    vulnerabilities: any[],
+    vulnerabilities: unknown[],
     repositoryContext: string,
     model?: string
   ): Promise<RemediationResult | null> {

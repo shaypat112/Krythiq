@@ -6,7 +6,7 @@ import styles from "./landing.module.css";
 export const metadata: Metadata = {
   title: "Krythiq — A second opinion for AI-built software",
   description:
-    "Review AI-built applications across security, architecture, frontend quality, performance, and production readiness.",
+    "Review AI-built applications across security, architecture, frontend quality, and performance.",
 };
 
 export default function LandingPage() {

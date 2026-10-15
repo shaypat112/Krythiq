@@ -10,6 +10,7 @@ type ChatMessage = {
 
 export async function POST(request: Request) {
   try {
+
     const { messages, context, model } = (await request.json()) as {
       messages?: ChatMessage[];
       context?: string;
@@ -63,7 +64,7 @@ export async function POST(request: Request) {
       if (!content) throw new Error("Mistral returned no usable response.");
       return { message: content };
     });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Unexpected server error." }, { status: 500 });
   }
 }

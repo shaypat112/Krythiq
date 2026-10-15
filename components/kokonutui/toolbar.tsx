@@ -9,7 +9,7 @@ import { AnimatePresence, motion } from "motion/react";
 import * as React from "react";
 import { cn } from "@/app/lib/utils";
 
-export type ToolbarIcon = React.ComponentType<{
+type ToolbarIcon = React.ComponentType<{
   className?: string;
   size?: number | string;
   "aria-hidden"?: boolean;
@@ -93,5 +93,3 @@ export function Toolbar({
     </div>
   );
 }
-
-export default Toolbar;

@@ -4,7 +4,7 @@ import type { AiSettings, ScanScope } from "@/app/lib/ai-settings";
 import { logServerError } from "@/app/lib/server/logger";
 import { scanCheckpointsForScope } from "@/app/lib/scanner/checkpoints";
 
-export type GrokUiReview = {
+type GrokUiReview = {
   scope: ScanScope;
   provider: "groq" | "xai";
   vibeCodedPercent: number | null;
@@ -31,7 +31,7 @@ export type GrokUiReview = {
   }>;
 };
 
-export type AiSourceFile = {
+type AiSourceFile = {
   path: string;
   content: string;
 };

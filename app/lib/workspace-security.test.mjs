@@ -6,7 +6,6 @@ const migration = await readFile(new URL("../../supabase/migrations/202608140300
 const workspaceService = await readFile(new URL("./server/repository-workspaces.ts", import.meta.url), "utf8");
 const workspaceRoute = await readFile(new URL("../api/workspaces/[workspaceId]/route.ts", import.meta.url), "utf8");
 const workspaceListRoute = await readFile(new URL("../api/workspaces/route.ts", import.meta.url), "utf8");
-const draftRoute = await readFile(new URL("../api/workflow/draft-patch/route.ts", import.meta.url), "utf8");
 const publishRoute = await readFile(new URL("../api/workspaces/[workspaceId]/publish/route.ts", import.meta.url), "utf8");
 const exportRoute = await readFile(new URL("../api/workspaces/[workspaceId]/export/route.ts", import.meta.url), "utf8");
 const sandbox = await readFile(new URL("./server/workspace-sandbox.ts", import.meta.url), "utf8");
@@ -30,12 +29,9 @@ test("workspace writes use verified auth and optimistic versions", () => {
   assert.match(workspaceRoute, /auditWorkspace\(workspace\.id, userId, "file\.modified"/);
 });
 
-test("draft creation resolves a full GitHub file at an exact commit", () => {
+test("workspace creation resolves a full GitHub file at an exact commit", () => {
   assert.match(workspaceService, /commits\/\$\{encodeURIComponent\(repository\.default_branch\)\}/);
   assert.match(workspaceService, /\?ref=\$\{commit\.sha\}/);
-  assert.match(draftRoute, /githubFile\.content\.indexOf\(suggestion\.currentCode\)/);
-  assert.match(draftRoute, /base_commit_sha: githubFile\.baseCommitSha/);
-  assert.match(draftRoute, /workspace_audit_events|auditWorkspace/);
 });
 
 test("repositories can create a bounded starter workspace without a scan suggestion", () => {
@@ -84,7 +80,6 @@ test("workspace lifecycle webhooks reuse signed, retryable, SSRF-safe delivery",
   assert.match(webhooks, /webhook_deliveries/);
   assert.doesNotMatch(webhooks, /providerToken|original_content|content:/);
   assert.match(workspaceListRoute, /deliverWorkspaceWebhook/);
-  assert.match(draftRoute, /deliverWorkspaceWebhook/);
   assert.match(exportRoute, /workspace\.zip_exported/);
   assert.match(publishRoute, /workspace\.main_pushed/);
 });

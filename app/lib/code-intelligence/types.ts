@@ -3,7 +3,7 @@ export type SourceInput = {
   content: string;
 };
 
-export type ModuleEdgeKind =
+type ModuleEdgeKind =
   | "static-import"
   | "type-import"
   | "re-export"
@@ -72,9 +72,9 @@ export type DependencyGraph = {
   diagnostics: AnalysisDiagnostic[];
 };
 
-export type FindingConfidence = "high" | "medium" | "low";
+type FindingConfidence = "high" | "medium" | "low";
 
-export type ReachabilityFinding = {
+type ReachabilityFinding = {
   schemaVersion: 1;
   fingerprint: string;
   file: string;
@@ -105,8 +105,6 @@ export type UnusedExportFinding = Omit<ReachabilityFinding,
   suggestedAction: "review-export-surface";
 };
 
-export type CodeGraphFinding = ReachabilityFinding | UnusedExportFinding;
-
 export type DuplicateImplementationFinding = Omit<ReachabilityFinding,
   "score" | "type" | "message" | "suggestion" | "suggestedAction" | "confidence"
 > & {
@@ -120,7 +118,7 @@ export type DuplicateImplementationFinding = Omit<ReachabilityFinding,
   relatedLocations: Array<{ file: string; symbol: string; line: number }>;
 };
 
-export type DeterministicFinding = ReachabilityFinding | UnusedExportFinding | DuplicateImplementationFinding;
+type DeterministicFinding = ReachabilityFinding | UnusedExportFinding | DuplicateImplementationFinding;
 
 export type ReachabilityAnalysis = {
   graph: DependencyGraph;

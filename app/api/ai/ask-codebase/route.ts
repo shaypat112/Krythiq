@@ -78,7 +78,7 @@ Architecture: ${codebaseContext.architecture}
 Summary: ${codebaseContext.summary}
 
 Relevant Files:
-${codebaseContext.relevantFiles.map((f: any) => `
+${codebaseContext.relevantFiles.map((f: { path: string; content: string }) => `
 File: ${f.path}
 Content:
 ${f.content.slice(0, 2000)}

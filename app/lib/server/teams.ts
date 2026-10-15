@@ -15,22 +15,6 @@ type TeamRoleRow = {
   id?: string;
 };
 
-export async function getOwnedTeamIds(accessToken: string, userId: string) {
-  const env = getSupabaseEnv();
-  const res = await supabaseFetch(
-    env,
-    `teams?owner_id=eq.${userId}&select=id`,
-    { accessToken },
-  );
-
-  if (!res.ok) {
-    throw new Error(await res.text());
-  }
-
-  const rows = (await res.json()) as TeamRow[];
-  return rows.map((row) => row.id);
-}
-
 export async function getAccessibleTeamIds(accessToken: string, userId: string) {
   const isAdmin = await isAdminAccess(accessToken, userId).catch(() => false);
   if (isAdmin) {

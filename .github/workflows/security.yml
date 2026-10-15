@@ -1,3 +1,4 @@
+
 name: Security checks
 
 on:
@@ -20,7 +21,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm run typecheck
+      - run: npm run check:maintenance
       - run: npm run build
       - run: npm audit --omit=dev --audit-level=high
 
@@ -38,5 +39,6 @@ jobs:
           cache-dependency-path: backend/package-lock.json
       - run: npm ci
       - run: npm run typecheck
-      - run: npm run build
+      - run: npm run lint
+      - run: npm test
       - run: npm audit --omit=dev --audit-level=high

@@ -24,7 +24,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
-export type Comment = { id: string; author_id: string; author_name: string; body: string; created_at: string };
+type Comment = { id: string; author_id: string; author_name: string; body: string; created_at: string };
 type Reaction = { user_id: string; reaction: "like" | "celebrate" | "insightful" };
 export type Post = { id: string; author_id: string; author_name: string; author_username?: string | null; author_avatar_url?: string | null; team_name?: string | null; body: string; media_url?: string | null; media_path?: string | null; visibility: "public" | "team"; post_type: "update" | "scan" | "milestone"; scan_repository?: string | null; scan_severity?: string | null; scan_score?: number | null; scan_issues?: number | null; scan_created_at?: string | null; created_at: string; social_reactions?: Reaction[]; social_comments?: Comment[]; social_projects?: { name: string; verification_status: string } | null };
 type Project = { id: string; team_id: string; team_name: string; repository: string; name: string; verification_status: string; scan_score?: number | null; scan_issues?: number | null };

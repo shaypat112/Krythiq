@@ -44,14 +44,3 @@ export function extractTraces(buffer: string): string[] {
 
   return traces;
 }
-
-/**
- * Strips ANSI color codes and trims a trace for sending to AI
- */
-export function cleanTrace(trace: string): string {
-  return trace
-    .replace(/\x1b\[[0-9;]*m/g, "") // strip ANSI
-    .replace(/\r\n/g, "\n")
-    .trim()
-    .slice(0, 4000); // cap at 4k chars
-}

@@ -35,7 +35,7 @@ function Edge({ from, to, index, progress, reduced }: { from: THREE.Vector3; to:
     const problemState = smoothstep(0.38, 0.48, p) * (1 - smoothstep(0.61, 0.7, p));
     const active = problemState > 0.05 && (index === 1 || index === 4 || index === 7);
     materialRef.current.opacity = assembled * (active ? 0.95 : 0.36);
-    materialRef.current.color.set(active ? "#e58b62" : p > 0.79 ? "#6dbd9b" : "#55788d");
+    materialRef.current.color.set(active ? "#fb7185" : p > 0.79 ? "#6dbd9b" : "#55788d");
     lineRef.current.scale.x = assembled;
   });
 
@@ -43,7 +43,7 @@ function Edge({ from, to, index, progress, reduced }: { from: THREE.Vector3; to:
   return <primitive object={line} />;
 }
 
-function Node({ node, index, progress, reduced }: { node: (typeof nodes)[number]; index: number; progress: React.MutableRefObject<number>; reduced: boolean }) {
+function Node({ node, index, progress, reduced, selected, onSelect }: { selected?: number; onSelect?: (index: number) => void; node: (typeof nodes)[number]; index: number; progress: React.MutableRefObject<number>; reduced: boolean }) {
   const group = useRef<THREE.Group>(null);
   const core = useRef<THREE.MeshStandardMaterial>(null);
   const ring = useRef<THREE.MeshBasicMaterial>(null);
@@ -58,16 +58,16 @@ function Node({ node, index, progress, reduced }: { node: (typeof nodes)[number]
     const issue = (index === 1 || index === 2 || index === 4) ? problem : 0;
     const stable = smoothstep(0.78, 0.9, p);
     group.current.position.copy(base).multiplyScalar(spread);
-    group.current.scale.setScalar(Math.max(0.001, assembled) * (1 + issue * 0.16));
+    group.current.scale.setScalar(Math.max(0.001, assembled) * (1 + issue * 0.16 + (selected === index ? 0.32 : 0)));
     group.current.rotation.y = reduced ? 0 : clock.elapsedTime * 0.05 + p * 0.35;
-    core.current.color.set(issue > 0.1 ? "#f0a37f" : stable > 0.5 ? "#9cddc0" : node.color);
-    core.current.emissive.set(issue > 0.1 ? "#7a2f1d" : stable > 0.5 ? "#245e48" : "#17384a");
+    core.current.color.set(issue > 0.1 ? "#fb7185" : stable > 0.5 ? "#9cddc0" : node.color);
+    core.current.emissive.set(issue > 0.1 ? "#681d36" : stable > 0.5 ? "#245e48" : "#17384a");
     core.current.emissiveIntensity = 0.45 + issue * 1.4;
     ring.current.opacity = 0.16 + issue * 0.52 + stable * 0.12;
   });
 
   return (
-    <group ref={group}>
+    <group ref={group} onClick={(event) => { event.stopPropagation(); onSelect?.(index); }}>
       <mesh>
         <icosahedronGeometry args={[0.34, 2]} />
         <meshStandardMaterial ref={core} color={node.color} roughness={0.3} metalness={0.65} />
@@ -80,7 +80,7 @@ function Node({ node, index, progress, reduced }: { node: (typeof nodes)[number]
   );
 }
 
-function Scene({ value, reduced }: { value: MotionValue<number>; reduced: boolean }) {
+function Scene({ value, reduced, selected, onSelect }: { selected?: number; onSelect?: (index: number) => void; value: MotionValue<number>; reduced: boolean }) {
   const progress = useRef(value.get());
   const root = useRef<THREE.Group>(null);
   const vectors = useMemo(() => nodes.map((node) => new THREE.Vector3(...node.position)), []);
@@ -91,7 +91,7 @@ function Scene({ value, reduced }: { value: MotionValue<number>; reduced: boolea
     const p = progress.current;
     root.current.rotation.x = -0.08 + p * 0.08;
     root.current.rotation.y = -0.16 + p * 0.28;
-    root.current.position.x = p < 0.2 ? 1.1 : 0.65 + smoothstep(0.2, 0.4, p) * 0.5;
+    root.current.position.x = -0.25;
     root.current.position.y = p < 0.2 ? -0.25 : -0.05;
   });
 
@@ -101,12 +101,12 @@ function Scene({ value, reduced }: { value: MotionValue<number>; reduced: boolea
       <directionalLight position={[-2, 5, 5]} intensity={2.1} color="#dff4ff" />
       <pointLight position={[3, -1, 3]} intensity={18} distance={7} color="#438eb8" />
       {links.map(([from, to], index) => <Edge key={`${from}-${to}`} from={vectors[from]} to={vectors[to]} index={index} progress={progress} reduced={reduced} />)}
-      {nodes.map((node, index) => <Node key={node.label} node={node} index={index} progress={progress} reduced={reduced} />)}
+      {nodes.map((node, index) => <Node key={node.label} node={node} index={index} progress={progress} reduced={reduced} selected={selected} onSelect={onSelect} />)}
     </group>
   );
 }
 
-export function SystemGraph({ progress }: { progress: MotionValue<number> }) {
+export function SystemGraph({ progress, selected, onSelect }: { progress: MotionValue<number>; selected?: number; onSelect?: (index: number) => void }) {
   const reduced = Boolean(useReducedMotion());
   const container = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(true);
@@ -122,13 +122,14 @@ export function SystemGraph({ progress }: { progress: MotionValue<number> }) {
   return (
     <div ref={container} className="h-full w-full">
       <Canvas
+        fallback={<div className="p-6 text-center text-xs text-stone-400">Explore the mapped services below.</div>}
         frameloop={visible ? "always" : "never"}
         dpr={[1, 1.5]}
         camera={{ position: [0, 0, 8.5], fov: 42 }}
         gl={{ alpha: true, antialias: true, powerPreference: "high-performance" }}
         onCreated={({ gl }) => gl.setClearColor(0x000000, 0)}
       >
-        <Scene value={progress} reduced={reduced} />
+        <Scene value={progress} reduced={reduced} selected={selected} onSelect={onSelect} />
       </Canvas>
     </div>
   );

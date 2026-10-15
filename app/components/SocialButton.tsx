@@ -8,9 +8,9 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/app/lib/utils";
 
-export type SocialItem = { icon: LucideIcon; label: string; href: string };
+type SocialItem = { icon: LucideIcon; label: string; href: string };
 
-export const SOCIAL_LINKS: SocialItem[] = [
+const SOCIAL_LINKS: SocialItem[] = [
   { icon: Github, label: "GitHub", href: "https://github.com/shaypat112/Krythiq" },
   { icon: Linkedin, label: "LinkedIn", href: "blank_blank" },
   { icon: Instagram, label: "Instagram", href: "https://www.instagram.com/krythiq_xyz/" },

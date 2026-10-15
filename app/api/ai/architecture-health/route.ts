@@ -73,12 +73,12 @@ export async function POST(request: Request) {
     const prompt = `Evaluate the architecture health of this repository:
 
 Files: ${repositoryStructure.files.length}
-Total Lines: ${repositoryStructure.files.reduce((sum: number, f: any) => sum + f.lines, 0)}
+Total Lines: ${repositoryStructure.files.reduce((sum: number, f: { path: string; lines: number }) => sum + f.lines, 0)}
 Dependencies: ${Object.keys(repositoryStructure.dependencies).length}
 Patterns detected: ${repositoryStructure.patterns.join(", ")}
 
 Sample structure:
-${repositoryStructure.files.slice(0, 15).map((f: any) => `- ${f.path} (${f.lines} lines)`).join("\n")}
+${repositoryStructure.files.slice(0, 15).map((f: { path: string; lines: number }) => `- ${f.path} (${f.lines} lines)`).join("\n")}
 
 Provide architecture health assessment in JSON format:
 {

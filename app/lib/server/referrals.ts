@@ -7,7 +7,7 @@ const DISPOSABLE_DOMAINS = new Set([
   "tempmail.com", "throwawaymail.com", "yopmail.com",
 ]);
 
-export function referralSecret() {
+function referralSecret() {
   const value = process.env.REFERRAL_SIGNING_SECRET?.trim();
   if (value && value.length >= 32) return value;
 
@@ -33,7 +33,7 @@ export function isDisposableEmail(email: string) {
   return DISPOSABLE_DOMAINS.has(email.split("@")[1] ?? "");
 }
 
-export function createReferralCode() {
+function createReferralCode() {
   return randomBytes(24).toString("base64url");
 }
 

@@ -81,7 +81,7 @@ export function extractSelectedTeamId(request: Request) {
   return normalized.length > 0 ? normalized : null;
 }
 
-export function buildSupabaseHeaders(
+function buildSupabaseHeaders(
   anonKey: string,
   accessToken?: string,
   extra?: Record<string, string>,
@@ -120,13 +120,4 @@ export function parsePagination(searchParams: URLSearchParams, defaults = { page
   );
   const offset = (page - 1) * pageSize;
   return { page, pageSize, offset };
-}
-
-export function isValidHttpsUrl(value: string) {
-  try {
-    const parsed = new URL(value);
-    return parsed.protocol === "https:";
-  } catch {
-    return false;
-  }
 }

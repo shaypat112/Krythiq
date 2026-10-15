@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/app/lib/utils";
 import type { Plan } from "@/lib/billingsdk-config";
 
-export interface PricingTableProps {
+interface PricingTableProps {
   className?: string;
   plans: Plan[];
   onPlanSelect?: (planId: string, billingCycle: "monthly" | "yearly") => void;

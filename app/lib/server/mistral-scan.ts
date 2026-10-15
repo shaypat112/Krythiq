@@ -4,7 +4,7 @@ import { scanLevelConfig, type ScanTier } from "@/app/lib/scanner/scan-levels";
 import type { ScanScope } from "@/app/lib/ai-settings";
 import { scanCheckpointsForScope } from "@/app/lib/scanner/checkpoints";
 
-export type ScanIntelligence = {
+type ScanIntelligence = {
   summary: string;
   architecture: string;
   securityPosture: string;

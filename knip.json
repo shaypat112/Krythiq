@@ -1,0 +1,26 @@
+{
+  "$schema": "https://unpkg.com/knip/schema.json",
+  "workspaces": {
+    ".": {
+      "entry": [
+        "scripts/**/*.mjs",
+        "tests/**/*.mjs",
+        "app/**/*.test.mjs",
+        "krythiq.config.mjs"
+      ],
+      "ignoreDependencies": [
+        "krythiq"
+      ]
+    },
+    "backend": {
+      "entry": [
+        "src/index.ts",
+        "test/**/*.test.mjs"
+      ],
+      "project": [
+        "src/**/*.ts",
+        "test/**/*.mjs"
+      ]
+    }
+  }
+}

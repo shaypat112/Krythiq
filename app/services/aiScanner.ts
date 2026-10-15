@@ -2,27 +2,26 @@
 
 import { aiService, RepositoryData } from "@/app/lib/ai-service";
 import {
-  repositoryAnalyzer,
-  RepositoryStructure,
-} from "@/app/lib/repository-analyzer";
-import {
   runGitHubScanWithToken,
+  type Finding,
   type RepositoryProfile,
   type SystemDesignAssessment,
 } from "./githubScanner";
 
-export interface AIScanResult {
+type AIAnalysis = {
+  intelligence: Awaited<ReturnType<typeof aiService.analyzeRepositoryIntelligence>>;
+  securityAnalysis: Awaited<ReturnType<typeof aiService.analyzeSecurityVulnerabilities>>;
+  attackPaths: Awaited<ReturnType<typeof aiService.simulateAttackPath>>;
+  architectureHealth: Awaited<ReturnType<typeof aiService.evaluateArchitectureHealth>>;
+};
+
+interface AIScanResult {
   repositoryUrl: string;
   repositoryName: string;
-  findings: any[];
+  findings: Finding[];
   profile: RepositoryProfile;
   systemDesign: SystemDesignAssessment;
-  aiAnalysis: {
-    intelligence: any;
-    securityAnalysis: any;
-    attackPaths: any;
-    architectureHealth: any;
-  };
+  aiAnalysis: AIAnalysis;
   summary: {
     totalFiles: number;
     totalVulnerabilities: number;
@@ -35,7 +34,7 @@ export interface AIScanResult {
   };
 }
 
-export class AIScanner {
+class AIScanner {
   async scanRepository(
     repoUrl: string,
     providerToken?: string,
@@ -82,17 +81,12 @@ export class AIScanner {
   }
 
   private async performAIAnalysis(
-    basicScan: any,
+    basicScan: Awaited<ReturnType<typeof runGitHubScanWithToken>>,
     model?: string,
-  ): Promise<{
-    intelligence: any;
-    securityAnalysis: any;
-    attackPaths: any;
-    architectureHealth: any;
-  }> {
+  ): Promise<AIAnalysis> {
     // Prepare repository data for AI analysis
     const repositoryData: RepositoryData = {
-      files: basicScan.findings.map((f: any) => ({
+      files: basicScan.findings.map((f) => ({
         path: f.file,
         size: f.snippet?.length || 100,
       })),
@@ -137,11 +131,11 @@ export class AIScanner {
   }
 
   private async performDeepSecurityAnalysis(
-    findings: any[],
+    findings: Finding[],
     model?: string,
-  ): Promise<any> {
+  ): Promise<AIAnalysis["securityAnalysis"]> {
     // Group findings by file for more efficient analysis
-    const findingsByFile = new Map<string, any[]>();
+    const findingsByFile = new Map<string, Finding[]>();
     for (const finding of findings) {
       const existing = findingsByFile.get(finding.file) || [];
       existing.push(finding);
@@ -171,7 +165,7 @@ export class AIScanner {
     );
   }
 
-  private buildCodeContext(findings: any[]): string {
+  private buildCodeContext(findings: Finding[]): string {
     return findings
       .map(
         (f) => `
@@ -187,7 +181,7 @@ Suggestion: ${f.suggestion || "N/A"}
       .join("\n---\n");
   }
 
-  private detectLanguagesFromFindings(findings: any[]): string[] {
+  private detectLanguagesFromFindings(findings: Finding[]): string[] {
     const languageSet = new Set<string>();
     for (const finding of findings) {
       const ext = finding.file.split(".").pop();
@@ -212,7 +206,7 @@ Suggestion: ${f.suggestion || "N/A"}
     return Array.from(languageSet);
   }
 
-  private generateSummary(findings: any[]) {
+  private generateSummary(findings: Finding[]) {
     const critical = findings.filter((f) => f.severity === "critical").length;
     const high = findings.filter((f) => f.severity === "high").length;
     const medium = findings.filter((f) => f.severity === "medium").length;
@@ -235,7 +229,7 @@ Suggestion: ${f.suggestion || "N/A"}
     };
   }
 
-  private generateEnhancedSummary(findings: any[], aiAnalysis: any) {
+  private generateEnhancedSummary(findings: Finding[], aiAnalysis: AIAnalysis) {
     const baseSummary = this.generateSummary(findings);
 
     // Enhance with AI analysis results
@@ -253,7 +247,7 @@ Suggestion: ${f.suggestion || "N/A"}
 
   // Generate a comprehensive AI summary for display
   async generateAISummary(
-    findings: any[],
+    findings: Finding[],
     repositoryContext: string,
     model?: string,
   ): Promise<string> {

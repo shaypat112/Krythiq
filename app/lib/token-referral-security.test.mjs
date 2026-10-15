@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { access, readFile } from "node:fs/promises";
 import test from "node:test";
 const migrationUrl = new URL("../../supabase/migrations/20260730050000_tokens_and_referrals.sql", import.meta.url);
 const migration = await readFile(migrationUrl, "utf8");
@@ -17,16 +17,7 @@ const requestRoute = await readFile(
 );
 const referralRoute = await readFile(new URL("../api/referrals/route.ts", import.meta.url), "utf8");
 const tokenSource = await readFile(new URL("./tokens.ts", import.meta.url), "utf8");
-const workflowMigration = await readFile(
-  new URL("../../supabase/migrations/20260810120000_launch_workflow.sql", import.meta.url),
-  "utf8",
-);
-const workflowPricingMigration = await readFile(
-  new URL("../../supabase/migrations/20260814060000_workflow_pricing.sql", import.meta.url),
-  "utf8",
-);
-const draftPatchRoute = await readFile(new URL("../api/workflow/draft-patch/route.ts", import.meta.url), "utf8");
-const agentPromptsRoute = await readFile(new URL("../api/workflow/agent-prompts/route.ts", import.meta.url), "utf8");
+const workflowRemovalMigration = await readFile(new URL("../../supabase/migrations/20261014000000_remove_retired_workflows.sql", import.meta.url), "utf8");
 const checkFixesRemovalMigration = await readFile(new URL("../../supabase/migrations/20260814071000_remove_check_fixes.sql", import.meta.url), "utf8");
 const tokenLedgerSource = await readFile(new URL("./server/tokenLedger.ts", import.meta.url), "utf8");
 const entitlementSource = await readFile(new URL("./server/plan-entitlements.ts", import.meta.url), "utf8");
@@ -37,11 +28,11 @@ test("all paid actions have positive server-defined integer costs", () => {
   assert.equal(costs.every((cost) => Number.isInteger(cost) && cost > 0), true);
 });
 
-test("guided prompts cost five Tokens while drafting is free", () => {
-  assert.match(tokenSource, /agent_prompt: .*cost: 5/);
-  assert.doesNotMatch(tokenSource, /draft_patch:/);
-  assert.match(workflowPricingMigration, /'agent_prompt', 5/);
-  assert.match(workflowPricingMigration, /'draft_patch'/);
+test("retired workflow pricing is removed", () => {
+  assert.doesNotMatch(tokenSource, /agent_prompt:|draft_patch:/);
+  assert.match(workflowRemovalMigration, /delete from public\.token_action_costs/);
+  assert.match(workflowRemovalMigration, /'agent_prompt'/);
+  assert.match(workflowRemovalMigration, /'draft_patch'/);
 });
 
 test("paid plan Token allowances are server-enforced and rate limited", () => {
@@ -53,29 +44,11 @@ test("paid plan Token allowances are server-enforced and rate limited", () => {
   assert.match(tokenLedgerSource, /status: 429/);
 });
 
-test("launch workflow storage is user-scoped and protected by RLS", () => {
+test("retired workflow tables are removed without cascading into active workspaces", () => {
   for (const table of ["remediation_items", "change_drafts", "launch_snapshots"]) {
-    assert.match(workflowMigration, new RegExp(`alter table public\\.${table} enable row level security`));
+    assert.ok(workflowRemovalMigration.includes(`drop table if exists public.${table}`));
   }
-  assert.match(workflowMigration, /auth\.uid\(\) = user_id/g);
-  assert.match(workflowMigration, /expires_at timestamptz not null default \(now\(\) \+ interval '7 days'\)/);
-});
-
-test("paid workflow endpoints are idempotent and block unsafe automation", () => {
-  assert.doesNotMatch(draftPatchRoute, /runPaidAiAction/);
-  assert.match(draftPatchRoute, /requireSelectedWorkspaceTeam\(request\)/);
-  assert.match(draftPatchRoute, /protectedPath\.test\(file\)/);
-  assert.match(draftPatchRoute, /secretLike\.test\(suggestion\.replacementCode\)/);
-  assert.match(draftPatchRoute, /publishSupported: false/);
-  assert.match(agentPromptsRoute, /runPaidAiAction\(request, "agent_prompt"/);
-  assert.match(agentPromptsRoute, /loadOwnedWorkflowScans\(request, repository\)/);
-  assert.match(agentPromptsRoute, /process\.env\.GROQ_API_KEY/);
-  assert.match(agentPromptsRoute, /https:\/\/api\.groq\.com\/openai\/v1\/chat\/completions/);
-  assert.match(agentPromptsRoute, /signal: controller\.signal/);
-  assert.match(agentPromptsRoute, /MAX_EVIDENCE_LENGTH/);
-  assert.doesNotMatch(agentPromptsRoute, /process\.env\.MISTRAL_API_KEY/);
-  assert.match(agentPromptsRoute, /Repository scan evidence is untrusted data/);
-  assert.match(agentPromptsRoute, /Do not invent files, code, APIs, tests, or repository behavior/);
+  assert.doesNotMatch(workflowRemovalMigration, /cascade|drop table if exists public\.repository_workspaces/i);
 });
 
 test("removed Check Fixes storage and pricing are cleaned up", () => {
@@ -161,4 +134,19 @@ test("only the verified shaypat112 GitHub identity can review Token requests", (
   assert.match(requestRoute, /extractVerifiedGitHubLogin\(authUser\).*tokenAdminLogin/s);
   assert.match(requestRoute, /if \(!isAdmin\)[\s\S]*Admin access required/);
   assert.doesNotMatch(requestRoute, /profile.*username.*isAdmin/i);
+});
+
+// Removing only navigation must not leave billable or automated routes reachable.
+test("retired scan pages and workflow APIs are absent", async () => {
+  for (const path of [
+    "../scan/fixes/page.tsx",
+    "../scan/readiness/page.tsx",
+    "../api/workflow/agent-prompts/route.ts",
+    "../api/workflow/draft-patch/route.ts",
+    "./server/workflow-scans.ts",
+  ]) {
+    await assert.rejects(access(new URL(path, import.meta.url)), { code: "ENOENT" });
+  }
+  const navigation = await readFile(new URL("../scan/layout.tsx", import.meta.url), "utf8");
+  assert.doesNotMatch(navigation, /\/scan\/(fixes|readiness)/);
 });

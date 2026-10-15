@@ -83,7 +83,7 @@ README: ${repositoryData.readme ? repositoryData.readme.slice(0, 1000) : "Not fo
 Sample files:
 ${repositoryData.files
   .slice(0, 10)
-  .map((f: any) => `- ${f.path} (${f.size} bytes)`)
+  .map((f: { path: string; size: number }) => `- ${f.path} (${f.size} bytes)`)
   .join("\n")}
 
 Provide analysis in JSON format:

@@ -16,7 +16,7 @@ type Scenario = {
   nextStep: string;
 };
 
-export type SystemDesignResult = {
+type SystemDesignResult = {
   summary: string;
   disclaimer: string;
   scenarios: Scenario[];

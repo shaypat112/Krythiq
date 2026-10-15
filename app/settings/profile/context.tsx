@@ -13,7 +13,7 @@ import { toast } from "sonner";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type SettingsState = {
+type SettingsState = {
   fullName: string;
   username: string;
   avatarUrl: string;
@@ -36,7 +36,7 @@ export type SettingsState = {
   maxAiSuggestions: number;
 };
 
-export type AdminState = {
+type AdminState = {
   isAdmin: boolean;
   profileUsername: string | null;
   githubLogin: string | null;

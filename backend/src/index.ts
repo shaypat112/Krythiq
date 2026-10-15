@@ -2,7 +2,7 @@
 import fs from "fs";
 import { fileURLToPath } from "url";
 import { runCli } from "./cli.js";
-export { defineConfig } from "./config.js";
+export { defineConfig, type KrythiqConfig } from "./config.js";
 
 const isMain = (() => {
   if (!process.argv[1]) return false;

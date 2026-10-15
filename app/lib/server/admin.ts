@@ -59,7 +59,7 @@ export async function adminSupabaseFetch(
   });
 }
 
-export async function loadProfileForUser(
+async function loadProfileForUser(
   accessToken: string,
   userId: string,
 ) {
@@ -101,7 +101,7 @@ export async function fetchAuthUserById(userId: string) {
   return (await res.json()) as AuthUser;
 }
 
-export function extractGitHubLogin(user: AuthUser | null | undefined) {
+function extractGitHubLogin(user: AuthUser | null | undefined) {
   const meta = user?.user_metadata ?? {};
   const directCandidates = [
     meta["user_name"],

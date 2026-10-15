@@ -5,7 +5,7 @@ import type { ScanScope } from "@/app/lib/ai-settings";
 import type { SemanticSimilarityAssessment } from "@/app/lib/code-intelligence";
 import { analyzeFileReachability, detectEngineeringResidue, findingFingerprint, toPersistedCodeGraphReport, type PersistedCodeGraphReport } from "@/app/lib/code-intelligence";
 
-export type Severity = "low" | "medium" | "high" | "critical";
+type Severity = "low" | "medium" | "high" | "critical";
 
 export type ScanOptions = {
   fix?: boolean;
@@ -80,7 +80,7 @@ export type RepositoryProfile = {
   dependencies: string[];
 };
 
-export type SystemDesignScenario = {
+type SystemDesignScenario = {
   id: "traffic-spike" | "data-growth" | "dependency-failure" | "multi-region" | "cost-pressure";
   title: string;
   status: "ready" | "watch" | "risk" | "unknown";
@@ -96,7 +96,7 @@ export type SystemDesignAssessment = {
   scenarios: SystemDesignScenario[];
 };
 
-export type ScanStage =
+type ScanStage =
   | "validating"
   | "cloning"
   | "detecting"
@@ -476,14 +476,6 @@ async function scanFiles(files: RepositoryFile[], options: ScanOptions, onProgre
   return [...map.values()].sort(
     (a, b) => b.score - a.score,
   );
-}
-
-export async function runGitHubScan(
-  repoUrl: string,
-  options: ScanOptions = {},
-  onProgress?: ScanProgress,
-) {
-  return runGitHubScanWithToken(repoUrl, options, undefined, onProgress);
 }
 
 export async function runGitHubScanWithToken(

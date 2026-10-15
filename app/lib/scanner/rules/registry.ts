@@ -2,7 +2,7 @@ import ruleData from "./security-rules.json";
 import policyData from "./scanner-policy.json";
 import { ruleValidators, type RuleValidator } from "./validators";
 
-export type SecurityRule = {
+type SecurityRule = {
   id: string;
   pattern: RegExp;
   severity: "low" | "medium" | "high" | "critical";
