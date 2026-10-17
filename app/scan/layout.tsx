@@ -32,9 +32,9 @@ export default function ScanLayout({ children }: { children: React.ReactNode }) 
 
   return (
     <div className="flex min-h-[calc(100svh-9rem)] items-start bg-background text-foreground">
-      <aside className="sticky top-24 hidden h-[calc(100svh-7rem)] w-56 shrink-0 flex-col border-r border-border pr-3 sm:flex">
+      <aside className="section-sidebar sticky top-24 hidden min-h-[calc(100svh-9rem)] w-56 shrink-0 flex-col sm:flex">
         <div className="px-3 pb-3 pt-1">
-          <p className="text-sm font-semibold">Scan workspace</p>
+          <p className="text-sm font-semibold">Security workspace</p>
           <p className="mt-1 text-xs text-muted-foreground">Scan, review, and edit</p>
         </div>
         <nav className="flex-1 space-y-0.5 overflow-y-auto py-2" aria-label="Scan workspace">
@@ -63,7 +63,7 @@ export default function ScanLayout({ children }: { children: React.ReactNode }) 
 
       </aside>
 
-      <div className="min-w-0 flex-1 sm:pl-6">
+      <div className="min-w-0 flex-1 sm:pl-8">
         <nav className="sticky top-[4.25rem] z-20 -mx-4 mb-5 flex gap-2 overflow-x-auto border-b border-border bg-background/95 px-4 py-3 backdrop-blur sm:hidden" aria-label="Scan workspace">
           {NAV_ITEMS.map((item) => {
             const active = isCurrent(pathname, item);

@@ -1,5 +1,7 @@
 "use client";
 
+import { PageHeading } from "@/app/components/PageHeading";
+
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Coins, Loader2 } from "lucide-react";
 import { buildAuthHeaders } from "@/app/lib/http";
@@ -206,17 +208,7 @@ export function BuyTokensClient() {
 
   return (
     <div className="space-y-8">
-      <header className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Stripe test mode only</p>
-          <h1 className="mt-3 text-3xl font-semibold">Buy Tokens</h1>
-          <p className="mt-2 max-w-2xl text-muted-foreground">Choose a test Token pack for repository scans and paid AI features. Live payments are disabled.</p>
-        </div>
-        <div className="flex items-center gap-3 rounded-xl border bg-card px-4 py-3">
-          <Coins className="h-5 w-5 text-amber-500" />
-          <div><p className="text-xs text-muted-foreground">Current balance</p><p className="font-semibold">{balance === null ? "—" : formatTokens(balance)}</p></div>
-        </div>
-      </header>
+      <PageHeading title="Buy Tokens" description="Choose a test Token pack for repository scans and paid AI features. Live payments are disabled." actions={<div className="flex items-center gap-3 rounded-xl bg-card px-4 py-3"><Coins className="h-5 w-5 text-primary" /><div><p className="text-xs text-muted-foreground">Current balance</p><p className="font-semibold tabular-nums">{balance === null ? "—" : formatTokens(balance)}</p></div></div>} />
 
       {error ? <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">{error}</p> : null}
 

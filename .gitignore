@@ -128,3 +128,6 @@ temp/
 *.credentials
 credentials.json
 service-account*.json
+
+# Design skill render reports and local screenshots
+/.taste-skill/

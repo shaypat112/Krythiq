@@ -35,16 +35,18 @@ const NAV_SECTIONS = [
 export type SectionId = (typeof NAV_SECTIONS)[number]["id"];
 
 function Sidebar({ active }: { active: SectionId }) {
-  const { save, saving, hasCliConnection } = useSettings();
-  const sections = NAV_SECTIONS.filter((section) => section.id !== "cli" || hasCliConnection);
+  const { save, saving } = useSettings();
+  const sections = NAV_SECTIONS;
 
   return (
-    <aside className="hidden w-56 shrink-0 flex-col border-r border-border bg-background sm:flex">
-      <nav className="flex-1 overflow-y-auto py-3 px-2">
+    <aside className="section-sidebar sticky top-24 hidden w-56 shrink-0 flex-col sm:flex">
+      <div className="px-3 pb-4"><p className="text-sm font-semibold">Settings</p><p className="mt-1 text-xs text-muted-foreground">Your account and workspace</p></div>
+      <nav aria-label="Settings sections" className="flex-1 overflow-y-auto py-1">
         {sections.map(({ id, label, icon: Icon }) => (
           <Link
             key={id}
             href={`/settings?section=${id}`}
+            aria-current={active === id ? "page" : undefined}
             className={cn(
               "group flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all",
               active === id
@@ -94,8 +96,8 @@ function Sidebar({ active }: { active: SectionId }) {
 }
 
 function MobileSettingsNav({ active }: { active: SectionId }) {
-  const { save, saving, hasCliConnection } = useSettings();
-  const sections = NAV_SECTIONS.filter((section) => section.id !== "cli" || hasCliConnection);
+  const { save, saving } = useSettings();
+  const sections = NAV_SECTIONS;
 
   return (
     <div className="border-b border-border bg-background p-3 sm:hidden">
@@ -131,10 +133,10 @@ function MobileSettingsNav({ active }: { active: SectionId }) {
 
 function SettingsInner({ children }: { children: React.ReactNode }) {
   const searchParams = useSearchParams();
-  const { loading, hasCliConnection } = useSettings();
+  const { loading } = useSettings();
 
   const requestedSection = searchParams?.get("section");
-  const active = NAV_SECTIONS.some((section) => section.id === requestedSection) && (requestedSection !== "cli" || hasCliConnection)
+  const active = NAV_SECTIONS.some((section) => section.id === requestedSection)
     ? requestedSection as SectionId
     : "account";
 
@@ -148,15 +150,14 @@ function SettingsInner({ children }: { children: React.ReactNode }) {
 
   return (
     <div
-      className="flex min-h-screen bg-background text-foreground"
-      style={{ fontFamily: "'DM Sans', 'Inter', system-ui, sans-serif" }}
+      className="flex min-h-[calc(100svh-9rem)] items-start gap-4 bg-background text-foreground sm:gap-8"
     >
       <Sidebar active={active} />
       <div className="min-w-0 flex-1">
         <MobileSettingsNav active={active} />
 
-      <div className="bg-background px-4 py-8 sm:px-10 sm:py-10">
-        <div className="mx-auto max-w-5xl space-y-8 [&_[data-slot=card]]:!rounded-none [&_[data-slot=card]]:!border-0 [&_[data-slot=card]]:!border-b [&_[data-slot=card]]:!border-border [&_[data-slot=card]]:!bg-transparent [&_[data-slot=card]]:!pb-8 [&_[data-slot=card]]:!shadow-none [&_[data-slot=card]]:!ring-0 [&_[data-slot=card-header]]:!px-0 [&_[data-slot=card-content]]:!px-0">
+      <div className="px-1 py-2 sm:px-0 sm:py-1">
+        <div className="mx-auto max-w-5xl space-y-6">
           {children}
         </div>
       </div>

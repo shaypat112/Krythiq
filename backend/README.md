@@ -1,10 +1,12 @@
 # Krythiq CLI
 
+CLI **0.3.0** adds renewable dashboard connections, hosted `review` and `ask`, the `tokens` alias, local `doctor` diagnostics, and saved-report conversion. Install with `npm install -g krythiq@latest` or run `npx krythiq@latest --help`. For a source build, run `npm ci && npm run build` inside `backend/` and use `node dist/index.js`.
+
 Krythiq is a local command-line wrapper for security scanning and optional terminal stack-trace analysis.
 
 ## Requirements and installation
 
-- Node.js 20 or newer
+- Node.js 22.13 or newer
 - Optional: [Semgrep](https://semgrep.dev/) on `PATH` for Semgrep findings
 - Optional: an Anthropic API key for trace analysis
 - Optional: a Mistral API key for scan summaries
@@ -53,6 +55,8 @@ Supabase credentials are never copied into the terminal.
 
 ```bash
 npx krythiq connect --status
+npx krythiq connect --refresh
+npx krythiq connect --name work-laptop
 npx krythiq whoami
 npx krythiq token
 npx krythiq connect --disconnect
@@ -65,8 +69,31 @@ reconnect instruction.
 
 `krythiq token` performs a live Token balance check for the connected account.
 
-Use `KRYTHIQ_DASHBOARD_URL=http://localhost:3000` when testing against a local
-Krythiq web app. Use `--no-browser` on remote or headless machines.
+### Connection renewal and revocation
+
+New 0.3.0 browser connections use one-hour access credentials and a separate 90-day terminal authorization. Access renews automatically before expiry, or once after an HTTP 401. `connect --refresh` forces renewal. Renewal keeps the same terminal identity and scan attribution; concurrent CLI processes can finish with overlapping access credentials. The 90-day authorization is a hard deadline: connect through the browser again after it expires. Existing durable credentials still work until revoked; reconnect once with this build to enable automatic renewal. An older client starting a new authorization gets 90-day non-renewable access for compatibility.
+
+`connect --disconnect` revokes the terminal remotely and clears its local connection. If the server is unreachable, local credentials are still removed, the command exits 1, and it directs you to revoke the terminal in Settings → CLI. Revoking from the UI blocks both access and renewal. `connect --status` exits 1 when disconnected. `whoami`, `token`, and Settings → CLI use the same full-history CLI usage totals and live account balance; authorized terminals are not necessarily online.
+
+Credentials and the dashboard origin are stored together in the user's private CLI configuration. `KRYTHIQ_CONFIG_DIR` optionally selects a separate config directory. Changing `KRYTHIQ_DASHBOARD_URL` cannot send a saved credential to another dashboard: connect to that origin first. Use HTTPS, except for loopback HTTP development such as `http://localhost:3000`.
+
+`KRYTHIQ_CLI_TOKEN` explicitly overrides a saved browser session. It cannot auto-renew; replace it when expired, or unset it before `connect` to use renewable browser authorization. Temporary network failures and HTTP 503 responses retain saved credentials. A definitive refresh rejection removes only dashboard credentials, keeping the separate Anthropic key.
+
+Use `--no-browser` on remote or headless machines. Keep the terminal running until the browser says **Terminal connected**; approval alone is not the completed exchange. The browser login preserves the terminal code through sign-in.
+
+**Server rollout:** apply `supabase/migrations/20261017020000_cli_session_lifecycle.sql` before deploying the updated CLI API. It adds atomic device exchange, short-lived access credentials, renewal and revocation RPCs, and shared usage totals. Browser clients cannot modify credential hashes or undo revocation. See `tests/database/README.md` for the isolated migration regression test.
+
+## `krythiq doctor [path]`
+
+```bash
+krythiq doctor .
+krythiq doctor . --format json
+krythiq doctor . --strict
+```
+
+Checks the Node version, project directory, configuration loading, Semgrep, npm audit prerequisites, Git, and whether optional AI environment keys are present. It never prints key values, validates credentials, or contacts the dashboard. Version probes use the executables on your `PATH`; project config is trusted executable JavaScript, just as it is during a scan. Each probe has a five-second timeout.
+
+Optional missing tools produce warnings. Failed required checks exit 1; `--strict` also exits 1 for warnings. Diagnostics describe local readiness, not a security result or proof that a remote service is reachable.
 
 ## `krythiq scan [path]`
 
@@ -90,7 +117,7 @@ krythiq scan --rules ./security-rules.json
 ```
 
 Scans remain local by default. Add `--save` to put the result in Krythiq.dev
-Recent Scans. This requires `krythiq connect` and costs 0 Tokens.
+Recent Scans. This requires `krythiq connect` and costs 0 Tokens. Save status and failures go to stderr for every output format; JSON stdout remains machine-readable. Saving no longer makes an extra account-balance request; use `whoami` or `token` for a live balance check.
 
 Supported severities are `low`, `medium`, `high`, and `critical`. With `--ci`, the process exits 1 when a finding meets or exceeds `--fail-on`; an invalid option is rejected, and a missing/non-directory scan path exits 2. Otherwise a completed scan exits 0, even when findings exist.
 
@@ -133,6 +160,28 @@ Custom rules are regular expressions evaluated against each discovered file:
 ```
 
 Default ignores are `node_modules/**`, `.git/**`, `.next/**`, `dist/**`, `build/**`, and `**/*.min.js`. Krythiq does not parse `.gitignore`.
+
+### Save and convert local reports
+
+```bash
+krythiq scan . --format json --output .krythiq/reports/scan.json
+krythiq report .krythiq/reports/scan.json --min-severity high
+krythiq report .krythiq/reports/scan.json --format markdown --output review.md
+krythiq report .krythiq/reports/scan.json --format sarif --output results.sarif
+krythiq report .krythiq/reports/scan.json --ci --fail-on high
+```
+
+`--output` writes the selected format and still prints the report to stdout; the file extension does not choose the format. Parent directories are created. Files use owner-only permissions where supported and contain no terminal color escapes. Existing files are preserved unless `--overwrite` is explicit. A write failure exits 2. Report files can contain source snippets, so keep them private and avoid committing them.
+
+`report` accepts the JSON object produced by `scan --format json`, validates each finding, and converts it without running engines, calling AI, or uploading anything. Input must be a regular file no larger than 20 MiB with at most 100,000 findings. `--min-severity` filters the displayed findings. With `--ci`, **all original findings** determine the exit code, so hiding low-severity rows cannot bypass a CI threshold. `report` exits 2 for invalid input or output errors. A scan writes its report before returning a CI failure.
+
+### Choose the engines
+
+```bash
+krythiq scan . --rules ./security-rules.json --no-semgrep --no-audit
+```
+
+Both external engines are enabled by default when applicable. `--no-semgrep` skips Semgrep; `--no-audit` skips npm audit. These flags do not disable custom rules, or AI/publishing enabled through config or environment. For a scan with no outbound requests, set `NO_UPDATE_NOTIFIER=1`, use reviewed custom rules and both engine-disabling flags, and leave AI, dashboard saving, and publishing disabled. There is no built-in rule pack: disabling both engines without providing rules performs no vulnerability checks.
 
 ### Optional AI summary
 
@@ -227,3 +276,22 @@ The npm registry page is generated from this README and `package.json`. Publishi
 ## License
 
 MIT
+
+
+### Connected terminal actions (0.3.0)
+
+Production CLI requests resolve `https://krythiq.dev` to `https://www.krythiq.dev` before attaching credentials. This fixes false “expired” errors caused by cross-host redirects stripping Authorization. Existing saved connections use the canonical origin automatically. Browser authorization now checks the saved credential against the account endpoint before reporting success.
+
+```bash
+krythiq tokens                     # alias for token
+krythiq tokens --history           # latest 50 account transactions
+krythiq tokens --json
+krythiq review src/auth.ts         # 15 account Tokens; prompts before upload
+krythiq ask "Explain this handler" --file src/auth.ts src/routes.ts  # 10 Tokens
+```
+
+Hosted commands use the same authenticated AI routes, action prices, account balance, idempotent reservations, and automatic provider-failure refunds as the UI. `review` uploads one UTF-8 text file up to 4000 bytes; `ask` uploads 1–5 selected files up to 2000 bytes each. Use `--yes` for scripts and `--json` for machine output. Local static scans remain free. These actions require the updated server and its configured Mistral provider; connecting alone does not enable hosted actions on an older deployment.
+
+Each paid request prints a request ID to stderr before submission. After a network interruption, retry with `--request-id <printed-id>` and identical input. The key includes an action/payload digest; a completed retry returns the cached result with no additional charge. Do not change the selected files when recovering an interrupted request. Pending requests return a retryable conflict; refunded requests require a new ID.
+
+The web project now uses `file:backend` for its CLI dependency so `npx krythiq` uses the local build. Run `npm run install:backend` to prepare source checkouts. For a global source installation, build and run `npm install -g ./backend`; verify both `krythiq --version` and `npx krythiq --version`. Registry users can install this release with `npm install -g krythiq@latest`. Apply `20261017020000_cli_session_lifecycle.sql` before deploying the updated server for renewable 90-day terminal authorizations.

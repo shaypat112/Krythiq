@@ -34,7 +34,7 @@ export function TechnologyCloud({
   const images = labels.map(iconUrl).filter((url): url is string => Boolean(url)).slice(0, 36);
 
   return (
-    <Card id="technology-cloud" className="overflow-hidden border-sky-500/20 bg-[radial-gradient(circle_at_center,rgba(14,165,233,.1),transparent_52%),var(--card)]">
+    <Card id="technology-cloud" className="overflow-hidden border-sky-500/20 bg-card">
       <CardHeader>
         <CardTitle className="flex items-center gap-2"><Boxes className="h-5 w-5 text-sky-400" /> Repository technology cloud</CardTitle>
         <p className="text-sm leading-6 text-muted-foreground">Drag to explore the detected languages, frameworks, services, and dependencies in 3D.</p>

@@ -1,8 +1,10 @@
 begin;
 
 -- Retire guided prompt generation and the former launch workflow.
--- Token transactions retain their action strings for historical billing records.
-delete from public.token_action_costs
+-- Historical ai_token_usages reference these rows through a foreign key.
+-- Disable new reservations while retaining the pricing and usage audit trail.
+update public.token_action_costs
+set enabled = false, updated_at = now()
 where action in ('agent_prompt', 'draft_patch', 'verification_run');
 
 -- These tables belonged to the retired workflow. The active repository editor

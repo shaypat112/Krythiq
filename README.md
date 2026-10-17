@@ -74,7 +74,7 @@ app/
 └── settings/             # Account, team, billing, and integration settings
 
 backend/
-├── src/commands/         # CLI commands: init, scan, run, and auth
+├── src/commands/         # CLI commands: scan, report, doctor, run, auth, and dashboard connection
 ├── src/lib/              # Mistral integration
 ├── src/utils/            # Configuration, updates, and trace extraction
 └── README.md             # Complete CLI documentation
@@ -254,10 +254,14 @@ Common workflows:
 
 ```bash
 krythiq init
-krythiq scan
+krythiq doctor .
+krythiq scan . --format json --output .krythiq/reports/scan.json
+krythiq report .krythiq/reports/scan.json --min-severity high
 krythiq scan --ci --fail-on high --format sarif
 krythiq run "npm test" --no-ai
 ```
+
+CLI 0.3.0 is available with `npm install -g krythiq@latest`; source checkouts can also build `backend/` locally. `doctor` checks local prerequisites, `scan --output` saves reusable artifacts, and `report` filters or converts them without rescanning. Scan History on the site adds repository search, severity filters, sorting, refresh, and terminal/web source labels across the 50 most recent scans in the selected scope. Its list API requests summary fields instead of full finding payloads.
 
 The base local scan does not call an AI provider. Semgrep `--config auto` may use Semgrep's network services according to Semgrep's own behavior. AI-assisted scan summaries require an explicit `--ai` option and Mistral credentials; up to 50 findings and their captured snippets are sent. Terminal trace analysis sends recognized stderr stack traces to Anthropic unless disabled with `--no-ai`.
 
@@ -290,3 +294,22 @@ npm run lint
 npm run typecheck
 npm run build
 ```
+
+
+### Connected terminal actions (0.3.0)
+
+Production CLI requests resolve `https://krythiq.dev` to `https://www.krythiq.dev` before attaching credentials. This fixes false “expired” errors caused by cross-host redirects stripping Authorization. Existing saved connections use the canonical origin automatically. Browser authorization now checks the saved credential against the account endpoint before reporting success.
+
+```bash
+krythiq tokens                     # alias for token
+krythiq tokens --history           # latest 50 account transactions
+krythiq tokens --json
+krythiq review src/auth.ts         # 15 account Tokens; prompts before upload
+krythiq ask "Explain this handler" --file src/auth.ts src/routes.ts  # 10 Tokens
+```
+
+Hosted commands use the same authenticated AI routes, action prices, account balance, idempotent reservations, and automatic provider-failure refunds as the UI. `review` uploads one UTF-8 text file up to 4000 bytes; `ask` uploads 1–5 selected files up to 2000 bytes each. Use `--yes` for scripts and `--json` for machine output. Local static scans remain free. These actions require the updated server and its configured Mistral provider; connecting alone does not enable hosted actions on an older deployment.
+
+Each paid request prints a request ID to stderr before submission. After a network interruption, retry with `--request-id <printed-id>` and identical input. The key includes an action/payload digest; a completed retry returns the cached result with no additional charge. Do not change the selected files when recovering an interrupted request. Pending requests return a retryable conflict; refunded requests require a new ID.
+
+The web project now uses `file:backend` for its CLI dependency so `npx krythiq` uses the local build. Run `npm run install:backend` to prepare source checkouts. For a global source installation, build and run `npm install -g ./backend`; verify both `krythiq --version` and `npx krythiq --version`. Registry users can install this release with `npm install -g krythiq@latest`. Apply `20261017020000_cli_session_lifecycle.sql` before deploying the updated server for renewable 90-day terminal authorizations.

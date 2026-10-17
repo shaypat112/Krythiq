@@ -227,7 +227,7 @@ TypeError: Cannot read properties of undefined (reading 'id')
               <code>krythiq auth</code> to enable AI analysis; commands still run without it
             </li>
             <li>
-              <strong>Node.js 20+:</strong> Krythiq itself requires Node 20 or
+              <strong>Node.js 22.13+:</strong> Krythiq itself requires Node 22.13 or
               later
             </li>
             <li>

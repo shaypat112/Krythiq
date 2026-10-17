@@ -80,7 +80,6 @@ type SettingsContextValue = {
   admin: AdminState;
   apiPlan: ApiPlanId;
   aiProviderConfigured: boolean;
-  hasCliConnection: boolean;
 };
 
 const SettingsContext = createContext<SettingsContextValue | null>(null);
@@ -109,7 +108,6 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   });
   const [apiPlan, setApiPlan] = useState<ApiPlanId>("free");
   const [aiProviderConfigured, setAiProviderConfigured] = useState(false);
-  const [hasCliConnection, setHasCliConnection] = useState(false);
 
   const setStatus = useCallback((message: string | null) => {
     setStatusState(message);
@@ -167,18 +165,16 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         setAiProviderConfigured(Boolean(data?.aiProviderConfigured));
       }
 
-      const cliResponse = await fetch("/api/cli/settings", { headers: buildAuthHeaders(token) });
-      if (cliResponse.ok) {
-        const cliData = await cliResponse.json();
-        setHasCliConnection(Boolean(cliData?.connected));
-      }
-
       setLoading(false);
     };
 
+    const auth = supabase?.auth.onAuthStateChange((_event, session) => {
+      if (mounted) setAccessToken(session?.access_token ?? null);
+    });
     load();
     return () => {
       mounted = false;
+      auth?.data.subscription.unsubscribe();
     };
   }, [setError, supabase]);
 
@@ -239,7 +235,6 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         admin,
         apiPlan,
         aiProviderConfigured,
-        hasCliConnection,
       }}
     >
       {children}

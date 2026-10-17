@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { adminSupabaseFetch } from "./admin";
 import { requireVerifiedRequestAuth } from "./requestAuth";
+import { requireCliAuth } from "./cliAuth";
 import { RequestAuthError } from "./supabaseRest";
 import type { TokenAction } from "@/app/lib/tokens";
 import { tokenActionCatalog } from "@/app/lib/tokens";
@@ -150,7 +151,10 @@ export async function runPaidAiAction(
   execute: () => Promise<Record<string, unknown>>,
 ) {
   try {
-    const { userId } = await requireVerifiedRequestAuth(request);
+    // Terminal credentials use the same account ledger and prices as browser actions.
+    const { userId } = /^Bearer\s+kry_cli_/i.test(request.headers.get("authorization") ?? "")
+      ? await requireCliAuth(request)
+      : await requireVerifiedRequestAuth(request);
     const idempotencyKey = readIdempotencyKey(request);
     if (!idempotencyKey) {
       return NextResponse.json(

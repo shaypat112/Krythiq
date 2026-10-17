@@ -28,9 +28,10 @@ test("all paid actions have positive server-defined integer costs", () => {
   assert.equal(costs.every((cost) => Number.isInteger(cost) && cost > 0), true);
 });
 
-test("retired workflow pricing is removed", () => {
+test("retired workflow pricing is disabled without deleting historical references", () => {
   assert.doesNotMatch(tokenSource, /agent_prompt:|draft_patch:/);
-  assert.match(workflowRemovalMigration, /delete from public\.token_action_costs/);
+  assert.match(workflowRemovalMigration, /update public\.token_action_costs\s+set enabled = false/);
+  assert.doesNotMatch(workflowRemovalMigration, /delete from public\.(token_action_costs|ai_token_usages)/);
   assert.match(workflowRemovalMigration, /'agent_prompt'/);
   assert.match(workflowRemovalMigration, /'draft_patch'/);
 });

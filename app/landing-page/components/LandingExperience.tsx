@@ -23,9 +23,9 @@ class GraphBoundary extends Component<{ children: React.ReactNode }, { failed: b
 }
 
 const findings = [
-  { severity: "HIGH", title: "Authorization missing on /api/admin", file: "app/api/admin/route.ts:42" },
-  { severity: "MEDIUM", title: "Dashboard makes 14 sequential API requests", file: "app/dashboard/page.tsx:118" },
-  { severity: "MEDIUM", title: "Navigation overflows on small screens", file: "components/navigation.tsx:76" },
+  { severity: "High", title: "Authorization missing on /api/admin", file: "app/api/admin/route.ts:42" },
+  { severity: "Medium", title: "Dashboard makes 14 sequential API requests", file: "app/dashboard/page.tsx:118" },
+  { severity: "Medium", title: "Navigation overflows on small screens", file: "components/navigation.tsx:76" },
 ];
 
 export function LandingExperience() {
@@ -34,14 +34,13 @@ export function LandingExperience() {
       <section className={styles.heroSection} aria-labelledby="hero-heading">
         <div className={styles.heroGrid}>
           <div className={styles.hero}>
-            <p className={styles.eyebrow}><i className={styles.liveDot} /> A second opinion for your code</p>
-            <h1 id="hero-heading">Your agent built it.<br /><span>Know what to fix.</span></h1>
-            <p className={styles.heroCopy}>Find security risks, architecture issues, and frontend problems in one repository review. Clear evidence. Less guesswork.</p>
+            <h1 id="hero-heading">Know what to fix.</h1>
+            <p className={styles.heroCopy}>A second opinion for AI-built software. Review security, architecture, frontend quality, and performance, with evidence linked to your code.</p>
             <div className={styles.actions}>
               <Link href="/scan" className={styles.primaryButton}>Scan a repository <ArrowRight size={16} /></Link>
               <Link href="/documentation" className={styles.secondaryButton}>Read the docs</Link>
             </div>
-            <p className={styles.heroNote}>Security · Architecture · Frontend · Performance</p>
+            <p className={styles.heroNote}>Connect a repository. Review the evidence. Make your next fix.</p>
           </div>
           <SystemPreview />
         </div>
@@ -49,28 +48,27 @@ export function LandingExperience() {
 
       <section id="product" className={styles.productSection} aria-labelledby="report-heading">
         <div className={styles.sectionHeading}>
-          <p className={styles.eyebrow}>The evidence, in one place</p>
-          <h2 id="report-heading">A useful report. A clear next step.</h2>
+          <h2 id="report-heading">Evidence you can act on.</h2>
           <p>Prioritized findings linked to the code that needs your attention.</p>
         </div>
-        <div className={styles.reportShell}>
-          <div className={styles.reportTopbar}><div><span className={styles.reportLabel}>EXAMPLE REVIEW</span><strong>krythiq / demo-app</strong></div><span className={styles.reportStatus}><i className={styles.liveDot} /> Review complete</span></div>
+        <div className={styles.reportShell} data-ui>
+          <div className={styles.reportTopbar}><div><span className={styles.reportLabel}>Example review</span><strong>krythiq / demo-app</strong></div><span className={styles.reportStatus}><i className={styles.liveDot} /> Review complete</span></div>
           <div className={styles.areaGrid}>
             {["Security", "Architecture", "Frontend", "Performance"].map((area) => <div key={area} className={styles.area}><ShieldCheck size={15} /><span>{area}</span><Check size={13} /></div>)}
           </div>
           <div className={styles.findings}>
-            {findings.map((finding) => <div className={styles.finding} key={finding.title}><span className={finding.severity === "HIGH" ? styles.high : styles.medium}>{finding.severity}</span><div><strong>{finding.title}</strong><small>{finding.file}</small></div><ArrowRight size={15} /></div>)}
+            {findings.map((finding) => <div className={styles.finding} key={finding.title}><span className={finding.severity === "High" ? styles.high : styles.medium}>{finding.severity}</span><div><strong>{finding.title}</strong><small>{finding.file}</small></div><ArrowRight size={15} /></div>)}
           </div>
         </div>
         <div className={styles.steps}>
-          <p><span>01</span>Scan your repository</p>
-          <p><span>02</span>Review the evidence</p>
-          <p><span>03</span>Edit, review, and rescan</p>
+          <p><strong>Start with your repository.</strong>Choose a GitHub repository or a source file and the areas you want to review.</p>
+          <p><strong>Follow the finding to the code.</strong>See the affected file, the severity, and the reason it needs attention.</p>
+          <p><strong>Make a change. Check it again.</strong>Use draft changes to review a fix, then rescan to see what remains.</p>
         </div>
       </section>
 
-      <section className={styles.finalCta} aria-labelledby="cta-heading">
-        <h2 id="cta-heading">Ship with a second opinion.</h2>
+      <section className={styles.finalCta} aria-label="Start a repository review">
+        <p>Give your next release a second opinion.</p>
         <Link href="/scan" className={styles.primaryButton}>Start your review <ArrowRight size={16} /></Link>
       </section>
     </main>
@@ -90,11 +88,11 @@ function SystemPreview() {
   ];
 
   return (
-    <div className={styles.systemPreview} aria-label="Illustrative repository analysis">
-      <div className={styles.previewTop}><span><i className={styles.liveDot} /> SYSTEM REVIEW</span><span>ILLUSTRATION</span></div>
+    <div className={styles.systemPreview} data-ui aria-label="Illustrative repository analysis">
+      <div className={styles.previewTop}><span><i className={styles.liveDot} /> System review</span><span>Interactive example</span></div>
       <div className={styles.graphViewport}>
         <GraphBoundary><SystemGraph progress={progress} selected={selected} onSelect={setSelected} /></GraphBoundary>
-        <span className={styles.graphCaption}>SELECT A NODE TO INSPECT</span>
+        <span className={styles.graphCaption}>Select a service to inspect its connections</span>
       </div>
 
       <div className={styles.serviceList}>

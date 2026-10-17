@@ -24,7 +24,7 @@ export async function POST(request: Request) {
     await createNotification({ env: getSupabaseEnv(), accessToken: "", userId, type: "scan.completed", useServiceRole: true, data: { repo_name: repository, repo_url: repository, severity, issues: findings.length, score, source: "cli" } }).catch(() => undefined);
     return NextResponse.json({ scan, tokenCost: 0 }, { status: 201 });
   } catch (error) {
-    if (error instanceof RequestAuthError) return NextResponse.json({ error: error.message }, { status: 401 });
+    if (error instanceof RequestAuthError) return NextResponse.json({ error: error.message }, { status: error.status });
     return NextResponse.json({ error: "Unable to publish the CLI scan." }, { status: 500 });
   }
 }

@@ -13,7 +13,8 @@ export async function POST(request: Request) {
     if (!/^[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(userCode)) return NextResponse.json({ error: "Enter a valid CLI code." }, { status: 400 });
     const now = new Date().toISOString();
     const response = await adminSupabaseFetch(`cli_device_codes?user_code=eq.${userCode}&status=eq.pending&expires_at=gt.${encodeURIComponent(now)}`, { method: "PATCH", headers: { Prefer: "return=representation" }, body: JSON.stringify({ user_id: userId, status: "approved", approved_at: now }) });
-    const rows = response.ok ? await response.json() : [];
+    if (!response.ok) return NextResponse.json({ error: "Authorization service is unavailable. Try again." }, { status: 503 });
+    const rows = await response.json();
     if (!rows[0]) return NextResponse.json({ error: "This code is invalid, expired, or already used." }, { status: 404 });
     return NextResponse.json({ ok: true });
   } catch (error) {

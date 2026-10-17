@@ -14,7 +14,6 @@
     "test:auth": "node --experimental-strip-types --test app/lib/auth-validation.test.mjs",
     "test:oauth": "node --test app/lib/oauth-onboarding-security.test.mjs",
     "test:tokens": "node --experimental-strip-types --test app/lib/token-referral-security.test.mjs",
-    "test:social": "node --test app/lib/social-security.test.mjs",
     "test:code-graph": "node --experimental-strip-types --test app/lib/code-intelligence/code-graph.test.mjs",
     "build:backend": "cd backend && npm run build",
     "install:backend": "cd backend && npm install && npm run build",
@@ -24,7 +23,8 @@
     "test:local": "node scripts/local-docker.mjs test",
     "check:unused": "knip",
     "test": "node --experimental-strip-types --test app/lib/*.test.mjs app/lib/code-intelligence/*.test.mjs app/lib/scanner/rules/*.test.mjs tests/security/*.test.mjs tests/database/*.contract.test.mjs",
-    "check:maintenance": "npm run lint && npm run typecheck && npm run check:unused && npm test"
+    "check:maintenance": "npm run lint && npm run typecheck && npm run check:unused && npm test",
+    "test:cli-db": "bash scripts/test-cli-session-db.sh"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",
@@ -38,7 +38,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "fflate": "^0.8.3",
-    "krythiq": "^0.2.2",
+    "krythiq": "file:backend",
     "lucide-react": "^0.577.0",
     "motion": "^14.0.0",
     "next": "^16.3.8",

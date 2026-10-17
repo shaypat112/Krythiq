@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
+import { signInRedirect } from "@/app/lib/cli-session";
 import { createClient } from "@/app/lib/supabase";
 import { buildAuthHeaders } from "@/app/lib/http";
 import { TeamSwitcher } from "./TeamSwitcher";
@@ -17,20 +18,17 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Bell, ChevronDown, Coins, CreditCard, Github, Moon, SunMedium, UserPlus, UserRound } from "lucide-react";
+import { BookOpen, FileSearch, Settings2, Bell, ChevronDown, Coins, CreditCard, Github, UserRound } from "lucide-react";
 import { formatTokens } from "@/app/lib/tokens";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { DesktopRequired } from "./mobile/DesktopRequired";
 import { BrandLogo } from "./BrandLogo";
 import { SiteFooter } from "./SiteFooter";
-import { Switch } from "@/components/ui/switch";
-import { useTheme } from "./theme-provider";
 
 const appLinks = [
-  { href: "/scan", label: "Security workspace" },
-  { href: "/discover", label: "Discover" },
-  { href: "/documentation", label: "Docs" },
-  { href: "/settings", label: "Settings" },
+  { href: "/scan", label: "Workspace", icon: FileSearch },
+  { href: "/documentation", label: "Docs", icon: BookOpen },
+  { href: "/settings", label: "Settings", icon: Settings2 },
 ];
 
 type NotificationItem = {
@@ -73,12 +71,6 @@ function formatNotificationTitle(type: string) {
       return "Team joined";
     case "repository.synced":
       return "GitHub projects updated";
-    case "social.follow_requested":
-      return "New follow request";
-    case "social.follow_accepted":
-      return "Follow request accepted";
-    case "social.message_received":
-      return "New direct message";
     default:
       return type.replace(".", " ");
   }
@@ -87,8 +79,6 @@ function formatNotificationTitle(type: string) {
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { theme, setTheme } = useTheme();
-  const isLight = theme === "light";
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [signingOut, setSigningOut] = useState(false);
@@ -176,9 +166,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           if (!mounted) return;
           if (payload.eventType === "INSERT") {
             const item = payload.new as NotificationItem;
+            if (item.type.startsWith("social.")) return;
             setNotifications((current) => [item, ...current.filter((existing) => existing.id !== item.id)].slice(0, 10));
           } else if (payload.eventType === "UPDATE") {
             const item = payload.new as NotificationItem;
+            if (item.type.startsWith("social.")) return;
             setNotifications((current) => current.map((existing) => existing.id === item.id ? item : existing));
           } else if (payload.eventType === "DELETE") {
             const deletedId = String(payload.old?.id ?? "");
@@ -245,7 +237,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     pathname?.startsWith("/landing-page") ||
     pathname?.startsWith("/auth");
   const isPublicRoute =
-    isMarketingRoute || pathname?.startsWith("/documentation") || pathname === "/privacy" || pathname === "/terms";
+    isMarketingRoute || pathname === "/cli/connect" || pathname?.startsWith("/documentation") || pathname === "/privacy" || pathname === "/terms";
 
   const getNotificationLabel = (item: (typeof notifications)[number]) => {
     const repoName = item.data?.["repo_name"];
@@ -301,7 +293,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (loading || user || isPublicRoute || signingOut) return;
-    router.replace("/auth");
+    router.replace(signInRedirect(pathname, window.location.search));
   }, [isPublicRoute, loading, router, signingOut, user]);
 
   if (isMarketingRoute) {
@@ -334,15 +326,15 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <a href="#main-content" className="sr-only z-[100] rounded-md bg-foreground px-4 py-2 text-background focus:not-sr-only focus:fixed focus:left-4 focus:top-4">
         Skip to content
       </a>
-      <header className="sticky top-0 z-40 border-b border-border/70 bg-background/90 backdrop-blur">
-        <div className="mx-auto max-w-[1600px] px-4 py-3 sm:px-6">
+      <header className="workspace-header sticky top-0 z-40 border-b border-border/60">
+        <div className="mx-auto max-w-[1600px] px-4 py-3 sm:px-8">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex min-w-0 flex-1 items-center gap-2">
-              <Link href="/scan" aria-label="Krythiq security workspace" className="shrink-0">
-                <BrandLogo className="h-8 w-8 rounded-xl" priority />
+              <Link href="/scan" aria-label="Krythiq security workspace" className="mr-3 flex shrink-0 items-center gap-2.5">
+                <BrandLogo className="h-8 w-8 rounded-lg" priority /><span className="hidden text-base font-semibold tracking-tight lg:inline">Krythiq</span>
               </Link>
               {user ? <TeamSwitcher /> : null}
-              <nav aria-label="Primary" className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto px-0.5 py-1 text-sm text-muted-foreground">
+              <nav aria-label="Primary" className="workspace-navigation flex min-w-0 flex-1 items-center gap-1 overflow-x-auto px-0.5 py-1 text-sm text-muted-foreground">
 
                 {appLinks.map((link) => {
                   const active = pathname === link.href || pathname?.startsWith(`${link.href}/`);
@@ -352,9 +344,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                       href={link.href}
                       aria-current={active ? "page" :
                         undefined}
-                      className={`shrink-0 rounded-md px-2.5 py-1.5 transition-colors hover:bg-muted hover:text-foreground ${active ? "bg-muted font-medium text-foreground" : ""}`}
+                      className={`shrink-0 rounded-md px-2.5 py-1.5 transition-colors hover:bg-muted hover:text-foreground ${active ? "bg-accent font-medium text-accent-foreground" : ""}`}
                     >
-                      {link.label}
+                      <link.icon className="h-4 w-4" aria-hidden="true" />
+                      <span className="sr-only sm:not-sr-only">{link.label}</span>
                     </Link>
                   );
                 })}
@@ -474,15 +467,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                     <DropdownMenuLabel>{displayName}</DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem asChild>
-                      <Link href={`/discover/people/${user.id}`} className="flex items-center gap-2">
+                      <Link href="/settings?section=account" className="flex items-center gap-2">
                         <UserRound className="h-4 w-4" />
-                        View profile
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link href="/discover/requests" className="flex items-center gap-2">
-                        <UserPlus className="h-4 w-4" />
-                        View requests
+                        Account settings
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
@@ -499,20 +486,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                         Billing
                       </Link>
                     </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <label htmlFor="account-theme-switch" className="flex cursor-pointer items-center justify-between gap-4 rounded-md px-2 py-2 text-sm transition hover:bg-muted" onClick={(event) => event.stopPropagation()}>
-                      <span className="flex items-center gap-2">
-                        {isLight ? <SunMedium className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-                        Theme
-                      </span>
-                      <Switch
-                        id="account-theme-switch"
-                        size="sm"
-                        checked={isLight}
-                        onCheckedChange={(checked) => setTheme(checked ? "light" : "dark")}
-                        aria-label="Switch between dark and light theme"
-                      />
-                    </label>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={signOut}>
                       Sign out
@@ -531,7 +504,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      <main id="main-content" className="mx-auto max-w-[1600px] px-4 py-8 sm:px-6 sm:py-10">{children}</main>
+      <main id="main-content" className="workspace-content mx-auto max-w-[1600px] px-4 py-6 sm:px-8 sm:py-8">{children}</main>
       <SiteFooter />
     </div>
     </DesktopRequired>

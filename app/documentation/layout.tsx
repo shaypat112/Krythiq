@@ -8,7 +8,7 @@ export default function DocsLayout({
 }) {
   return (
     <div className="min-h-screen bg-background text-foreground md:flex">
-      <aside className="sticky top-0 hidden h-screen w-64 border-r border-border bg-background md:block">
+      <aside className="section-sidebar sticky top-24 hidden max-h-[calc(100svh-8rem)] w-64 shrink-0 overflow-y-auto md:block">
         <div className="space-y-8 p-6">
           <Link href="/" className="flex items-center gap-2 text-sm font-semibold tracking-tight">
             <BrandLogo className="h-8 w-8 rounded-xl" priority />
@@ -17,10 +17,10 @@ export default function DocsLayout({
           <div className="space-y-8">
             <Link href="/documentation/navigate-site" className="block text-sm text-muted-foreground transition-colors hover:text-foreground">Navigate this site</Link>
             <div>
-              <h4 className="mb-4 text-[10px] font-semibold uppercase tracking-[0.35em] text-muted-foreground">
+              <h4 className="mb-4 text-xs font-semibold text-muted-foreground">
                 Getting Started
               </h4>
-              <ul className="space-y-3 text-sm">
+              <ul className="space-y-2 text-sm">
                 <li>
                   <Link
                     href="/documentation"
@@ -72,10 +72,10 @@ export default function DocsLayout({
                 </li>
                 {/* Inline command summary so commands are visible in the docs sidebar */}
                 <li className="pt-2">
-                  <h5 className="text-[11px] font-semibold uppercase tracking-[0.28em] text-muted-foreground">
+                  <h5 className="text-xs font-semibold text-muted-foreground">
                     Commands
                   </h5>
-                  <ul className="mt-2 space-y-2 text-xs text-zinc-500">
+                  <ul className="mt-2 space-y-2 text-[13px] text-muted-foreground">
                     <li>
                       <Link
                         href="/documentation/connect-cli"
@@ -100,6 +100,8 @@ export default function DocsLayout({
                         krythiq run — wrap a process
                       </Link>
                     </li>
+                    <li><Link href="/documentation/commands#doctor" className="hover:text-foreground">krythiq doctor — check setup</Link></li>
+                    <li><Link href="/documentation/commands#report" className="hover:text-foreground">krythiq report — review evidence</Link></li>
                     <li>
                       <Link
                         href="/documentation/commands"
@@ -122,10 +124,10 @@ export default function DocsLayout({
             </div>
 
             <div>
-              <h4 className="mb-4 text-[10px] font-semibold uppercase tracking-[0.35em] text-muted-foreground">
+              <h4 className="mb-4 text-xs font-semibold text-muted-foreground">
                 Features & Analysis
               </h4>
-              <ul className="space-y-3 text-sm">
+              <ul className="space-y-2 text-sm">
                 <li>
                   <Link
                     href="/documentation/stack-traces"
@@ -164,27 +166,24 @@ export default function DocsLayout({
         </div>
       </aside>
 
-      <div className="border-b border-border p-3 md:hidden">
-        <nav aria-label="Documentation sections" className="flex gap-2 overflow-x-auto">
+      <details className="mb-6 rounded-xl bg-card p-4 md:hidden">
+        <summary className="cursor-pointer text-sm font-medium">Documentation sections</summary>
+        <nav aria-label="Documentation sections" className="mt-3 grid grid-cols-2 gap-2">
           {[
-            ["/documentation", "Start"],
-            ["/documentation/navigate-site", "Navigate site"],
+            ["/documentation", "Introduction"],
+            ["/documentation/installation", "Installation"],
             ["/documentation/quickstart", "Quick start"],
             ["/documentation/connect-cli", "Connect CLI"],
             ["/documentation/project-structure", "Structure"],
-            ["/documentation/commands", "CLI"],
+            ["/documentation/commands", "CLI reference"],
             ["/documentation/ai-detection", "AI analysis"],
             ["/documentation/system-design", "System design"],
-            ["/documentation/config", "Config"],
-          ].map(([href, label]) => (
-            <Link key={href} href={href} className="shrink-0 rounded-lg border border-border bg-card px-3 py-2 text-sm text-muted-foreground">
-              {label}
-            </Link>
-          ))}
+            ["/documentation/config", "Configuration"],
+          ].map(([href, label]) => <Link key={href} href={href} className="rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground">{label}</Link>)}
         </nav>
-      </div>
+      </details>
       <div className="min-w-0 flex-1 bg-background p-5 sm:p-8 md:p-16">
-        <div className="mx-auto max-w-4xl">{children}</div>
+        <div className="docs-content mx-auto max-w-4xl">{children}</div>
       </div>
     </div>
   );

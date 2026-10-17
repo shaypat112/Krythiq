@@ -31,9 +31,9 @@ export function SiteFooter() {
 
   if (minimized) {
     return (
-      <footer className="border-t border-border bg-card/30">
-        <div className="mx-auto flex max-w-[1600px] items-center justify-between gap-4 px-5 py-3 sm:px-8">
-          <span className="text-xs text-muted-foreground">© {new Date().getFullYear()} Krythiq</span>
+      <footer className="bg-sidebar">
+        <div className="mx-auto flex max-w-[1200px] items-center justify-between gap-4 px-5 py-3 sm:px-8">
+          <span className="text-sm text-muted-foreground">© {new Date().getFullYear()} Krythiq</span>
           <button
             type="button"
             onClick={() => setFooterMinimized(false)}
@@ -49,7 +49,7 @@ export function SiteFooter() {
   }
 
   return (
-    <footer className="relative border-t border-border bg-card/30">
+    <footer className="relative bg-sidebar">
       <button
         type="button"
         onClick={() => setFooterMinimized(true)}
@@ -59,9 +59,9 @@ export function SiteFooter() {
       >
         <Minus className="h-4 w-4" />
       </button>
-      <div className="mx-auto grid max-w-[1600px] gap-8 px-5 py-10 sm:px-8 md:grid-cols-[1fr_auto] md:items-end">
+      <div className="mx-auto grid max-w-[1200px] gap-10 px-6 py-12 sm:px-8 md:grid-cols-[1fr_auto] md:items-end">
         <div>
-          <Link href="/" className="inline-flex items-center gap-2 font-semibold"><BrandLogo className="h-8 w-8 rounded-xl" />Krythiq</Link>
+          <Link href="/" className="inline-flex items-center gap-2 font-semibold"><BrandLogo className="h-8 w-8 rounded-lg" />Krythiq</Link>
           <p className="mt-3 max-w-md text-sm leading-6 text-muted-foreground">Repository intelligence and security review for teams shipping modern software.</p>
           <nav className="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground" aria-label="Footer">
             {footerLinks.map((link) => <Link key={link.label} href={link.href} target={link.external ? "_blank" : undefined} rel={link.external ? "noreferrer" : undefined} className="transition hover:text-foreground">{link.label}</Link>)}
@@ -69,7 +69,7 @@ export function SiteFooter() {
         </div>
         <div className="md:text-right">
           <SocialButton className="md:ml-auto" />
-          <p className="mt-4 text-xs text-muted-foreground">© {new Date().getFullYear()} Krythiq. All rights reserved.</p>
+          <p className="mt-4 text-sm text-muted-foreground">© {new Date().getFullYear()} Krythiq. All rights reserved.</p>
         </div>
       </div>
     </footer>

@@ -14,7 +14,6 @@ import { NotificationsSection } from "./profile/notifications";
 import { EmailSection } from "./profile/email";
 import { TokensSection } from "./profile/tokens";
 import { CliSection } from "./profile/cli";
-import { useSettings } from "./profile/context";
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -44,9 +43,8 @@ export default function SettingsPage() {
 
 function SettingsContent() {
   const searchParams = useSearchParams();
-  const { hasCliConnection } = useSettings();
   const requestedSection = searchParams?.get("section");
-  const active: SectionKey = requestedSection && requestedSection in SECTION_MAP && (requestedSection !== "cli" || hasCliConnection)
+  const active: SectionKey = requestedSection && requestedSection in SECTION_MAP
     ? requestedSection as SectionKey
     : "account";
 

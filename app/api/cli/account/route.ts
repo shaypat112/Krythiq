@@ -12,19 +12,21 @@ export async function GET(request: Request) {
     const [account, profileResponse, scansResponse, authUser] = await Promise.all([
       loadTokenAccount(userId),
       adminSupabaseFetch(`profiles?id=eq.${userId}&select=username,full_name&limit=1`),
-      adminSupabaseFetch(`cli_scan_events?user_id=eq.${userId}&select=token_cost&limit=1000`),
+      adminSupabaseFetch("rpc/cli_usage_summary", { method: "POST", body: JSON.stringify({ p_user_id: userId }) }),
       fetchAuthUserById(userId),
     ]);
     const profile = profileResponse.ok ? (await profileResponse.json() as Array<{ username: string | null; full_name: string | null }>)[0] : null;
-    const scans = scansResponse.ok ? await scansResponse.json() as Array<{ token_cost: number }> : [];
+    if (!scansResponse.ok) return NextResponse.json({ error: "CLI usage is temporarily unavailable." }, { status: 503 });
+    const usage = (await scansResponse.json())?.[0];
     return NextResponse.json({
       balance: account.balance,
+      transactions: account.transactions,
       connected: true,
       profile: { username: profile?.username ?? null, fullName: profile?.full_name ?? null, email: authUser.email ?? null },
-      cli: { scanCount: scans.length, tokensUsed: scans.reduce((sum, scan) => sum + Number(scan.token_cost || 0), 0) },
-    });
+      cli: { scanCount: Number(usage?.scan_count ?? 0), tokensUsed: Number(usage?.tokens_used ?? 0) },
+    }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
-    if (error instanceof RequestAuthError) return NextResponse.json({ error: error.message }, { status: 401 });
-    return NextResponse.json({ error: "Unable to load CLI account." }, { status: 500 });
+    if (error instanceof RequestAuthError) return NextResponse.json({ error: error.message }, { status: error.status });
+    return NextResponse.json({ error: "Unable to load CLI account." }, { status: 503 });
   }
 }

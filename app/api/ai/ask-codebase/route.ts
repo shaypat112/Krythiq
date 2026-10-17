@@ -34,6 +34,7 @@ async function callMistralAPI(
         Authorization: `Bearer ${MISTRAL_API_KEY}`,
         "Content-Type": "application/json",
       },
+      signal: AbortSignal.timeout(90_000),
       body: JSON.stringify({
         model,
         temperature: 0.2,
@@ -67,7 +68,12 @@ export async function POST(request: Request) {
   try {
     const { question, codebaseContext, model } = await request.json();
 
-    if (!question || !codebaseContext) {
+    if (typeof question !== "string" || !question.trim() || question.length > 2000 || !codebaseContext
+      || typeof codebaseContext.architecture !== "string" || codebaseContext.architecture.length > 10_000
+      || typeof codebaseContext.summary !== "string" || codebaseContext.summary.length > 10_000
+      || !Array.isArray(codebaseContext.relevantFiles) || codebaseContext.relevantFiles.length < 1 || codebaseContext.relevantFiles.length > 20
+      || !codebaseContext.relevantFiles.every((file: { path?: unknown; content?: unknown } | null) => file && typeof file.path === "string" && file.path.length <= 1000 && typeof file.content === "string" && file.content.length <= 100_000)
+      || (model !== undefined && typeof model !== "string")) {
       return NextResponse.json({ error: "Missing question or codebaseContext" }, { status: 400 });
     }
 

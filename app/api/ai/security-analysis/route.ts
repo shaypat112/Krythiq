@@ -32,6 +32,7 @@ async function callMistralAPI(
         Authorization: `Bearer ${MISTRAL_API_KEY}`,
         "Content-Type": "application/json",
       },
+      signal: AbortSignal.timeout(90_000),
       body: JSON.stringify({
         model,
         temperature: 0.2,
@@ -65,7 +66,7 @@ export async function POST(request: Request) {
   try {
     const { codeContext, filePath, model } = await request.json();
 
-    if (!codeContext || !filePath) {
+    if (typeof codeContext !== "string" || !codeContext.trim() || codeContext.length > 100_000 || typeof filePath !== "string" || !filePath.trim() || filePath.length > 1000 || (model !== undefined && typeof model !== "string")) {
       return NextResponse.json({ error: "Missing codeContext or filePath" }, { status: 400 });
     }
 

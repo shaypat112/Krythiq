@@ -98,9 +98,14 @@ const repositoryTree: TreeViewElement[] = [
             name: "commands",
             children: [
               { id: "backend-auth", name: "auth.ts", type: "file" },
+              { id: "backend-connect", name: "connect.ts", type: "file" },
+              { id: "backend-whoami", name: "whoami.ts", type: "file" },
+              { id: "backend-token", name: "token.ts", type: "file" },
               { id: "backend-init", name: "init.ts", type: "file" },
               { id: "backend-run", name: "run.ts", type: "file" },
               { id: "backend-scan", name: "scan.ts", type: "file" },
+              { id: "backend-doctor", name: "doctor.ts", type: "file" },
+              { id: "backend-report", name: "report.ts", type: "file" },
             ],
           },
           { id: "backend-lib", name: "lib", type: "folder" },
@@ -160,7 +165,7 @@ const areas = [
     title: "Local CLI",
     path: "backend/src/",
     description:
-      "The installable command-line client for authentication, local scans, and wrapped process runs.",
+      "The installable command-line client for authentication, local diagnostics, scans, report conversion, and wrapped process runs.",
   },
   {
     icon: Database,

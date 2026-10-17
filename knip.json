@@ -10,6 +10,9 @@
       ],
       "ignoreDependencies": [
         "krythiq"
+      ],
+      "ignore": [
+        "app/.agents/**"
       ]
     },
     "backend": {

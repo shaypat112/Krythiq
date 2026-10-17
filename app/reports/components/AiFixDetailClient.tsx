@@ -46,7 +46,7 @@ export function AiFixDetailClient({ repo, suggestionId }: { repo: string; sugges
   const location = suggestion.file ? `${suggestion.file}${suggestion.line ? `, line ${suggestion.line}` : ""}` : "Across the sampled interface";
   return <div className="mx-auto max-w-5xl space-y-6">
     <Button asChild variant="ghost" className="px-0"><Link href={reportHref}><ArrowLeft />Back to {repo}</Link></Button>
-    <section className="rounded-3xl border border-fuchsia-500/25 bg-[radial-gradient(circle_at_top_right,rgba(217,70,239,.12),transparent_35%),var(--card)] p-7 sm:p-9">
+    <section className="rounded-3xl border border-fuchsia-500/25 bg-card p-7 sm:p-9">
       <div className="flex flex-wrap items-center gap-2"><Badge variant="outline">Fix {index + 1}</Badge>{suggestion.replacement ? <Badge className="bg-emerald-500/10 text-emerald-500">Use {suggestion.replacement}</Badge> : null}</div>
       <h1 className="mt-4 text-3xl font-semibold tracking-tight">{suggestion.title}</h1>
       <p className="mt-3 max-w-3xl text-base leading-7 text-muted-foreground">{suggestion.reason}</p>

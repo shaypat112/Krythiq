@@ -290,7 +290,7 @@ export default function AuthClient() {
   if (recoveryMode === "forgot") {
     return (
       <AuthFrame>
-        <Card className="w-full max-w-md shadow-xl">
+        <Card className="relative w-full max-w-md !gap-6 !rounded-3xl !py-8 !ring-0">
           <CardHeader className="text-center">
             <span className="mx-auto grid h-12 w-12 place-items-center rounded-2xl border border-sky-400/25 bg-sky-400/10 text-sky-400"><Mail /></span>
             <CardTitle className="mt-4 text-2xl">Reset your password</CardTitle>
@@ -319,7 +319,7 @@ export default function AuthClient() {
   if (recoveryMode === "reset") {
     return (
       <AuthFrame>
-        <Card className="w-full max-w-md shadow-xl">
+        <Card className="relative w-full max-w-md !gap-6 !rounded-3xl !py-8 !ring-0">
           <CardHeader className="text-center">
             <span className="mx-auto grid h-12 w-12 place-items-center rounded-2xl border border-sky-400/25 bg-sky-400/10 text-sky-400"><LockKeyhole /></span>
             <CardTitle className="mt-4 text-2xl">Choose a new password</CardTitle>
@@ -336,7 +336,7 @@ export default function AuthClient() {
                 <Input id="new-password-confirmation" type={showPassword ? "text" : "password"} autoComplete="new-password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} required />
               </div>
               <Button type="button" variant="ghost" size="sm" onClick={() => setShowPassword((visible) => !visible)}>{showPassword ? <EyeOff /> : <Eye />}{showPassword ? "Hide passwords" : "Show passwords"}</Button>
-              <ul className="grid gap-1.5 text-xs text-muted-foreground sm:grid-cols-2">
+              <ul className="grid gap-1.5 text-[13px] text-muted-foreground sm:grid-cols-2">
                 {requirements.map((requirement) => <li key={requirement.id} className="flex items-center gap-1.5"><Check className={`h-3.5 w-3.5 ${requirement.met ? "text-emerald-500" : "text-muted-foreground/50"}`} />{requirement.label}</li>)}
               </ul>
               {error ? <AuthError message={error} /> : null}
@@ -354,7 +354,7 @@ export default function AuthClient() {
   if (verificationEmail || searchParams.get("verification") === "required") {
     return (
       <AuthFrame>
-        <Card className="w-full max-w-md shadow-xl">
+        <Card className="relative w-full max-w-md !gap-6 !rounded-3xl !py-8 !ring-0">
           <CardHeader className="text-center">
             <span className="mx-auto grid h-12 w-12 place-items-center rounded-2xl border border-sky-400/25 bg-sky-400/10 text-sky-400">
               <Mail />
@@ -381,7 +381,7 @@ export default function AuthClient() {
 
   return (
     <AuthFrame>
-      <Card className="w-full max-w-md shadow-xl">
+      <Card className="relative w-full max-w-md !gap-6 !rounded-3xl !py-8 !ring-0">
         <CardHeader className="space-y-2 text-center">
           <Button asChild variant="ghost" size="sm" className="absolute left-3 top-3 px-2">
             <Link href="/"><ArrowLeft /> Home</Link>
@@ -399,7 +399,7 @@ export default function AuthClient() {
             <Button variant="outline" onClick={() => void loginWithSocial("linkedin_oidc", "linkedin", "openid profile email")} disabled={pending !== null}>{pending === "linkedin" ? <Loader2 className="animate-spin" /> : <Linkedin />}{pending === "linkedin" ? "Connecting…" : "LinkedIn"}</Button>
           </div>
 
-          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+          <div className="flex items-center gap-3 text-[13px] text-muted-foreground">
             <span className="h-px flex-1 bg-border" />
             or use email
             <span className="h-px flex-1 bg-border" />
@@ -415,19 +415,19 @@ export default function AuthClient() {
                 <div className="space-y-2">
                   <Label htmlFor="auth-email">Email</Label>
                   <div className="relative">
-                    <Mail className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Mail className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <Input id="auth-email" type="email" autoComplete="email" inputMode="email" value={email} onChange={(event) => setEmail(event.target.value)} className="pl-9" placeholder="you@company.com" required />
                   </div>
                 </div>
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <Label htmlFor="auth-password">Password</Label>
-                    {mode === "sign-in" ? <button type="button" className="text-xs font-medium text-sky-400 hover:text-sky-300" onClick={() => { setRecoveryMode("forgot"); setError(null); setSuccess(null); }}>Forgot password?</button> : null}
+                    {mode === "sign-in" ? <button type="button" className="text-[13px] font-medium text-primary hover:text-primary/80" onClick={() => { setRecoveryMode("forgot"); setError(null); setSuccess(null); }}>Forgot password?</button> : null}
                   </div>
                   <div className="relative">
-                    <LockKeyhole className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <LockKeyhole className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <Input id="auth-password" type={showPassword ? "text" : "password"} autoComplete={mode === "sign-up" ? "new-password" : "current-password"} value={password} onChange={(event) => setPassword(event.target.value)} className="px-9" required />
-                    <button type="button" onClick={() => setShowPassword((visible) => !visible)} className="absolute right-2 top-1.5 rounded-md p-1 text-muted-foreground hover:text-foreground" aria-label={showPassword ? "Hide password" : "Show password"}>
+                    <button type="button" onClick={() => setShowPassword((visible) => !visible)} className="absolute right-2 top-2 rounded-md p-1 text-muted-foreground hover:text-foreground" aria-label={showPassword ? "Hide password" : "Show password"}>
                       {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
                   </div>
@@ -439,7 +439,7 @@ export default function AuthClient() {
                       <Label htmlFor="confirm-password">Confirm password</Label>
                       <Input id="confirm-password" type={showPassword ? "text" : "password"} autoComplete="new-password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} required />
                     </div>
-                    <ul className="grid gap-1.5 text-xs text-muted-foreground sm:grid-cols-2">
+                    <ul className="grid gap-1.5 text-[13px] text-muted-foreground sm:grid-cols-2">
                       {requirements.map((requirement) => (
                         <li key={requirement.id} className="flex items-center gap-1.5">
                           <Check className={`h-3.5 w-3.5 ${requirement.met ? "text-emerald-500" : "text-muted-foreground/50"}`} />
@@ -467,7 +467,7 @@ export default function AuthClient() {
             </TabsContent>
           </Tabs>
 
-          <p className="text-center text-xs leading-5 text-muted-foreground">
+          <p className="text-center text-[13px] leading-5 text-muted-foreground">
             Social sign-in reads only basic identity and email. Repository, Discord server, and LinkedIn company permissions are requested separately only when needed.
           </p>
         </CardContent>
@@ -488,8 +488,13 @@ function AuthError({ message }: { message: string }) {
 
 function AuthFrame({ children }: { children: React.ReactNode }) {
   return (
-    <div className="relative flex items-center justify-center overflow-hidden px-4 py-12 sm:py-16">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_15%,rgba(56,189,248,.12),transparent_35%),radial-gradient(circle_at_90%_80%,rgba(139,92,246,.1),transparent_30%)]" />
+    <div className="relative grid min-h-[80svh] items-center gap-12 px-5 py-12 sm:px-10 sm:py-20 lg:mx-auto lg:max-w-6xl lg:grid-cols-[1fr_1fr]">
+      <div className="hidden max-w-md lg:block">
+        <Link href="/" className="inline-flex items-center gap-3 text-lg font-semibold"><BrandLogo className="h-9 w-9 rounded-xl" />Krythiq</Link>
+        <h1 className="mt-12 text-4xl font-semibold tracking-tight">A second opinion<br />for your code.</h1>
+        <p className="mt-5 text-base leading-7 text-muted-foreground">Find security risks, understand your architecture, and turn repository evidence into your next fix.</p>
+        <Link href="/documentation" className="mt-8 inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline">Explore the documentation <ArrowLeft className="h-4 w-4 rotate-180" /></Link>
+      </div>
       <div className="relative flex w-full justify-center">{children}</div>
     </div>
   );

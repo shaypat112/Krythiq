@@ -55,7 +55,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning className={cn(geist.variable)}>
+    <html lang="en" suppressHydrationWarning className={cn("dark", geist.variable)}>
       <head>
         <script
           type="application/ld+json"
@@ -63,7 +63,7 @@ export default function RootLayout({
         />
       </head>
       <body className="bg-background text-foreground antialiased">
-        <ThemeProvider defaultTheme="dark">
+        <ThemeProvider>
           <TooltipProvider delayDuration={350} skipDelayDuration={150}>
             <TeamProvider>
               <AppShell>{children}</AppShell>

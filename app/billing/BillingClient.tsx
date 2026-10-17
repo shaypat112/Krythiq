@@ -1,5 +1,7 @@
 "use client";
 
+import { PageHeading } from "@/app/components/PageHeading";
+
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { buildAuthHeaders } from "@/app/lib/http";
 import { createClient } from "@/app/lib/supabase";
@@ -117,7 +119,7 @@ export function BillingClient({ insufficientScanTier }: { insufficientScanTier: 
 
   return (
     <div className="mx-auto max-w-6xl space-y-8">
-      <header><span className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Stripe test mode only</span><h1 className="mt-3 text-3xl font-semibold">Billing</h1><p className="mt-2 text-muted-foreground">Test subscriptions, Tokens, and invoices are managed here. Live payments are disabled.</p></header>
+      <PageHeading title="Billing" description="Manage test subscriptions, Tokens, and invoices. Live payments are disabled." />
       {insufficientScanTier ? <Card className="border-amber-500/30 bg-amber-500/10"><CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between"><div className="flex gap-3"><Coins className="mt-0.5 h-5 w-5 shrink-0 text-amber-500" /><div><p className="font-medium">More Tokens are required for {scanLevelConfig[insufficientScanTier].label}</p><p className="mt-1 text-sm text-muted-foreground">This scan requires {formatTokens(scanLevelConfig[insufficientScanTier].cost)}. Your current balance is {tokenBalance === null ? "loading…" : formatTokens(tokenBalance)}. Review the available plans below.</p></div></div><Button asChild variant="outline" className="shrink-0"><a href="#plans">View plans</a></Button></CardContent></Card> : null}
       {error && <div role="alert" className="flex gap-2 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive"><AlertCircle className="h-4 w-4 shrink-0" />{error}</div>}
       {summary?.subscription && <Card><CardContent className="flex flex-wrap items-center justify-between gap-4 p-5"><div><p className="font-medium">{summary.subscription.planName}</p><p className="text-sm text-muted-foreground">{summary.subscription.currentPeriodEnd ? `Renews ${new Date(summary.subscription.currentPeriodEnd).toLocaleDateString()}` : "Subscription period pending sync"}</p></div><span className="text-xs uppercase tracking-[0.14em] text-muted-foreground">{summary.subscription.status}</span></CardContent></Card>}

@@ -84,7 +84,7 @@ export default function InstallationPage() {
         <h2 className="text-sm font-bold text-white">Prerequisites</h2>
         <ul className="space-y-2">
           {[
-            { label: "Node.js 20 or later", check: "node --version" },
+            { label: "Node.js 22.13 or later", check: "node --version" },
             { label: "npm, pnpm, or bun", check: "npm --version" },
           ].map((req) => (
             <li key={req.label} className="flex items-center gap-3 text-sm">
@@ -130,10 +130,15 @@ export default function InstallationPage() {
           </p>
           <CodeBlock code="krythiq --version" />
           <div className="mt-3 rounded-lg border border-zinc-800 bg-zinc-950 px-4 py-3 font-mono text-sm text-zinc-500">
-            <span className="text-zinc-600">→ </span>0.2.2
+            <span className="text-zinc-600">→ </span>Your installed version
           </div>
         </Step>
 
+        <div className="space-y-3 rounded-2xl bg-card p-5">
+          <h2 className="text-lg font-semibold">Build from source (optional)</h2>
+          <p className="text-sm leading-6 text-muted-foreground">CLI 0.3.0 includes doctor, report, hosted AI, and renewable connections. To use a source checkout, run these from the repository root and use node backend/dist/index.js instead of krythiq.</p>
+          <CodeBlock code={"npm --prefix backend ci\nnpm --prefix backend run build\nnode backend/dist/index.js doctor ."} />
+        </div>
         <Step number={3} title="Authenticate (optional for AI features)">
           <p className="text-sm text-zinc-500 mb-3">
             AI-powered trace analysis requires an API key. Krythiq uses Anthropic

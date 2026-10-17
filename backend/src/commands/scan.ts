@@ -7,35 +7,27 @@ import ora from "ora";
 import { glob } from "glob";
 
 import { summarizeFindings as mistralSummarizeFindings } from "../lib/mistral";
+import { renderReport, exceedsThreshold, SEVERITY_SCORE, type Finding, type Severity, type ReportFormat } from "../lib/scan-report.js";
+import { writeReport } from "../utils/report-file.js";
 import { loadConfig } from "../config.js";
-import { loadDashboardAccount, publishDashboardScan } from "../utils/dashboard.js";
+import { publishDashboardScan } from "../utils/dashboard.js";
 
 const execFileAsync = promisify(execFile);
-
-type Severity = "low" | "medium" | "high" | "critical";
 
 interface ScanOptions {
   ci: boolean;
   ai?: boolean;
   aiModel?: string;
   failOn: Severity;
-  format: "text" | "json" | "markdown" | "sarif";
+  format: ReportFormat;
   ignore: string[];
   publish?: boolean;
   rules?: string;
   save?: boolean;
-}
-
-interface Finding {
-  file: string;
-  line: number;
-  severity: Severity;
-  score: number;
-  type: string;
-  message: string;
-  snippet?: string;
-  suggestion?: string;
-  source: "rules" | "semgrep" | "npm-audit" | "ai";
+  output?: string;
+  overwrite?: boolean;
+  semgrep?: boolean;
+  audit?: boolean;
 }
 
 interface PatternCheck {
@@ -57,20 +49,6 @@ interface RulesFile {
     suggestion?: string;
   }>;
 }
-
-const SEVERITY_SCORE: Record<Severity, number> = {
-  low: 30,
-  medium: 55,
-  high: 75,
-  critical: 90
-};
-
-const SEVERITY_COLOR: Record<Severity, (t: string) => string> = {
-  low: chalk.blue,
-  medium: chalk.yellow,
-  high: chalk.red,
-  critical: chalk.bgRed.white
-};
 
 export async function scanCommand(
   scanPath: string = ".",
@@ -102,7 +80,7 @@ export async function scanCommand(
     return;
   }
 
-  if (options.format === "text" || options.format === "markdown") {
+  if (options.format === "text") {
     console.log(`\n${chalk.bold("krythiq")} ${chalk.dim("scan")}\n`);
   }
 
@@ -140,7 +118,7 @@ export async function scanCommand(
     aiModel,
     extraPatterns: rules.patterns,
   });
-  const engineResult = await runSecurityEngines(resolved);
+  const engineResult = await runSecurityEngines(resolved, options);
   for (const warning of engineResult.warnings) console.error(chalk.yellow(warning));
   const findings = [...rulesFindings, ...engineResult.findings];
 
@@ -150,19 +128,27 @@ export async function scanCommand(
       ? await mistralSummarizeFindings(deduped, aiModel)
       : null;
 
-  outputResults(deduped, options, aiSummary ? JSON.stringify(aiSummary) : null);
+  const output = renderReport(deduped, options.format, aiSummary);
+  if (options.output) {
+    try {
+      await writeReport(options.output, output, options.overwrite);
+      console.error(`Report saved to ${options.output}`);
+    } catch (error) {
+      console.error(`Unable to save report: ${error instanceof Error ? error.message : String(error)}`);
+      process.exitCode = 2;
+      return;
+    }
+  }
+  process.stdout.write(output);
 
   if (options.save) {
     const repo = await inferRepoSlug(resolved);
     const summary = summarizeFindings(deduped);
     try {
       await publishDashboardScan({ repository: repo, severity: summary.severity, score: summary.avgScore, findings: deduped });
-      if (options.format === "text" || options.format === "markdown") {
-        const account = await loadDashboardAccount();
-        console.log(`${chalk.green("✓")} Synced to Krythiq Dashboard${account ? ` · ${account.balance.toLocaleString()} Tokens` : ""}\n`);
-      }
+      console.error(`${chalk.green("✓")} Saved to Krythiq Dashboard\n`);
     } catch (error) {
-      if (options.format === "text" || options.format === "markdown") console.error(chalk.yellow(`Scan was not saved: ${error instanceof Error ? error.message : "upload failed"}\n`));
+      console.error(chalk.yellow(`Scan was not saved: ${error instanceof Error ? error.message : "upload failed"}\n`));
     }
   }
 
@@ -170,7 +156,7 @@ export async function scanCommand(
     await publishScanSummary(deduped);
   }
 
-  if (options.ci) handleCI(deduped, options);
+  if (options.ci && exceedsThreshold(deduped, options.failOn)) process.exitCode = 1;
 }
 
 async function discoverFiles(root: string, ignore: string[]) {
@@ -240,8 +226,8 @@ async function scanFiles(
   return findings;
 }
 
-async function runSecurityEngines(root: string): Promise<{ findings: Finding[]; warnings: string[] }> {
-  const [semgrep, npmAudit] = await Promise.all([runSemgrep(root), runNpmAudit(root)]);
+async function runSecurityEngines(root: string, options: ScanOptions): Promise<{ findings: Finding[]; warnings: string[] }> {
+  const [semgrep, npmAudit] = await Promise.all([options.semgrep === false ? { findings: [], warnings: [] } : runSemgrep(root), options.audit === false ? { findings: [], warnings: [] } : runNpmAudit(root)]);
   return { findings: [...semgrep.findings, ...npmAudit.findings], warnings: [...semgrep.warnings, ...npmAudit.warnings] };
 }
 
@@ -321,8 +307,8 @@ async function loadRules(rulesPath?: string) {
     const patterns: PatternCheck[] = [];
 
     for (const rule of data.patterns ?? []) {
-      if (!rule.pattern || !rule.severity || !rule.type || !rule.message) {
-        warnings.push(`Invalid rule in ${rulesPath} — missing required fields.`);
+      if (typeof rule.pattern !== "string" || !rule.pattern || !Object.prototype.hasOwnProperty.call(SEVERITY_SCORE, rule.severity) || typeof rule.type !== "string" || !rule.type || typeof rule.message !== "string" || !rule.message) {
+        warnings.push(`Invalid rule in ${rulesPath} — invalid pattern, severity, type, or message.`);
         continue;
       }
       try {
@@ -366,151 +352,6 @@ function dedupe(findings: Finding[]) {
   );
 }
 
-function outputResults(
-  findings: Finding[],
-  options: ScanOptions,
-  aiSummary?: string | null
-) {
-  if (options.format === "json") {
-    console.log(JSON.stringify({ findings, aiSummary: aiSummary ?? null }, null, 2));
-    return;
-  }
-
-  if (options.format === "markdown") {
-    console.log("# Krythiq Scan Report\n");
-
-    console.log("| Severity | File | Line | Type | Message |");
-    console.log("|---|---|---|---|---|");
-
-    for (const f of findings) {
-      console.log(
-        `| ${f.severity} | ${f.file} | ${f.line} | ${f.type} | ${f.message} |`
-      );
-    }
-
-    if (aiSummary) {
-      console.log(`\n## AI Summary\n\n${aiSummary}`);
-    }
-
-    return;
-  }
-
-  if (options.format === "sarif") {
-    console.log(JSON.stringify(toSarif(findings), null, 2));
-    return;
-  }
-
-  console.log();
-
-  if (!findings.length) {
-    console.log(chalk.green("✓ No issues found\n"));
-    return;
-  }
-
-  for (const f of findings) {
-    const badge =
-      f.source === "ai"
-        ? chalk.magenta("[AI]")
-        : SEVERITY_COLOR[f.severity](`[${f.severity.toUpperCase()}]`);
-
-    console.log(
-      `${badge} ${chalk.white(f.type)} (${chalk.yellow(
-        f.score
-      )}) ${chalk.dim(f.file)}:${chalk.yellow(f.line)}`
-    );
-
-    console.log(`  ${chalk.dim(f.message)}`);
-
-    if (f.snippet) console.log(`  ${chalk.dim("→")} ${chalk.dim(f.snippet)}`);
-
-    if (f.suggestion)
-      console.log(`  ${chalk.dim("fix")} ${chalk.dim(f.suggestion)}`);
-
-    console.log();
-  }
-
-  if (aiSummary) {
-    console.log(chalk.cyan("AI summary"));
-    console.log(`  ${chalk.dim(aiSummary)}\n`);
-  }
-
-  console.log(`${findings.length} issue(s) detected\n`);
-}
-
-function toSarif(findings: Finding[]) {
-  const rules: Array<{
-    id: string;
-    name: string;
-    shortDescription: { text: string };
-    properties?: Record<string, unknown>;
-  }> = [];
-  const ruleIndex = new Map<string, number>();
-
-  for (const f of findings) {
-    if (ruleIndex.has(f.type)) continue;
-    ruleIndex.set(f.type, rules.length);
-    rules.push({
-      id: f.type,
-      name: f.type,
-      shortDescription: { text: f.message },
-      properties: { severity: f.severity, score: f.score },
-    });
-  }
-
-  const results = findings.map((f) => ({
-    ruleId: f.type,
-    level: sarifLevel(f.severity),
-    message: { text: f.message },
-    locations: [
-      {
-        physicalLocation: {
-          artifactLocation: { uri: f.file },
-          region: { startLine: Math.max(1, f.line) },
-        },
-      },
-    ],
-    properties: { severity: f.severity, score: f.score },
-  }));
-
-  return {
-    $schema:
-      "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
-    version: "2.1.0",
-    runs: [
-      {
-        tool: {
-          driver: {
-            name: "krythiq",
-            informationUri: "https://krythiq.dev",
-            rules,
-          },
-        },
-        results,
-      },
-    ],
-  };
-}
-
-function sarifLevel(severity: Severity) {
-  switch (severity) {
-    case "critical":
-    case "high":
-      return "error";
-    case "medium":
-      return "warning";
-    default:
-      return "note";
-  }
-}
-
-function handleCI(findings: Finding[], options: ScanOptions) {
-  const threshold = SEVERITY_SCORE[options.failOn];
-
-  const fail = findings.some(f => SEVERITY_SCORE[f.severity] >= threshold);
-
-  if (fail) process.exit(1);
-}
-
 async function publishScanSummary(
   findings: Finding[],
   options?: { repoOverride?: string }
@@ -520,7 +361,7 @@ async function publishScanSummary(
   const accessToken = process.env.SUPABASE_ACCESS_TOKEN;
 
   if (!supabaseUrl || !supabaseAnonKey || !accessToken) {
-    console.log(
+    console.error(
       chalk.yellow(
         "\nPublish skipped: SUPABASE_URL, SUPABASE_ANON_KEY, and SUPABASE_ACCESS_TOKEN are required.\n"
       )

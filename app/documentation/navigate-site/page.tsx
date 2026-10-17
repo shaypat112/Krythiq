@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, BookOpen, Coins, Compass, FileCode2, History, MessageCircle, ScanSearch, Settings, Users } from "lucide-react";
+import { ArrowRight, BookOpen, Coins, FileCode2, History, ScanSearch, Settings, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const sections = [
@@ -10,7 +10,7 @@ const sections = [
   },
   {
     title: "Understand the result",
-    description: "Review findings by severity and file. Scan History keeps earlier results together so you can track changes over time.",
+    description: "Review findings by severity and file. Scan History groups the 50 most recent results by repository. Search by name, filter by latest severity, sort by date, score, or issue count, and identify saved terminal scans.",
     links: [{ href: "/scan/history", label: "Scan history", icon: History }],
   },
   {
@@ -22,11 +22,6 @@ const sections = [
     title: "Build with your team",
     description: "Create a team, invite people, choose a shared workspace, and keep project activity together. Owners and admins control membership and shared project settings.",
     links: [{ href: "/teams", label: "Teams", icon: Users }, { href: "/settings", label: "Settings", icon: Settings }],
-  },
-  {
-    title: "Meet and message builders",
-    description: "Discover is the community area. View safe public profiles and projects, request to follow someone, and message them after they accept.",
-    links: [{ href: "/discover", label: "Discover", icon: Compass }, { href: "/discover/requests", label: "Follow requests", icon: MessageCircle }],
   },
   {
     title: "Tokens and billing",

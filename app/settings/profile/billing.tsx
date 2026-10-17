@@ -138,7 +138,7 @@ export function BillingSection() {
           ) : null}
 
           <BentoGrid className="auto-rows-auto grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-6">
-            <div className="rounded-2xl border border-border bg-[radial-gradient(circle_at_top_right,rgba(56,189,248,.1),transparent_42%),var(--card)] p-5 shadow-sm lg:col-span-2">
+            <div className="rounded-2xl border border-border bg-card p-5 shadow-sm lg:col-span-2">
               <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Plan</p>
               <p className="mt-3 text-2xl font-semibold">{summary.subscription?.planName ?? "No plan"}</p>
             </div>
@@ -146,7 +146,7 @@ export function BillingSection() {
               <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Status</p>
               <p className="mt-3 text-2xl font-semibold capitalize">{summary.subscription?.status?.replaceAll("_", " ") ?? "Inactive"}</p>
             </div>
-            <div className="rounded-2xl border border-border bg-[radial-gradient(circle_at_top_right,rgba(251,191,36,.12),transparent_42%),var(--card)] p-5 shadow-sm sm:col-span-2 lg:col-span-2">
+            <div className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:col-span-2 lg:col-span-2">
               <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Balance</p>
               <p className="mt-3 text-2xl font-semibold">{balance === null ? "—" : formatTokens(balance)}</p>
             </div>

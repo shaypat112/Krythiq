@@ -202,7 +202,7 @@ export function ReportDetailClient({ repo }: { repo: string }) {
         </Link>
       </Button>
 
-      <section className="rounded-[2rem] border border-border bg-[radial-gradient(circle_at_top_left,rgba(248,113,113,0.12),transparent_24%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.12),transparent_28%),linear-gradient(135deg,var(--card),var(--background))] p-8 shadow-[0_24px_90px_rgba(0,0,0,0.1)]">
+      <section className="rounded-[2rem] border border-border bg-card p-8 shadow-[0_24px_90px_rgba(0,0,0,0.1)]">
         <div className="space-y-4">
           <span className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
             Repository Report
@@ -242,7 +242,7 @@ export function ReportDetailClient({ repo }: { repo: string }) {
       </section>
 
       <section className="grid gap-6 lg:grid-cols-[1.35fr_0.65fr]">
-        <Card className="overflow-hidden border-violet-500/25 bg-[radial-gradient(circle_at_top_right,rgba(139,92,246,.16),transparent_42%),var(--card)]">
+        <Card className="overflow-hidden border-violet-500/25 bg-card">
           <CardHeader>
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">
@@ -295,7 +295,7 @@ export function ReportDetailClient({ repo }: { repo: string }) {
         </CardContent>
       </Card>
 
-      {fixes.length ? <Card className="border-emerald-500/20 bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,.1),transparent_35%),var(--card)]"><CardHeader><div className="flex items-center gap-2"><span className="rounded-xl bg-emerald-500/15 p-2 text-emerald-400"><Wrench className="h-5 w-5" /></span><div><CardTitle>Recommended fixes</CardTitle><p className="mt-1 text-sm text-muted-foreground">Generated remediation steps prioritized from this scan.</p></div></div></CardHeader><CardContent className="grid gap-3 md:grid-cols-2">{fixes.slice(0, 6).map((finding, index) => <div key={`${finding.title ?? "fix"}-${index}`} className="rounded-2xl border border-emerald-500/15 bg-background/70 p-4"><div className="flex items-start justify-between gap-3"><p className="text-sm font-semibold">{finding.title ?? finding.message ?? finding.file ?? finding.path ?? `Fix ${index + 1}`}</p><Badge variant="outline" className={tone(finding.severity ?? "low")}>{finding.severity ?? "low"}</Badge></div><p className="mt-2 text-sm leading-6 text-muted-foreground">{finding.fix ?? finding.recommendation ?? finding.suggestion}</p>{finding.file || finding.path ? <p className="mt-3 truncate font-mono text-xs text-emerald-400/80">{finding.file ?? finding.path}{finding.line ? `:${finding.line}` : ""}</p> : null}</div>)}</CardContent></Card> : null}
+      {fixes.length ? <Card className="border-emerald-500/20 bg-card"><CardHeader><div className="flex items-center gap-2"><span className="rounded-xl bg-emerald-500/15 p-2 text-emerald-400"><Wrench className="h-5 w-5" /></span><div><CardTitle>Recommended fixes</CardTitle><p className="mt-1 text-sm text-muted-foreground">Generated remediation steps prioritized from this scan.</p></div></div></CardHeader><CardContent className="grid gap-3 md:grid-cols-2">{fixes.slice(0, 6).map((finding, index) => <div key={`${finding.title ?? "fix"}-${index}`} className="rounded-2xl border border-emerald-500/15 bg-background/70 p-4"><div className="flex items-start justify-between gap-3"><p className="text-sm font-semibold">{finding.title ?? finding.message ?? finding.file ?? finding.path ?? `Fix ${index + 1}`}</p><Badge variant="outline" className={tone(finding.severity ?? "low")}>{finding.severity ?? "low"}</Badge></div><p className="mt-2 text-sm leading-6 text-muted-foreground">{finding.fix ?? finding.recommendation ?? finding.suggestion}</p>{finding.file || finding.path ? <p className="mt-3 truncate font-mono text-xs text-emerald-400/80">{finding.file ?? finding.path}{finding.line ? `:${finding.line}` : ""}</p> : null}</div>)}</CardContent></Card> : null}
 
       <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
         <Card className="border-border bg-card">
