@@ -102,7 +102,7 @@ public/                   # Static images and social metadata
 
 ### Run everything locally with Docker
 
-Requirements: Docker Desktop (running), Node.js 24+, npm, and the Supabase CLI
+Requirements: Docker Desktop (running), Node.js 24+, npm 11.13+, and the Supabase CLI
 (`brew install supabase/tap/supabase` on macOS).
 
 ```bash
@@ -157,7 +157,7 @@ fresh database, including the profile trigger and row-level security policies.
 
 ### Run the app directly on the host
 
-Requirements: Node.js 24+, npm, and a Supabase project (hosted or local Docker).
+Requirements: Node.js 24+, npm 11.13+, and a Supabase project (hosted or local Docker).
 
 ### Install and run
 

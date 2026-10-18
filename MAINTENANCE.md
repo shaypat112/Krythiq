@@ -1,4 +1,4 @@
-# Repository maintenance — October 14, 2026
+# Repository maintenance — October 18, 2026
 
 Guided Fixes and Launch Readiness have been removed, including their pages,
 scan navigation, prompt-generation and automatic draft-patch APIs, server helpers,
@@ -35,8 +35,10 @@ production build. In `backend`, run `npm run typecheck`, `npm run lint`, and
 `npm test` (which also builds the CLI). CI now runs these checks.
 
 Verified: the production build, application and CLI typechecks, complete Knip
-analysis, 71 application tests, and 7 CLI tests pass. Browser visual verification
-was not performed.
+analysis, 75 application tests, and 28 CLI tests pass. Fresh installs using the
+CI npm version and the temporary PostgreSQL CLI lifecycle/retirement assertions
+also pass. Browser visual verification was not performed; Docker stack smoke
+tests could not run because the Docker daemon was unavailable.
 
 The application suite includes a regression check that the retired routes and
 APIs are absent. Existing database contract tests validate source contracts;
@@ -44,19 +46,21 @@ they do not connect to a database.
 
 ## Remaining maintenance findings
 
-The application lint check passes with 16 warnings in existing code: effect-driven
-state updates, a memoization dependency, and internal hard navigations. No
+The application lint check passes with 12 warnings in existing code: effect-driven
+state updates, a missing effect dependency, and internal hard navigations. No
 explicit-any or unused-variable warnings remain. These warnings have not been
 suppressed or promoted to errors in this change.
 
-The production dependency audit and the backend audit report zero vulnerabilities.
-The complete root audit reports five high-severity development-tool findings in
-one chain: `eslint-config-next` → `@next/eslint-plugin-next` → `fast-glob` →
-`micromatch` → `braces`. The
-[upstream advisory](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm) lists no
-patched braces version. npm proposes downgrading the Next.js ESLint configuration
-to 14.2.35; that incompatible downgrade was not applied. No audit exceptions were
-added.
+Full application and backend dependency audits report zero vulnerabilities,
+including development tools. A scoped override replaces only the Next.js lint
+plugin's directory matcher with `tools/eslint-glob`, removing the vulnerable
+`fast-glob` → `micromatch` → `braces` chain. Integration tests exercise the
+installed plugin's root resolution and internal-link rule. The root also
+overrides esbuild to a patched version. No audit exceptions were added.
+
+The local matcher override requires npm 11.13+ and Node 22.20+. CI and Docker
+install npm 11.13.0 before `npm ci`; Docker copies both local dependencies before
+installation. CI audits all dependencies and fails even on low-severity findings.
 
 Major-version upgrades for ESLint, TypeScript, Stripe, Lucide, and backend tooling
 were checked and left for separate migrations. Their integration changes are not

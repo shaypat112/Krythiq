@@ -9,11 +9,15 @@
         "krythiq.config.mjs"
       ],
       "ignoreDependencies": [
-        "krythiq"
+        "krythiq",
+        "fast-glob"
       ],
       "ignore": [
         "app/.agents/**"
       ]
+    },
+    "tools/eslint-glob": {
+      "project": ["**/*.mjs"]
     },
     "backend": {
       "entry": [
