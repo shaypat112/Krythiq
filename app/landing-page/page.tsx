@@ -4,9 +4,9 @@ import { LandingExperience } from "./components/LandingExperience";
 import styles from "./landing.module.css";
 
 export const metadata: Metadata = {
-  title: "Krythiq — A second opinion for AI-built software",
+  title: "Krythiq — Find issues. Ship better software.",
   description:
-    "Review AI-built applications across security, architecture, frontend quality, and performance.",
+    "Scan your repository for security, architecture, and performance issues. Get prioritized findings linked to your code.",
 };
 
 export default function LandingPage() {
