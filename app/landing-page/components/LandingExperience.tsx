@@ -2,15 +2,25 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { ArrowDown, ArrowRight, GitBranch, ShieldCheck, Sparkles } from "lucide-react";
+import { ArrowDown, ArrowRight, ShieldCheck, Sparkles } from "lucide-react";
 import { useReducedMotion, useScroll, useSpring } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import styles from "../landing.module.css";
+import { VaultFallback } from "./VaultFallback";
 
-const SystemGraph = dynamic(
-  () => import("./SystemGraph").then((module) => module.SystemGraph),
-  { ssr: false, loading: () => <GraphFallback /> },
+const VaultScene = dynamic(
+  () => import("./RepositoryVault").then((module) => module.RepositoryVault),
+  { ssr: false, loading: () => <VaultFallback /> },
 );
+
+const chambers = [
+  { title: "Frontend", description: "Review client code for security, architecture, and performance concerns." },
+  { title: "API routes", description: "Inspect route handlers and see where authorization logic belongs." },
+  { title: "Authentication", description: "Keep session and access checks in view as you review the code." },
+  { title: "Data layer", description: "Follow application code around database calls and stored data." },
+  { title: "Runtime & config", description: "Read dependency and configuration signals alongside source." },
+  { title: "External services", description: "See integrations in the context of the code that calls them." },
+];
 
 const findings = [
   { severity: "High", title: "Missing authorization on an admin endpoint", file: "app/api/admin/route.ts:42" },
@@ -19,35 +29,26 @@ const findings = [
 
 const steps = [
   { number: "01", title: "Connect a repository", description: "Choose a GitHub repository or upload a source file." },
-  { number: "02", title: "Map the system", description: "Krythiq checks code patterns and traces connections across your project." },
-  { number: "03", title: "Move with clarity", description: "Review prioritized findings with evidence linked to the code." },
+  { number: "02", title: "Run a scan", description: "Review security, architecture, and performance signals in your code." },
+  { number: "03", title: "Choose what to fix", description: "Open prioritized findings with evidence linked to the source." },
 ];
 
-function GraphFallback() {
-  return (
-    <svg className={styles.graphFallback} viewBox="0 0 520 360" role="img" aria-label="A repository map connecting frontend, API, authentication, database, and external services">
-      <g className={styles.graphLines}>
-        <path d="M86 112 207 158 331 80M207 158 336 248M207 158 390 158M336 248 440 272M331 80 390 158M390 158 440 272" />
-      </g>
-      {[[86,112,"Frontend"],[207,158,"API"],[331,80,"Auth"],[336,248,"Database"],[390,158,"Infrastructure"],[440,272,"Services"]].map(([x,y,label]) => (
-        <g key={label as string} transform={`translate(${x} ${y})`}>
-          <circle r="10" className={styles.graphDot} />
-          <text x="16" y="4">{label}</text>
-        </g>
-      ))}
-    </svg>
-  );
-}
-
 export function LandingExperience() {
-  const mapRef = useRef<HTMLElement>(null);
+  const chaptersRef = useRef<HTMLDivElement>(null);
+  const vaultRef = useRef<HTMLElement>(null);
   const [sceneEnabled, setSceneEnabled] = useState(false);
-  const { scrollYProgress } = useScroll({ target: mapRef, offset: ["start end", "end start"] });
+  const [activeIndex, setActiveIndex] = useState(0);
+  const { scrollYProgress } = useScroll({ target: chaptersRef, offset: ["start end", "end start"] });
   const prefersReducedMotion = Boolean(useReducedMotion());
-  const progress = useSpring(scrollYProgress, { stiffness: 90, damping: 24, mass: 0.7, skipInitialAnimation: prefersReducedMotion });
+  const progress = useSpring(scrollYProgress, { stiffness: 82, damping: 25, mass: 0.8, skipInitialAnimation: prefersReducedMotion });
+
+  useEffect(() => progress.on("change", (value) => {
+    const next = Math.max(0, Math.min(chambers.length - 1, Math.round(value * (chambers.length - 1))));
+    setActiveIndex((current) => current === next ? current : next);
+  }), [progress]);
 
   useEffect(() => {
-    const element = mapRef.current;
+    const element = vaultRef.current;
     if (!element) return;
     const observer = new IntersectionObserver(([entry]) => {
       if (!entry.isIntersecting) return;
@@ -60,42 +61,47 @@ export function LandingExperience() {
 
   return (
     <main id="main-content" className={styles.main}>
-      <section className={styles.hero} aria-labelledby="hero-heading">
-        <div className={styles.heroText}>
-          <p className={styles.eyebrow}><span className={styles.eyebrowMark} /> CODE INTELLIGENCE FOR TEAMS</p>
-          <h1 id="hero-heading">See how your code <span>connects.</span></h1>
-          <p className={styles.heroCopy}>Find security, architecture, and performance issues across your repository—with clear evidence and a path to what needs attention.</p>
-          <div className={styles.actions}>
-            <Link href="/scan" className={styles.primaryButton}>Scan a repository <ArrowRight size={16} aria-hidden="true" /></Link>
-            <Link href="/documentation" className={styles.secondaryButton}>Explore the docs</Link>
-          </div>
-          <p className={styles.heroFootnote}><ShieldCheck size={15} aria-hidden="true" /> Start with a scan. No setup guide required.</p>
-        </div>
-        <div className={styles.heroVisual} aria-hidden="true">
-          <div className={styles.visualTopline}><span><span className={styles.liveDot} /> REPOSITORY MAP</span><span>demo-app · 6 systems</span></div>
-          <GraphFallback />
-          <div className={styles.visualCaption}><GitBranch size={14} /> Relationships surfaced from your codebase</div>
-          <div className={styles.visualGlow} />
-        </div>
-        <a className={styles.scrollCue} href="#repository-map"><span>See the system behind the code</span><ArrowDown size={14} aria-hidden="true" /></a>
-      </section>
+      <section id="repository-map" className={styles.vaultExperience} aria-label="Explore a repository as a series of connected vault chambers">
+        <div className={styles.experienceGrid}>
+          <div className={styles.storyColumn}>
+            <header className={styles.heroText}>
+              <p className={styles.eyebrow}><span className={styles.eyebrowMark} /> REPOSITORY INTELLIGENCE</p>
+              <h1 id="hero-heading">Enter your <span>codebase.</span></h1>
+              <p className={styles.heroCopy}>A repository has more than files. Krythiq brings security, architecture, and performance findings into one clear view.</p>
+              <div className={styles.actions}>
+                <Link href="/scan" className={styles.primaryButton}>Scan a repository <ArrowRight size={16} aria-hidden="true" /></Link>
+                <Link href="/documentation" className={styles.secondaryButton}>Explore the docs</Link>
+              </div>
+              <p className={styles.heroFootnote}><ShieldCheck size={15} aria-hidden="true" /> Start with a scan. No setup guide required.</p>
+              <a className={styles.scrollCue} href="#vault-chambers"><span>Scroll to open the vault</span><ArrowDown size={14} aria-hidden="true" /></a>
+            </header>
 
-      <section ref={mapRef} id="repository-map" className={styles.mapSection} aria-labelledby="map-heading">
-        <div className={styles.sectionIntro}>
-          <p className={styles.eyebrow}>A clearer picture of your code</p>
-          <h2 id="map-heading">Issues don’t live in isolation.</h2>
-          <p>Follow the relationships between your frontend, APIs, data, and services. As the map opens up, the paths between each layer come into view.</p>
-        </div>
-        <div className={styles.mapStage}>
-          <div className={styles.mapLabels} aria-hidden="true"><span>APP LAYERS</span><span>CONNECTED SYSTEMS</span></div>
-          <div className={styles.sceneWrap}>
-            {sceneEnabled ? <SystemGraph progress={progress} /> : <GraphFallback />}
-            <div className={styles.sceneLegend}><span><i className={styles.legendBlue} /> Connected component</span><span><i className={styles.legendRed} /> Finding to review</span></div>
+            <div ref={chaptersRef} id="vault-chambers" className={styles.chapters}>
+              {chambers.map((chamber, index) => (
+                <article className={`${styles.chapter} ${activeIndex === index ? styles.chapterActive : ""}`} key={chamber.title} aria-labelledby={`chamber-${index}`}>
+                  <p className={styles.chapterIndex}>CHAMBER {String(index + 1).padStart(2, "0")} <span>/ 06</span></p>
+                  <h2 id={`chamber-${index}`}>{chamber.title}</h2>
+                  <p>{chamber.description}</p>
+                  <span className={styles.chapterRule} aria-hidden="true" />
+                </article>
+              ))}
+            </div>
           </div>
+
+          <aside ref={vaultRef} className={styles.vaultSticky} aria-label="Three-dimensional repository vault">
+            <div className={styles.vaultFrame}>
+              <div className={styles.vaultTopline}><span><i /> REPOSITORY VAULT</span><span>DEMO APP · 06 CHAMBERS</span></div>
+              <div className={styles.vaultCanvas}>{sceneEnabled ? <VaultScene progress={progress} /> : <VaultFallback />}</div>
+              <div className={styles.vaultReadout} aria-live="polite" aria-atomic="true">
+                <span>CHAMBER {String(activeIndex + 1).padStart(2, "0")} <i>/ 06</i></span>
+                <h2>{chambers[activeIndex].title}</h2>
+                <p>{chambers[activeIndex].description}</p>
+              </div>
+              <div className={styles.vaultDepth} aria-hidden="true"><span /> STRUCTURE REVEALED BY SCROLL</div>
+            </div>
+            <p className={styles.vaultCaption}>A conceptual view of common repository layers. Scan results vary by codebase.</p>
+          </aside>
         </div>
-        <ul className={styles.systemList} aria-label="Mapped parts of a repository">
-          {["Frontend", "API", "Authentication", "Database", "Infrastructure", "External services"].map((item, index) => <li key={item}><span>0{index + 1}</span>{item}</li>)}
-        </ul>
       </section>
 
       <section id="report" className={styles.reportSection} aria-labelledby="report-heading">
