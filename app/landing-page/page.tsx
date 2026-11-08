@@ -4,7 +4,7 @@ import { LandingExperience } from "./components/LandingExperience";
 import styles from "./landing.module.css";
 
 export const metadata: Metadata = {
-  title: "Krythiq — Find issues. Ship better software.",
+  title: "Krythiq — Understand your code. Ship with confidence.",
   description:
     "Scan your repository for security, architecture, and performance issues. Get prioritized findings linked to your code.",
 };

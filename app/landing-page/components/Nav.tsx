@@ -13,7 +13,7 @@ export function Nav() {
           </Link>
           <nav className={styles.navActions} aria-label="Main navigation">
             <Link href="/documentation" className={styles.navDocs}>Docs</Link>
-            <Link href="/scan" className={styles.primaryButton}>Get started</Link>
+            <Link href="/scan" className={styles.navButton}>Get started <span aria-hidden="true">↗</span></Link>
           </nav>
         </div>
       </header>
